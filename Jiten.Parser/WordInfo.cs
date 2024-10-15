@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Jiten.Core;
 
 namespace Jiten.Parser;
 

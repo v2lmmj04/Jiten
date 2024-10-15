@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using Jiten.Core;
 using JMDict;
 using MeCab;
 using WanaKanaShaapu;
