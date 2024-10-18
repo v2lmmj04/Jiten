@@ -16,7 +16,7 @@ public class WordInfo
     
     public WordInfo(string sudachiLine)
     {
-        var parts = Regex.Split(sudachiLine, @"\s+");
+        var parts = Regex.Split(sudachiLine, @"\t");
 
         if (parts.Length < 6)
         {

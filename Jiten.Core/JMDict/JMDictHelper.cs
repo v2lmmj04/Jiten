@@ -9,6 +9,15 @@ public static class JmDictHelper
 {
     private static readonly Dictionary<string, string> _entities = new Dictionary<string, string>();
 
+    public static async Task InsertDeck(Deck deck)
+    {
+        await using var context = new JitenDbContext();
+
+        context.Decks.Add(deck);
+
+        await context.SaveChangesAsync();
+    }
+    
     public static async Task<List<JmDictWord>> LoadAllWords()
     {
         await using var context = new JitenDbContext();

@@ -177,7 +177,8 @@ public static class PartOfSpeechExtension
             "形状詞的" => PartOfSpeechSection.NaAdjectiveLike,
             "地名" => PartOfSpeechSection.PlaceName,
             "タリ" => PartOfSpeechSection.TaruAdjective,
-            _ => throw new ArgumentException($"Invalid part of speech section : {pos}")
+            // _ => throw new ArgumentException($"Invalid part of speech section : {pos}")
+            _ => PartOfSpeechSection.None
         };
     }
 }

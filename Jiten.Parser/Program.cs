@@ -30,6 +30,9 @@ namespace Jiten.Parser
 
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
+            
+            // Filter bad lines that cause exceptions
+            wordInfos.RemoveAll(w => w.Text == "ッー");
 
             Deconjugator deconjugator = new Deconjugator();
 
@@ -88,10 +91,13 @@ namespace Jiten.Parser
                                                                                      .ToList();
                                                         if (!pos.Contains(item.word.wordInfo.PartOfSpeech)) continue;
 
-                                                        byte readingType = word.Readings.Contains(candidate.text) ? (byte)0 : (byte)1;
+                                                        var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                        var normalizedKanaReadings = word.KanaReadings.Select(r => WanaKana.ToHiragana(r))
+                                                                                         .ToList();
+                                                        byte readingType = normalizedReadings.Contains(candidate.text) ? (byte)0 : (byte)1;
                                                         byte readingIndex = readingType == 0
-                                                            ? (byte)word.Readings.IndexOf(candidate.text)
-                                                            : (byte)word.KanaReadings.IndexOf(candidate.text);
+                                                            ? (byte)normalizedReadings.IndexOf(candidate.text)
+                                                            : (byte)normalizedKanaReadings.IndexOf(candidate.text);
 
                                                         DeckWord deckWord = new()
                                                                             {
@@ -115,10 +121,13 @@ namespace Jiten.Parser
                                                     var candidate = candidates[0];
                                                     if (!allWords.TryGetValue(candidate, out var word)) return;
 
-                                                    byte readingType = word.Readings.Contains(textInHiragana) ? (byte)0 : (byte)1;
+                                                    var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                    var normalizedKanaReadings =
+                                                        word.KanaReadings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                    byte readingType = normalizedReadings.Contains(textInHiragana) ? (byte)0 : (byte)1;
                                                     byte readingIndex = readingType == 0
-                                                        ? (byte)word.Readings.IndexOf(textInHiragana)
-                                                        : (byte)word.KanaReadings.IndexOf(textInHiragana);
+                                                        ? (byte)normalizedReadings.IndexOf(textInHiragana)
+                                                        : (byte)normalizedKanaReadings.IndexOf(textInHiragana);
 
                                                     DeckWord deckWord = new()
                                                                         {
@@ -141,6 +150,8 @@ namespace Jiten.Parser
             // Assign the occurences for each word
             foreach (var deckWord in orderedProcessedUniqueWords)
             {
+                // Remove one since we already counted it at the start
+                deckWord.Occurrences--;
                 deckWord.Occurrences +=
                     orderedProcessedUniqueWords.Count(x => x.WordId == deckWord.WordId && x.ReadingIndex == deckWord.ReadingIndex);
             }
