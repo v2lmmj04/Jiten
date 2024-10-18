@@ -2,6 +2,9 @@ using FluentAssertions;
 
 namespace Jiten.Parser.Tests;
 
+/// <summary>
+/// These tests are not functional for now
+/// </summary>
 public class DeconjugatorTests
 {
     [Theory]

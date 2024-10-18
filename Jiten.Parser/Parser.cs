@@ -104,6 +104,7 @@ public class Parser
         wordInfos = CombineAuxiliary(wordInfos);
         wordInfos = CombineAuxiliaryVerbStem(wordInfos);
         wordInfos = CombineVerbDependant(wordInfos);
+        wordInfos = CombineAdverbialParticle(wordInfos);
         wordInfos = CombineSuffix(wordInfos);
         wordInfos = CombineParticles(wordInfos);
 
@@ -152,7 +153,7 @@ public class Parser
             {
                 if (wordInfos[i].Text == sc.Item1 && wordInfos[i + 1].Text == sc.Item2)
                 {
-                    wordInfos[i].Text = wordInfos[i].Text + wordInfos[i + 1].Text;
+                    wordInfos[i].Text += wordInfos[i + 1].Text;
                     wordInfos.RemoveAt(i + 1);
                 }
             }
@@ -199,7 +200,7 @@ public class Parser
         {
             if (wordInfos[i].Text.EndsWith("っ") && wordInfos[i + 1].Text.StartsWith("て"))
             {
-                wordInfos[i].Text = wordInfos[i].Text + wordInfos[i + 1].Text;
+                wordInfos[i].Text += wordInfos[i + 1].Text;
                 wordInfos.RemoveAt(i + 1);
                 i--;
             }
@@ -213,10 +214,10 @@ public class Parser
         // Dependants
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Dependant) && i > 0 &&
+            if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Dependant) &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -225,10 +226,11 @@ public class Parser
         // Possible dependants, might need special rules?
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PossibleDependant) && i > 0 &&
+            if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PossibleDependant) &&
+                wordInfos[i].DictionaryForm != "ござる" &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -240,8 +242,26 @@ public class Parser
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru) &&
                 wordInfos[i + 1].DictionaryForm == "する")
             {
-                wordInfos[i].Text = wordInfos[i].Text + wordInfos[i + 1].Text;
+                wordInfos[i].Text += wordInfos[i + 1].Text;
                 wordInfos.RemoveAt(i + 1);
+            }
+        }
+
+        return wordInfos;
+    }
+    
+    private List<WordInfo> CombineAdverbialParticle(List<WordInfo> wordInfos)
+    {
+        // Dependants
+        for (int i = 1; i < wordInfos.Count; i++)
+        {
+            // i.e　だり, たり
+            if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AdverbialParticle) &&
+                wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
+            {
+                wordInfos[i - 1].Text += wordInfos[i].Text;
+                wordInfos.RemoveAt(i);
+                i--;
             }
         }
 
@@ -255,7 +275,7 @@ public class Parser
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.ConjunctionParticle) &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -270,9 +290,10 @@ public class Parser
         {
             if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary && (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
                                                                                  wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
-                                                                                 || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)))
+                                                                               // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
+                                                                                 ))
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -289,7 +310,7 @@ public class Parser
                 wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AuxiliaryVerbStem) &&
                 (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective))
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -304,7 +325,7 @@ public class Parser
         {
             if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix)) && (wordInfos[i].DictionaryForm != "たち" || wordInfos[i-1].PartOfSpeech == PartOfSpeech.Pronoun))
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -363,7 +384,7 @@ public class Parser
             if (wordInfos[i].Text == "ば" &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
-                wordInfos[i - 1].Text = wordInfos[i - 1].Text + wordInfos[i].Text;
+                wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
                 i--;
             }

@@ -46,7 +46,7 @@ public class ParserTests
     [InlineData("内緒なの", new[] { "内緒", "なの" })]
     [InlineData("魚が好きじゃない", new[] { "魚", "が", "好き", "じゃない" })]
     [InlineData("物語になってく", new[] { "物語", "に", "なってく" })]
-    [InlineData("書いてきてくださった", new[] { "書いてきて", "くださった" })]
+    [InlineData("書いてきてくださった", new[] { "書いてきてくださった" })]
     [InlineData("今日は何の日", new[] { "今日", "は", "何の", "日" })]
     [InlineData("何から話そうか", new[] { "何", "から", "話そう", "か" })]
     [InlineData("話したくなる", new[] { "話したくなる" })]
