@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using Jiten.Core;
+using Jiten.Core.Data;
 using JMDict;
 using MeCab;
 using WanaKanaShaapu;

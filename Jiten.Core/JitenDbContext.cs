@@ -1,4 +1,5 @@
-using JapaneseParser.DictionaryTools;
+using Jiten.Core.Data;
+using Jiten.Core.Data.JMDict;
 using Microsoft.Extensions.Configuration;
 
 namespace Jiten.Core;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public class JitenDbContext : DbContext
 {
+    public DbSet<MediaType> MediaTypes { get; set; }
     public DbSet<Deck> Decks { get; set; }
     public DbSet<DeckWord> DeckWords { get; set; }
 
@@ -14,6 +16,12 @@ public class JitenDbContext : DbContext
     public DbSet<JmDictDefinition> Definitions { get; set; }
     public DbSet<JmDictLookup> Lookups { get; set; }
 
+    public JitenDbContext(){}
+    
+    public JitenDbContext(DbContextOptions<JitenDbContext> options) : base(options)
+    {
+    }
+    
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var configuration = new ConfigurationBuilder()
@@ -29,11 +37,25 @@ public class JitenDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema("jiten"); // Set a default schema
 
-        // Deck entity configuration
+        modelBuilder.Entity<MediaType>().HasData(
+                                                 new MediaType { MediaTypeId = 1, Name = "Animes" },
+                                                 new MediaType { MediaTypeId = 2, Name = "Dramas" },
+                                                 new MediaType { MediaTypeId = 3, Name = "Movies" },
+                                                 new MediaType { MediaTypeId = 4, Name = "Novels" },
+                                                 new MediaType { MediaTypeId = 5, Name = "Non-fiction" },
+                                                 new MediaType { MediaTypeId = 6, Name = "Video games" },
+                                                 new MediaType { MediaTypeId = 7, Name = "Visual novels" },
+                                                 new MediaType { MediaTypeId = 8, Name = "Web novels" }
+                                                );
+        
         modelBuilder.Entity<Deck>(entity =>
         {
             entity.Property(d => d.Id)
                   .ValueGeneratedOnAdd();
+            
+            entity.HasOne(d => d.MediaType)
+                    .WithMany()
+                    .HasForeignKey(d => d.Id);
 
             entity.Property(d => d.ParentDeckId)
                   .HasDefaultValue(0);
@@ -46,10 +68,13 @@ public class JitenDbContext : DbContext
 
             entity.Property(d => d.EnglishTitle)
                   .HasMaxLength(100);
+            
+            entity.HasMany(d => d.Links)
+                  .WithOne(l => l.Deck)
+                  .HasForeignKey(l => l.DeckId);
         });
 
 
-        // DeckWord entity configuration
         modelBuilder.Entity<DeckWord>(entity =>
         {
             entity.HasKey(dw => new
@@ -99,6 +124,13 @@ public class JitenDbContext : DbContext
             entity.HasKey(e => new { EntrySequenceId = e.WordId, e.LookupKey });
             entity.Property(e => e.WordId).IsRequired();
             entity.Property(e => e.LookupKey).IsRequired();
+        });
+        
+        modelBuilder.Entity<Link>(entity =>
+        {
+            entity.HasKey(l => l.LinkId);
+            entity.Property(l => l.Url).IsRequired();
+            entity.Property(l => l.LinkType).IsRequired();
         });
 
         base.OnModelCreating(modelBuilder);

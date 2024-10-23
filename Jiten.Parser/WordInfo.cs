@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Jiten.Core;
+using Jiten.Core.Data;
 
 namespace Jiten.Parser;
 

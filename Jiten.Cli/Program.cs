@@ -4,6 +4,7 @@
 using System.Text.Json;
 using CommandLine;
 using Jiten.Cli;
+using Jiten.Core.Data.JMDict;
 
 public class Program
 {
@@ -22,10 +23,22 @@ public class Program
         public string DictionaryPath { get; set; }
 
         [Option('e', "extract", Required = false, HelpText = "Extract text from a file or a folder and all its subfolders.")]
-        public string Extract { get; set; }
+        public string ExtractFilePath { get; set; }
 
         [Option('p', "parse", Required = false, HelpText = "Parse text.")]
         public bool Parse { get; set; }
+
+        [Option('t', "threads", Required = false, HelpText = "Number of threads to use.")]
+        public int Threads { get; set; } = 1;
+
+        [Option('s', "script", Required = false, HelpText = "Choose an available extraction script.")]
+        public string Script { get; set; }
+
+        [Option('o', "output", Required = false, HelpText = "Output the operation to a file.")]
+        public string Output { get; set; }
+        
+        [Option('x', "extra", Required = false, HelpText = "Extra arguments for some operations.")]
+        public string Extra { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -49,30 +62,102 @@ public class Program
                             await JmDictHelper.Import(o.XmlPath, o.DictionaryPath);
                         }
 
-                        if (o.Extract != null)
+                        if (o.ExtractFilePath != null)
                         {
+                            if (o.Script == null)
+                            {
+                                Console.WriteLine("Please specify an extraction script.");
+                                return;
+                            }
+
+                            string result = "";
+                            switch (o.Script)
+                            {
+                                case "epub":
+                                    break;
+                                case "krkr":
+                                    result = await new KiriKiriExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                                case "generic":
+                                    result = await new GenericExtractor().Extract(o.ExtractFilePath, "SHIFT-JIS", o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                                case "generic-utf8":
+                                    result = await new GenericExtractor().Extract(o.ExtractFilePath, "UTF8", o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                                case "psb":
+                                    result = await new PsbExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                                case "msc":
+                                    result = await new MscExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                                case "bgi":
+                                    if (o.Extra == null)
+                                    {
+                                        Console.WriteLine("Please specify a filter file for BGI extraction with the -x option.");
+                                        return;
+                                    }
+                                    
+                                    result = await new BgiExtractor().Extract(o.ExtractFilePath, o.Extra, o.Verbose);
+                                    if (o.Output != null)
+                                    {
+                                        await File.WriteAllTextAsync(o.Output, result);
+                                    }
+
+                                    break;
+                            }
+
+                            return;
+
                             var extractor = new EbookExtractor();
 
                             // if it's a directory or a single file
-                            if (Directory.Exists(o.Extract))
+                            if (Directory.Exists(o.ExtractFilePath))
                             {
-                                var files = Directory.GetFiles(o.Extract, "*.*", SearchOption.AllDirectories);
+                                var files = Directory.GetFiles(o.ExtractFilePath, "*.*", SearchOption.AllDirectories);
 
                                 if (o.Verbose)
                                     Console.WriteLine($"Found {files.Length} files to extract.");
 
-                                for (var i = 100; i < files.Length; i++)
+                                var options = new ParallelOptions() { MaxDegreeOfParallelism = o.Threads };
+
+                                await Parallel.ForEachAsync(files, options, async (file, _) =>
                                 {
-                                    string? file = files[i];
                                     await ExtractEpub(file, extractor, o);
                                     if (o.Verbose)
+                                    {
                                         Console
-                                            .WriteLine($"Progress: {i + 1}/{files.Length}, {i * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
-                                }
+                                            .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
+                                    }
+                                });
                             }
                             else
                             {
-                                var file = o.Extract;
+                                var file = o.ExtractFilePath;
                                 await ExtractEpub(file, extractor, o);
                             }
                         }
@@ -92,7 +177,7 @@ public class Program
         }
 
         var extension = Path.GetExtension(file).ToLower();
-        if (extension == ".epub" || extension == ".txt")
+        if (extension is ".epub" or ".txt")
         {
             var text = extension switch
             {
@@ -104,27 +189,27 @@ public class Program
             if (String.IsNullOrEmpty(text))
             {
                 Console.WriteLine("ERROR: TEXT RETURNED EMPTY");
-                
+
                 return;
             }
-            
-            if (o.Parse)
-            {
-                var result = await Jiten.Parser.Program.ParseText(text);
-                // serialize result and write to file
-                await File.WriteAllTextAsync("parsed.json",
-                                             JsonSerializer.Serialize(result,
-                                                                      new JsonSerializerOptions { WriteIndented = true }));
 
-                if (o.Verbose)
-                    Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
-
-                result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
-                await JmDictHelper.InsertDeck(result);
-
-                if (o.Verbose)
-                    Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
-            }
+            // if (o.Parse)
+            // {
+            //     var result = await Jiten.Parser.Program.ParseText(text);
+            //     // serialize result and write to file
+            //     await File.WriteAllTextAsync("parsed.json",
+            //                                  JsonSerializer.Serialize(result,
+            //                                                           new JsonSerializerOptions { WriteIndented = true }));
+            //
+            //     if (o.Verbose)
+            //         Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
+            //
+            //     result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
+            //     await JmDictHelper.InsertDeck(result);
+            //
+            //     if (o.Verbose)
+            //         Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
+            // }
         }
     }
 }

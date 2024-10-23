@@ -2,21 +2,51 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Jiten.Core;
+using Jiten.Core.Data;
+using Jiten.Core.Data.JMDict;
 using WanaKanaShaapu;
 
 namespace Jiten.Parser
 {
     public static class Program
     {
+        private static Dictionary<string, List<int>> _lookups = new();
+        private static Dictionary<int, JmDictWord> _allWords = new();
+        private static bool _initialized = false;
+        private static readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
+
         public static async Task Main(string[] args)
         {
             var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-
+            
             await ParseText(text);
+        }
+
+        public static async Task InitDictionaries()
+        {
+            _lookups = await JmDictHelper.LoadLookupTable();
+            _allWords = (await JmDictHelper.LoadAllWords()).ToDictionary(word => word.WordId);
         }
 
         public static async Task<Deck> ParseText(string text)
         {
+            if (!_initialized)
+            {
+                await _initSemaphore.WaitAsync();
+                try
+                {
+                    if (!_initialized) // Double-check to avoid race conditions
+                    {
+                        await InitDictionaries();
+                        _initialized = true;
+                    }
+                }
+                finally
+                {
+                    _initSemaphore.Release();
+                }
+            }
+            
             var timer = new Stopwatch();
             timer.Start();
             // var text = "見て";
@@ -45,13 +75,6 @@ namespace Jiten.Parser
                 uniqueWords.Add((word, occurences));
             }
 
-            // Deduplicate word infos for faster processing
-            // var uniqueWordInfos = wordInfos.GroupBy(x => x.Text).Select(x => x.First()).ToList();
-
-            // Load all words into memory
-            var lookups = await JmDictHelper.LoadLookupTable();
-            var allWords = (await JmDictHelper.LoadAllWords()).ToDictionary(word => word.WordId);
-
             // Create a thread-safe dictionary to store results with their original index
             var processedUniqueWords = new ConcurrentDictionary<int, DeckWord>();
 
@@ -73,7 +96,7 @@ namespace Jiten.Parser
                                                 List<(string text, List<int> ids)> candidates = new();
                                                 foreach (var form in deconjugated)
                                                 {
-                                                    if (lookups.TryGetValue(form, out List<int> lookup))
+                                                    if (_lookups.TryGetValue(form, out List<int> lookup))
                                                     {
                                                         candidates.Add((form, lookup));
                                                     }
@@ -85,7 +108,7 @@ namespace Jiten.Parser
                                                 {
                                                     foreach (var id in candidate.ids)
                                                     {
-                                                        if (!allWords.TryGetValue(id, out var word)) continue;
+                                                        if (!_allWords.TryGetValue(id, out var word)) continue;
 
                                                         List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
                                                                                      .ToList();
@@ -115,11 +138,11 @@ namespace Jiten.Parser
                                             {
                                                 var textInHiragana = WanaKana.ToHiragana(item.word.wordInfo.Text);
 
-                                                if (lookups.TryGetValue(textInHiragana, out List<int> candidates))
+                                                if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
                                                 {
                                                     // We take the first word for now, let's see if we can affine that later
                                                     var candidate = candidates[0];
-                                                    if (!allWords.TryGetValue(candidate, out var word)) return;
+                                                    if (!_allWords.TryGetValue(candidate, out var word)) return;
 
                                                     var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
                                                     var normalizedKanaReadings =
@@ -184,7 +207,7 @@ namespace Jiten.Parser
             Console.WriteLine($"Time per 1 million characters: {(totalTime / characterCount * 1000000):0.0}ms");
 
             // write text to local file 1 by line "result"
-            await File.WriteAllLinesAsync(@"result.txt", wordInfos.Select(x => x.Text));
+            // await File.WriteAllLinesAsync(@"result.txt", wordInfos.Select(x => x.Text));
             // write results deconjugated
             // await File.WriteAllLinesAsync(@"deconjugated.txt", orderedProcessedUniqueWords);
 
