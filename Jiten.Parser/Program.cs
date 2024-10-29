@@ -18,7 +18,7 @@ namespace Jiten.Parser
         public static async Task Main(string[] args)
         {
             var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-            
+
             await ParseText(text);
         }
 
@@ -46,7 +46,7 @@ namespace Jiten.Parser
                     _initSemaphore.Release();
                 }
             }
-            
+
             var timer = new Stopwatch();
             timer.Start();
             // var text = "見て";
@@ -60,7 +60,7 @@ namespace Jiten.Parser
 
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
-            
+
             // Filter bad lines that cause exceptions
             wordInfos.RemoveAll(w => w.Text == "ッー");
 
@@ -104,6 +104,8 @@ namespace Jiten.Parser
 
                                                 if (candidates.Count == 0) return;
 
+                                                candidates = candidates.OrderBy(c => c).ToList();
+
                                                 foreach (var candidate in candidates)
                                                 {
                                                     foreach (var id in candidate.ids)
@@ -140,7 +142,9 @@ namespace Jiten.Parser
 
                                                 if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
                                                 {
+                                                    candidates = candidates.OrderBy(c => c).ToList();
                                                     // We take the first word for now, let's see if we can affine that later
+
                                                     var candidate = candidates[0];
                                                     if (!_allWords.TryGetValue(candidate, out var word)) return;
 

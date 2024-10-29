@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.Extensions.Configuration;
@@ -16,12 +17,14 @@ public class JitenDbContext : DbContext
     public DbSet<JmDictDefinition> Definitions { get; set; }
     public DbSet<JmDictLookup> Lookups { get; set; }
 
-    public JitenDbContext(){}
-    
+    public JitenDbContext()
+    {
+    }
+
     public JitenDbContext(DbContextOptions<JitenDbContext> options) : base(options)
     {
     }
-    
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var configuration = new ConfigurationBuilder()
@@ -47,15 +50,15 @@ public class JitenDbContext : DbContext
                                                  new MediaType { MediaTypeId = 7, Name = "Visual novels" },
                                                  new MediaType { MediaTypeId = 8, Name = "Web novels" }
                                                 );
-        
+
         modelBuilder.Entity<Deck>(entity =>
         {
             entity.Property(d => d.Id)
                   .ValueGeneratedOnAdd();
-            
+
             entity.HasOne(d => d.MediaType)
-                    .WithMany()
-                    .HasForeignKey(d => d.Id);
+                  .WithMany()
+                  .HasForeignKey(d => d.Id);
 
             entity.Property(d => d.ParentDeckId)
                   .HasDefaultValue(0);
@@ -68,29 +71,30 @@ public class JitenDbContext : DbContext
 
             entity.Property(d => d.EnglishTitle)
                   .HasMaxLength(100);
-            
+
             entity.HasMany(d => d.Links)
                   .WithOne(l => l.Deck)
                   .HasForeignKey(l => l.DeckId);
+
+            entity.HasIndex(d => d.OriginalTitle).HasDatabaseName("IX_OriginalTitle");
+            entity.HasIndex(d => d.RomajiTitle).HasDatabaseName("IX_RomajiTitle");
+            entity.HasIndex(d => d.EnglishTitle).HasDatabaseName("IX_EnglishTitle");
         });
 
 
         modelBuilder.Entity<DeckWord>(entity =>
         {
-            entity.HasKey(dw => new
-                                {
-                                    dw.DeckId,
-                                    dw.WordId,
-                                    dw.ReadingType,
-                                    dw.ReadingIndex
-                                });
+              entity.Property(d => d.Id)
+                    .ValueGeneratedOnAdd();
+              
+            entity.HasKey(dw => new { dw.Id, });
 
             entity.HasIndex(dw => new { dw.WordId, dw.ReadingType, dw.ReadingIndex })
                   .HasDatabaseName("IX_WordReadingIndex");
 
             entity.HasIndex(dw => dw.DeckId)
                   .HasDatabaseName("IX_DeckId");
-            
+
             entity.HasOne(dw => dw.Deck)
                   .WithMany(d => d.DeckWords)
                   .HasForeignKey(dw => dw.DeckId);
@@ -108,6 +112,15 @@ public class JitenDbContext : DbContext
             entity.HasMany(e => e.Lookups)
                   .WithOne()
                   .HasForeignKey(l => l.WordId);
+
+            entity.Property(e => e.Readings)
+                  .HasColumnType("text[]");
+
+            entity.Property(e => e.KanaReadings)
+                  .HasColumnType("text[]");
+
+            entity.Property(e => e.PartsOfSpeech)
+                  .HasColumnType("text[]");
         });
 
         modelBuilder.Entity<JmDictDefinition>(entity =>
@@ -116,6 +129,25 @@ public class JitenDbContext : DbContext
             entity.HasKey(e => e.DefinitionId);
             entity.Property(e => e.DefinitionId).ValueGeneratedOnAdd();
             entity.Property(e => e.WordId).IsRequired();
+
+            entity.Property(e => e.PartsOfSpeech)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.EnglishMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.DutchMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.FrenchMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.GermanMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.SpanishMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.HungarianMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.RussianMeanings)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.SlovenianMeanings)
+                  .HasColumnType("text[]");
         });
 
         modelBuilder.Entity<JmDictLookup>(entity =>
@@ -125,7 +157,7 @@ public class JitenDbContext : DbContext
             entity.Property(e => e.WordId).IsRequired();
             entity.Property(e => e.LookupKey).IsRequired();
         });
-        
+
         modelBuilder.Entity<Link>(entity =>
         {
             entity.HasKey(l => l.LinkId);

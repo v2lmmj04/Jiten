@@ -1,7 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-
-using System.Text.Json;
+﻿using System.Text.Json;
 using CommandLine;
 using Jiten.Cli;
 using Jiten.Core.Data.JMDict;
@@ -36,7 +33,7 @@ public class Program
 
         [Option('o', "output", Required = false, HelpText = "Output the operation to a file.")]
         public string Output { get; set; }
-        
+
         [Option('x', "extra", Required = false, HelpText = "Extra arguments for some operations.")]
         public string Extra { get; set; }
     }
@@ -74,6 +71,38 @@ public class Program
                             switch (o.Script)
                             {
                                 case "epub":
+                                    var extractor = new EbookExtractor();
+
+                                    // if it's a directory or a single file
+                                    if (Directory.Exists(o.ExtractFilePath))
+                                    {
+                                        var files = Directory.GetFiles(o.ExtractFilePath, "*.*",
+                                                                       new EnumerationOptions()
+                                                                       {
+                                                                           IgnoreInaccessible = true, RecurseSubdirectories = true
+                                                                       });
+
+                                        if (o.Verbose)
+                                            Console.WriteLine($"Found {files.Length} files to extract.");
+
+                                        var options = new ParallelOptions() { MaxDegreeOfParallelism = o.Threads };
+
+                                        await Parallel.ForEachAsync(files, options, async (file, _) =>
+                                        {
+                                            await ExtractEpub(file, extractor, o);
+                                            if (o.Verbose)
+                                            {
+                                                Console
+                                                    .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
+                                            }
+                                        });
+                                    }
+                                    else
+                                    {
+                                        var file = o.ExtractFilePath;
+                                        await ExtractEpub(file, extractor, o);
+                                    }
+
                                     break;
                                 case "krkr":
                                     result = await new KiriKiriExtractor().Extract(o.ExtractFilePath, o.Verbose);
@@ -121,7 +150,7 @@ public class Program
                                         Console.WriteLine("Please specify a filter file for BGI extraction with the -x option.");
                                         return;
                                     }
-                                    
+
                                     result = await new BgiExtractor().Extract(o.ExtractFilePath, o.Extra, o.Verbose);
                                     if (o.Output != null)
                                     {
@@ -129,36 +158,6 @@ public class Program
                                     }
 
                                     break;
-                            }
-
-                            return;
-
-                            var extractor = new EbookExtractor();
-
-                            // if it's a directory or a single file
-                            if (Directory.Exists(o.ExtractFilePath))
-                            {
-                                var files = Directory.GetFiles(o.ExtractFilePath, "*.*", SearchOption.AllDirectories);
-
-                                if (o.Verbose)
-                                    Console.WriteLine($"Found {files.Length} files to extract.");
-
-                                var options = new ParallelOptions() { MaxDegreeOfParallelism = o.Threads };
-
-                                await Parallel.ForEachAsync(files, options, async (file, _) =>
-                                {
-                                    await ExtractEpub(file, extractor, o);
-                                    if (o.Verbose)
-                                    {
-                                        Console
-                                            .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                var file = o.ExtractFilePath;
-                                await ExtractEpub(file, extractor, o);
                             }
                         }
 
@@ -193,23 +192,23 @@ public class Program
                 return;
             }
 
-            // if (o.Parse)
-            // {
-            //     var result = await Jiten.Parser.Program.ParseText(text);
-            //     // serialize result and write to file
-            //     await File.WriteAllTextAsync("parsed.json",
-            //                                  JsonSerializer.Serialize(result,
-            //                                                           new JsonSerializerOptions { WriteIndented = true }));
-            //
-            //     if (o.Verbose)
-            //         Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
-            //
-            //     result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
-            //     await JmDictHelper.InsertDeck(result);
-            //
-            //     if (o.Verbose)
-            //         Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
-            // }
+            if (o.Parse)
+            {
+                var result = await Jiten.Parser.Program.ParseText(text);
+                // serialize result and write to file
+                await File.WriteAllTextAsync("parsed.json",
+                                             JsonSerializer.Serialize(result,
+                                                                      new JsonSerializerOptions { WriteIndented = true }));
+            
+                if (o.Verbose)
+                    Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
+            
+                result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
+                await JmDictHelper.InsertDeck(result);
+            
+                if (o.Verbose)
+                    Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
+            }
         }
     }
 }

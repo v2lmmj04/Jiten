@@ -10,6 +10,9 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@primevue/nuxt-module": "^4.1.1",
+    "@primevue/themes": "^4.1.1",
+    "@radix-icons/vue": "^1.0.0",
     "nuxt": "^3.13.2",
     "vue": "latest",
     "vue-router": "latest"

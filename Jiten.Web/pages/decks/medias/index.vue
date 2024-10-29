@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {useApiFetch} from "~/composables/useApiFetch";
+import type {Deck} from "~/types";
 
-const { data: medias, pending, error } = await useApiFetch("MediaDeck/GetAll");
+const {data: medias, pending, error} = await useApiFetch<Deck[]>("MediaDeck/GetAll");
 </script>
 
 <template>
@@ -10,13 +11,10 @@ const { data: medias, pending, error } = await useApiFetch("MediaDeck/GetAll");
     <div v-if="pending">Loading...</div>
     <div v-else-if="error">Error: {{ error }}</div>
     <div v-else>
-      <ul>
-        {{ medias.length }} medias
-        {{medias[0]}}
-        <li v-for="media in medias" :key="media.id">
-          {{ media.originalTitle }}
-        </li>
-      </ul>
+      Found {{ medias.length }} medias
+      <div class="flex flex-col gap-4">
+        <MediaDeckCard v-for="deck in medias" :deck="deck" :key="deck.id"/>
+      </div>
     </div>
   </div>
 </template>

@@ -8,10 +8,25 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<JitenDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("JitenDatabase")));
+builder.Services.AddDbContext<JitenDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("JitenDatabase"),
+                                                                           o =>
+                                                                           {
+                                                                               o.UseQuerySplittingBehavior(QuerySplittingBehavior
+                                                                                   .SplitQuery);
+                                                                           }));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: "AllowSpecificOrigin",
+                      policy =>
+                      {
+                          policy.WithOrigins("https://localhost:3000")
+                                .AllowAnyHeader()
+                                .AllowAnyMethod();
+                      });
+});
 
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -25,6 +40,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+app.UseCors("AllowSpecificOrigin");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

@@ -1,5 +1,7 @@
-export const useApiFetch: typeof useFetch = (request, opts?) => {
-    const config = useRuntimeConfig()
+export async function useApiFetch<T>(request: string, opts?: any): Promise<{ data: T; pending: boolean; error: any }> {
+    const config = useRuntimeConfig();
 
-    return useFetch(request, { baseURL: config.public.baseURL, ...opts })
+    const { data, pending, error } = await useFetch<T>(request, { baseURL: config.public.baseURL, ...opts });
+
+    return { data, pending, error };
 }

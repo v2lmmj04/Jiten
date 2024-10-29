@@ -2,6 +2,7 @@
 using System.Xml;
 using Microsoft.EntityFrameworkCore;
 using WanaKanaShaapu;
+using Z.EntityFramework.Plus;
 
 namespace Jiten.Core.Data.JMDict;
 
@@ -14,7 +15,7 @@ public static class JmDictHelper
         await using var context = new JitenDbContext();
 
         context.Decks.Add(deck);
-
+        
         await context.SaveChangesAsync();
     }
     
@@ -44,7 +45,7 @@ public static class JmDictHelper
             }
             wordIds.Add(lookup.WordId);
         }
-
+        
         return lookupTable;
     }
 
@@ -99,13 +100,11 @@ public static class JmDictHelper
         }
 
         reader.Close();
-
-
+        
         await using var context = new JitenDbContext();
         foreach (var reading in wordInfos)
         {
             List<JmDictLookup> lookups = new();
-
 
             foreach (var r in reading.Readings)
             {
@@ -125,32 +124,12 @@ public static class JmDictHelper
                 }
             }
 
-            var dbWordInfo = new JmDictWord
-                             {
-                                 WordId = reading.WordId,
-                                 Readings = reading.Readings,
-                                 KanaReadings = reading.KanaReadings,
-                                 PartsOfSpeech = reading.Definitions.SelectMany(d => d.PartsOfSpeech).Distinct().ToList(),
-                                 Definitions = reading.Definitions.Select(d => new JmDictDefinition
-                                                                               {
-                                                                                   PartsOfSpeech = d.PartsOfSpeech,
-                                                                                   EnglishMeanings = d.EnglishMeanings,
-                                                                                   DutchMeanings = d.DutchMeanings,
-                                                                                   FrenchMeanings = d.FrenchMeanings,
-                                                                                   GermanMeanings = d.GermanMeanings,
-                                                                                   SpanishMeanings = d.SpanishMeanings,
-                                                                                   HungarianMeanings = d.HungarianMeanings,
-                                                                                   RussianMeanings = d.RussianMeanings,
-                                                                                   SlovenianMeanings = d.SlovenianMeanings
-                                                                               }).ToList(),
-                                 Lookups = lookups
-                             };
-
-            context.JMDictWords.Add(dbWordInfo);
+            reading.PartsOfSpeech = reading.Definitions.SelectMany(d => d.PartsOfSpeech).Distinct().ToList();
+            reading.Lookups = lookups;
         }
 
         context.ChangeTracker.AutoDetectChangesEnabled = false;
-        await context.SaveChangesAsync();
+        await context.BulkInsertOptimizedAsync(wordInfos, options => options.IncludeGraph = true);
 
         return true;
     }
