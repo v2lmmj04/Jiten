@@ -7,16 +7,16 @@ public class Deck
     /// Autoincrement id, starting at 1
     /// </summary>
     public int Id { get; set; }
-    
+
     /// <summary>
     /// Type of media the deck belongs to
     /// </summary>
-    public MediaType MediaType { get; set; }
+    public MediaType MediaType { get; set; } = new();
 
     /// <summary>
     /// Original title of the work, generally in kanji
     /// </summary>
-    public string OriginalTitle { get; set; }
+    public string OriginalTitle { get; set; } = "Unknown";
 
     /// <summary>
     /// Romaji transcription of the title

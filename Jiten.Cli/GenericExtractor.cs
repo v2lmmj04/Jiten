@@ -29,7 +29,9 @@ public class GenericExtractor
                                                        "nvl",
                                                        "【",
                                                        "@",
-                                                       "<"
+                                                       "<",
+                                                       "^",
+                                                       "\\"
                                                    };
 
     public async Task<string> Extract(string filePath, string encoding, bool verbose)

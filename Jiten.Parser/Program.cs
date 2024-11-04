@@ -66,13 +66,20 @@ namespace Jiten.Parser
 
             Deconjugator deconjugator = new Deconjugator();
 
-            List<(WordInfo wordInfo, int occurences)> uniqueWords = new();
+            var uniqueWords = new List<(WordInfo wordInfo, int occurrences)>();
+            var wordCount = new Dictionary<string, int>();
+
             foreach (var word in wordInfos)
             {
-                if (uniqueWords.Any(x => x.wordInfo.Text == word.Text)) continue;
+                if (!wordCount.TryAdd(word.Text, 1))
+                    wordCount[word.Text]++;
+                else
+                    uniqueWords.Add((word, 1));
+            }
 
-                var occurences = wordInfos.Count(x => x.Text == word.Text);
-                uniqueWords.Add((word, occurences));
+            for (int i = 0; i < uniqueWords.Count; i++)
+            {
+                uniqueWords[i] = (uniqueWords[i].wordInfo, wordCount[uniqueWords[i].wordInfo.Text]);
             }
 
             // Create a thread-safe dictionary to store results with their original index
@@ -129,7 +136,7 @@ namespace Jiten.Parser
                                                                                 WordId = id,
                                                                                 ReadingType = readingType,
                                                                                 ReadingIndex = readingIndex,
-                                                                                Occurrences = item.word.occurences
+                                                                                Occurrences = item.word.occurrences
                                                                             };
                                                         processedUniqueWords.TryAdd(item.index, deckWord);
                                                         break;
@@ -161,7 +168,7 @@ namespace Jiten.Parser
                                                                             WordId = candidate,
                                                                             ReadingType = readingType,
                                                                             ReadingIndex = readingIndex,
-                                                                            Occurrences = item.word.occurences
+                                                                            Occurrences = item.word.occurrences
                                                                         };
                                                     processedUniqueWords.TryAdd(item.index, deckWord);
                                                 }

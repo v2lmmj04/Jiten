@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using CommandLine;
 using Jiten.Cli;
+using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 
 public class Program
@@ -196,15 +197,13 @@ public class Program
             {
                 var result = await Jiten.Parser.Program.ParseText(text);
                 // serialize result and write to file
-                await File.WriteAllTextAsync("parsed.json",
-                                             JsonSerializer.Serialize(result,
-                                                                      new JsonSerializerOptions { WriteIndented = true }));
+                // await File.WriteAllTextAsync("parsed.json", JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
             
                 if (o.Verbose)
                     Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
             
                 result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
-                await JmDictHelper.InsertDeck(result);
+                //await JmDictHelper.InsertDeck(result);
             
                 if (o.Verbose)
                     Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
