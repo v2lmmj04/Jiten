@@ -79,6 +79,11 @@ public class JitenDbContext : DbContext
             entity.HasIndex(d => d.OriginalTitle).HasDatabaseName("IX_OriginalTitle");
             entity.HasIndex(d => d.RomajiTitle).HasDatabaseName("IX_RomajiTitle");
             entity.HasIndex(d => d.EnglishTitle).HasDatabaseName("IX_EnglishTitle");
+            
+            entity.HasOne(d => d.ParentDeck)
+                  .WithMany(p => p.Children)
+                  .HasForeignKey(d => d.ParentDeckId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
 

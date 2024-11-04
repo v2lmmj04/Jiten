@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Jiten.Core;
@@ -8,6 +9,33 @@ using MeCab;
 using WanaKanaShaapu;
 
 namespace Jiten.Parser;
+
+class SudachiInterop
+{
+    // Import the `run_cli_ffi` function from the Rust DLL
+    [DllImport(@"Y:\CODE\Forks\sudachi.rs\target\release\sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr run_cli_ffi(string configPath, string filePath, string dictionaryPath, string outputPath);
+
+    // Import the `free_string` function to free memory allocated in Rust
+    [DllImport(@"Y:\CODE\Forks\sudachi.rs\target\release\sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void free_string(IntPtr ptr);
+
+
+    public static string RunCli(string configPath, string filePath, string dictionaryPath, string outputPath)
+    {
+        // Call the FFI function
+        IntPtr resultPtr = run_cli_ffi(configPath, filePath, dictionaryPath, outputPath);
+
+        // Convert the result to a C# string
+        string result = Marshal.PtrToStringAnsi(resultPtr) ?? string.Empty;
+        
+        // Free the string allocated in Rust
+        free_string(resultPtr);
+
+        return result;
+    }
+}
+
 
 public class Parser
 {
@@ -77,13 +105,15 @@ public class Parser
 
         var path = @$"F:\00_RawJap\sudachi.rs\target\release\deps\sudachi.exe";
 
-        var process = new Process();
-        process.StartInfo.FileName = path;
-        process.StartInfo.Arguments = $"--dict {dic} -a -o {outputFile} -r {configPath}  {tempFilePath}";
+        SudachiInterop.RunCli(configPath, tempFilePath, dic, outputFile);
 
-        process.Start();
-
-        await process.WaitForExitAsync();
+        // var process = new Process();
+        // process.StartInfo.FileName = path;
+        // process.StartInfo.Arguments = $"--dict {dic} -a -o {outputFile} -r {configPath}  {tempFilePath}";
+        //
+        // process.Start();
+        //
+        // await process.WaitForExitAsync();
 
         var output = (await File.ReadAllLinesAsync(outputFile)).ToList();
         List<WordInfo> wordInfos = new();

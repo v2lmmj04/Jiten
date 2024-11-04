@@ -1,6 +1,0 @@
-@Jiten.Server_HostAddress = http://localhost:5277
-
-GET {{Jiten.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
