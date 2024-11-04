@@ -10,8 +10,8 @@ const previousPartOfSpeech = ref<string | null>(null);
 
 const definitionsWithPartsOfSpeech = computed(() => {
   return props.word.definitions.map(definition => {
-    const isDifferentPartOfSpeech = previousPartOfSpeech.value !== definition.partsOfSpeech[0];
-    previousPartOfSpeech.value = definition.partsOfSpeech[0];
+    const isDifferentPartOfSpeech = JSON.stringify(previousPartOfSpeech.value) !== JSON.stringify(definition.partsOfSpeech);
+    previousPartOfSpeech.value = [...definition.partsOfSpeech];
     return {
       ...definition,
       isDifferentPartOfSpeech
@@ -27,7 +27,7 @@ const definitionsWithPartsOfSpeech = computed(() => {
     <template #content>
       <ul>
         <li v-for="definition in definitionsWithPartsOfSpeech" :key="definition.index">
-          <div v-if="definition.isDifferentPartOfSpeech" class="font-bold">{{ definition.partsOfSpeech[0] }}</div>
+          <div v-if="definition.isDifferentPartOfSpeech" class="font-bold">{{ definition.partsOfSpeech.join(',') }}</div>
           <span class="text-gray-400">{{definition.index}}.</span> {{ definition.meanings.join('; ') }}
         </li>
       </ul>

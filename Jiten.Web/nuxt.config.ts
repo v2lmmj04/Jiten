@@ -14,7 +14,7 @@ export default defineNuxtConfig({
             baseURL: process.env.BASE_URL || 'https://localhost:7299/api/',
         },
     },
-    modules: ['@nuxtjs/tailwindcss', "@primevue/nuxt-module"],
+    modules: ['@nuxtjs/tailwindcss', "@primevue/nuxt-module", '@nuxt/icon'],
     primevue: {
         options: {
             theme: {

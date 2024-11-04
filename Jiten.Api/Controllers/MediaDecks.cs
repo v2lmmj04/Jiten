@@ -1,6 +1,7 @@
 using Jiten.Api.Dtos;
 using Jiten.Core;
 using Jiten.Core.Data;
+using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,20 +13,39 @@ namespace Jiten.Api.Controllers;
 [Route("api/[controller]")]
 public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
-    [HttpGet("GetAll")]
-    public List<Deck> GetAll()
+    [HttpGet("GetMediaDecks")]
+    public PaginatedResponse<List<Deck>> GetMediaDecks(string? sortOrder = "", int? offset = 0, MediaType? mediaType = null)
     {
-        return context.Decks.AsNoTracking().ToList();
+        int pageSize = 50;
+
+        var query = context.Decks.AsNoTracking();
+
+        if (mediaType != null)
+            query = query.Where(d => d.MediaType.MediaTypeId == mediaType.MediaTypeId);
+
+
+        var totalCount = query.Count();
+
+        var decks = query.OrderBy(d => d.Id)
+                         .Skip(offset ?? 0)
+                         .Take(pageSize)
+                         .ToList();
+
+        return new PaginatedResponse<List<Deck>>(decks, totalCount, pageSize, offset ?? 0);
     }
 
     [HttpGet("{id}/vocabulary")]
-    public List<WordDto> GetVocabulary(int id, string? sortOrder = "", int? offset = 0)
+    public PaginatedResponse<List<WordDto>> GetVocabulary(int id, string? sortOrder = "", int? offset = 0)
     {
+        int pageSize = 100;
+
+        int totalCount = context.DeckWords.AsNoTracking().Count(dw => dw.DeckId == id);
+
         var deckWords = context.DeckWords.AsNoTracking()
                                .Where(dw => dw.DeckId == id)
                                .OrderBy(dw => dw.Id)
                                .Skip(offset ?? 0)
-                               .Take(100)
+                               .Take(pageSize)
                                .ToList();
 
         var wordIds = deckWords.Select(dw => dw.WordId).ToList();
@@ -59,10 +79,12 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             {
                 if (definition.EnglishMeanings.Count == 0)
                     continue;
-                
+
                 definitions.Add(new DefinitionDto
                                 {
-                                    Index = i++, Meanings = definition.EnglishMeanings, PartsOfSpeech = definition.PartsOfSpeech
+                                    Index = i++,
+                                    Meanings = definition.EnglishMeanings,
+                                    PartsOfSpeech = definition.PartsOfSpeech.ToHumanReadablePartsOfSpeech()
                                 });
             }
 
@@ -71,13 +93,13 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                               WordId = word.jmDictWord.WordId,
                               Reading = reading,
                               AlternativeReadings = alternativeReadings,
-                              PartsOfSpeech = word.jmDictWord.PartsOfSpeech,
+                              PartsOfSpeech = word.jmDictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
                               Definitions = definitions
                           };
 
             dto.Add(wordDto);
         }
 
-        return dto;
+        return new PaginatedResponse<List<WordDto>>(dto, totalCount, pageSize, offset ?? 0);
     }
 }

@@ -59,8 +59,8 @@ const props = defineProps<{
               </div>
 
             <div class="mt-4 flex gap-4">
-              <a href="#" class="text-blue-500 hover:underline">Official website</a>
-              <a href="#" class="text-blue-500 hover:underline">Amazon</a>
+              <a href="#">Official website</a>
+              <a href="#">Amazon</a>
             </div>
               <div>
                 <Button as="router-link" :to="`/decks/medias/${deck.id}/vocabulary`" label="View vocabulary" class="mt-4"/>

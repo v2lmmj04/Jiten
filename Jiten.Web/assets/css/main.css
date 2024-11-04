@@ -1,4 +1,8 @@
-.p-card{
+.p-card {
     background-color: #fff;
     border: 1px solid #e6e6e6;
+}
+
+a {
+    @apply text-blue-500 hover:underline
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Button from 'primevue/button';
+
 function toggleDarkMode() {
   document.documentElement.classList.toggle('dark-mode');
 }
@@ -11,7 +13,9 @@ function toggleDarkMode() {
       <nav class="space-x-6">
         <nuxt-link to="/">Home</nuxt-link>
         <nuxt-link to="/decks/medias">Medias</nuxt-link>
-        <Button label="Toggle Dark Mode" icon="pi pi-" @click="toggleDarkMode()" />
+        <Button label="Toggle Dark Mode" icon="github" @click="toggleDarkMode()" severity="secondary" outlined>
+          <Icon name="line-md:light-dark"/>
+        </Button>
       </nav>
     </div>
   </header>

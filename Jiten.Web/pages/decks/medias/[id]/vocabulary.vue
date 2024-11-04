@@ -1,18 +1,60 @@
 <script setup lang="ts">
-import {useApiFetch} from "~/composables/useApiFetch";
-import type {Word} from "~/types";
+import {useApiFetchPaginated} from "~/composables/useApiFetch";
+import {type Word} from "~/types";
+import Skeleton from 'primevue/skeleton';
+import Card from 'primevue/card';
 
 const route = useRoute();
 const id = route.params.id;
 
-const {data: words, pending, error} = await useApiFetch<Word[]>(`MediaDeck/${id}/vocabulary`);
+const offset = computed(() => route.query.offset ? Number(route.query.offset) : 0);
+const url = computed(() => `MediaDeck/${id}/vocabulary`);
 
+const {
+  data: response,
+  status,
+  error
+} = useApiFetchPaginated<Word[]>(url, {query: {offset: offset}, watch: [offset]});
+
+const currentPage = computed(() => response.value?.currentPage);
+const pageSize = computed(() => response.value?.pageSize);
+const totalItems = computed(() => response.value?.totalItems);
+
+const start = computed(() => (currentPage.value - 1) * pageSize.value + 1);
+const end = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value));
+
+const previousLink = computed(() => {
+  return response.value?.hasPreviousPage ? {query: {offset: response.value.previousOffset}} : null;
+});
+const nextLink = computed(() => {
+  return response.value?.hasNextPage ? {query: {offset: response.value.nextOffset}} : null;
+});
 </script>
 
 <template>
-  <!-- Display the words with their propeties -->
   <div class="flex flex-col gap-1">
-    <VocabularyEntry v-for="word in words" :word="word"/>
+    <div class="flex justify-between">
+      <div class="flex gap-8">
+        <NuxtLink :to=previousLink :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
+          Previous
+        </NuxtLink>
+        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''">
+          Next
+        </NuxtLink>
+      </div>
+      <div>
+        viewing words {{ start }}-{{ end }} from {{ totalItems }} total
+      </div>
+    </div>
+    <div v-if="status === 'pending'" class="flex flex-col gap-4">
+      <Card class="p-2" v-for="i in 10" :key="i">
+        <template #content>
+          <Skeleton width="100%" height="50px"></Skeleton>
+        </template>
+      </Card>
+    </div>
+    <div v-else-if="error">Error: {{ error }}</div>
+      <VocabularyEntry v-else v-for="word in response.data" :word="word" :key="word.wordId"/>
   </div>
 </template>
 
