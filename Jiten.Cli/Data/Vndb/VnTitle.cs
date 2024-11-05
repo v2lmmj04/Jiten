@@ -1,4 +1,4 @@
-namespace VndbRecommender.Model;
+namespace Jiten.Cli.Data.Vndb;
 
 public class VnTitle
 {

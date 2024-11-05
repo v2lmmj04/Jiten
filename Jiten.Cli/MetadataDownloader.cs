@@ -1,8 +1,12 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
-using VndbRecommender.Model;
+using Jiten.Cli.Data.Anilist;
+using Jiten.Cli.Data.GoogleBooks;
+using Jiten.Cli.Data.Vndb;
+using Jiten.Core.Data;
 
 namespace Jiten.Cli;
 
@@ -21,7 +25,8 @@ public static class MetadataDownloader
         _currentApi = api.Trim() switch
         {
             "vndb" => VndbApi,
-            "api2" => CallApi,
+            "books" => GoogleBooksApi,
+            "anilist" => AnilistApi,
             _ => throw new ArgumentException("Invalid API")
         };
 
@@ -61,11 +66,10 @@ public static class MetadataDownloader
         foreach (var file in orderedFiles)
         {
             var apiResult = await ProcessFileWithApi(file);
-            if (apiResult != null)
-            {
-                apiResult.FilePath = file;
-                metadatas.Add(apiResult);
-            }
+            if (apiResult == null) continue;
+            
+            apiResult.FilePath = file;
+            metadatas.Add(apiResult);
         }
 
         if (metadatas.Count == 0)
@@ -90,7 +94,7 @@ public static class MetadataDownloader
         var englishTitle = Console.ReadLine()?.Trim();
         if (string.IsNullOrEmpty(englishTitle))
             englishTitle = suggestedEnglishTitle;
-        
+
         var imageUrl = metadatas.First().Image;
         if (!string.IsNullOrEmpty(imageUrl))
         {
@@ -175,7 +179,7 @@ public static class MetadataDownloader
         while (true)
         {
             var fileName = Path.GetFileNameWithoutExtension(filePath);
-            Console.WriteLine($"Press enter to query **{fileName}**, press 'q' or 'query' to write a custom query, or type a string to give a custom title and return immediately:");
+            Console.WriteLine($"Press enter to query **{fileName}**, press 'q' or 'query' to write a custom query, 'a' or 'abort' to abort or type a string to give a custom title and return immediately:");
 
             var input = Console.ReadLine()?.Trim();
 
@@ -193,12 +197,24 @@ public static class MetadataDownloader
                     continue;
                 }
             }
+            
+            else if (input.Equals("a", StringComparison.OrdinalIgnoreCase) || input.Equals("abort", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
             else
             {
                 return new Metadata { OriginalTitle = input };
             }
 
-            var results = await _currentApi.Invoke(input); // This function needs to be implemented
+            var results = await _currentApi.Invoke(input);
+            
+            if (results.Count == 0)
+            {
+                Console.WriteLine("No results found. Try a different query.");
+                continue;
+            }
+            
             Console.WriteLine($"\nResults for {Path.GetFileName(filePath)}:");
 
             for (int i = 0; i < results.Count; i++)
@@ -232,18 +248,6 @@ public static class MetadataDownloader
         }
     }
 
-    // Placeholder for API call
-    private static async Task<List<Metadata>> CallApi(string input)
-    {
-        // Implementation needed
-        return new List<Metadata>()
-               {
-                   new Metadata() { OriginalTitle = "Test 1" },
-                   new Metadata() { OriginalTitle = "Test 2" },
-                   new Metadata() { OriginalTitle = "Test 3" },
-               };
-    }
-
     private static async Task<List<Metadata>> VndbApi(string query)
     {
         List<VndbRequestResult> requestResults = new List<VndbRequestResult>();
@@ -255,7 +259,7 @@ public static class MetadataDownloader
                                                                         {
                                                                             filters = filter,
                                                                             fields =
-                                                                                "id,title,titles{main,official,lang,title,latin},image{url,sexual}, extlinks{label,url, name}",
+                                                                                "id,title,released,titles{main,official,lang,title,latin},image{url,sexual}, extlinks{label,url, name}",
                                                                             results = 10,
                                                                             page = 1
                                                                         }));
@@ -270,7 +274,8 @@ public static class MetadataDownloader
 
             result = JsonSerializer.Deserialize<VnDbRequestPageResult>(contentStream,
                                                                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            requestResults.AddRange(result.Results);
+
+            requestResults.AddRange(result!.Results);
         }
 
         List<Metadata> metadatas = [];
@@ -281,6 +286,8 @@ public static class MetadataDownloader
                                OriginalTitle = requestResult.Titles.FirstOrDefault(t => t.Lang == "ja")?.Title ?? requestResult.Title,
                                RomajiTitle = requestResult.Titles.FirstOrDefault(t => t.Lang == "ja")?.Latin,
                                EnglishTitle = requestResult.Titles.FirstOrDefault(t => t.Lang == "en")?.Title,
+                               ReleaseDate = requestResult.Released,
+                               Links = [new Link { LinkType = LinkType.Vndb, Url = $"https://vndb.org/{requestResult.Id}" }],
                                Image = requestResult.Image.Url
                            };
 
@@ -288,5 +295,97 @@ public static class MetadataDownloader
         }
 
         return metadatas;
+    }
+
+    private static async Task<List<Metadata>> GoogleBooksApi(string query)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://www.googleapis.com/books/v1/volumes?q={query}");
+        var http = new HttpClient();
+        var response = await http.SendAsync(request);
+
+        List<Metadata> metadatas = [];
+
+        if (response.IsSuccessStatusCode)
+        {
+            var contentStream = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<GoogleBooksRequestResult>(contentStream,
+                                                                              new JsonSerializerOptions
+                                                                              {
+                                                                                  PropertyNameCaseInsensitive = true
+                                                                              });
+
+            metadatas = result!.Items.Select(i => new Metadata
+                                                  {
+                                                      OriginalTitle = i.VolumeInfo.Title,
+                                                      RomajiTitle = null,
+                                                      EnglishTitle = null,
+                                                      ReleaseDate = DateTime.Parse(i.VolumeInfo.PublishedDate),
+                                                      Links = [new Link { LinkType = LinkType.GoogleBooks, Url = i.SelfLink }],
+                                                      Image = i.VolumeInfo.ImageLinks?.Thumbnail
+                                                  }).ToList();
+        }
+
+        return metadatas;
+    }
+
+    private static async Task<List<Metadata>> AnilistApi(string query)
+    {
+        var requestBody = new
+                          {
+                              query = @"
+        query ($search: String, $type: MediaType, $format: MediaFormat) {
+          Page {
+            media (search: $search, type: $type, format: $format) {
+              id
+              idMal
+              title {
+                romaji
+                english
+                native
+              }
+              startDate {
+                day
+                month
+                year
+              }
+              bannerImage
+              coverImage {
+                extraLarge
+              }
+            }
+          }
+        }",
+                              variables = new { search = query, type = "MANGA", format = "NOVEL" }
+                          };
+
+        var httpClient = new HttpClient();
+        var requestContent = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var response = await httpClient.PostAsync("https://graphql.anilist.co", requestContent);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<Metadata>();
+        }
+
+        var contentStream = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<AnilistResult>(contentStream,
+                                                               new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return result?.Data?.Page?.Media.Select(media => new Metadata
+                                                         {
+                                                             OriginalTitle = media.Title.Native,
+                                                             RomajiTitle = media.Title.Romaji,
+                                                             EnglishTitle = media.Title.English,
+                                                             ReleaseDate = media.ReleaseDate,
+                                                             Links =
+                                                             [
+                                                                 new Link
+                                                                 {
+                                                                     LinkType = LinkType.Anilist,
+                                                                     Url = $"https://anilist.co/manga/{media.Id}"
+                                                                 }
+                                                             ],
+                                                             Image = media.CoverImage.ExtraLarge
+                                                         }).ToList() ?? [];
     }
 }
