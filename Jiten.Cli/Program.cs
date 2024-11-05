@@ -37,6 +37,12 @@ public class Program
 
         [Option('x', "extra", Required = false, HelpText = "Extra arguments for some operations.")]
         public string Extra { get; set; }
+        
+        [Option('m', "metadata", Required = false, HelpText = "Download metadata for a folder.")]
+        public string Metadata { get; set; }
+        
+        [Option('a', "api", Required = false, HelpText = "API to retrieve metadata from.")]
+        public string Api { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -162,6 +168,17 @@ public class Program
                             }
                         }
 
+                        if (o.Metadata != null)
+                        {
+                            if (string.IsNullOrEmpty(o.Api))
+                            {
+                                Console.WriteLine("Please specify an API to retrieve metadata from.");
+                                return;
+                            }
+                            
+                            await MetadataDownloader.DownloadMetadata(o.Metadata, o.Api);
+                        }
+                        
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
