@@ -175,8 +175,22 @@ public class Program
                                 Console.WriteLine("Please specify an API to retrieve metadata from.");
                                 return;
                             }
-                            
-                            await MetadataDownloader.DownloadMetadata(o.Metadata, o.Api);
+
+                            if (o.Api == "jimaku")
+                            {
+                                var range = o.Extra?.Split("-");
+                                if (range is not { Length: 2 })
+                                {
+                                    Console.WriteLine("Please specify a range for Jimaku metadata in the form start-end.");
+                                    return;
+                                }
+                                
+                                await JimakuDownloader.Download(o.Metadata, int.Parse(range[0]), int.Parse(range[1]));
+                            }
+                            else
+                            {
+                                await MetadataDownloader.DownloadMetadata(o.Metadata, o.Api);
+                            }
                         }
                         
                         if (o.Verbose)
