@@ -26,6 +26,12 @@ public class WordInfo
         }
 
         var pos = parts[1].Split(",");
+        
+        if (pos.Length < 4)
+        {
+            IsInvalid = true;
+            return;
+        }
 
         Text = parts[0];
         PartOfSpeech = pos[0].ToPartOfSpeech();

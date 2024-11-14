@@ -57,12 +57,12 @@ namespace Jiten.Parser
 
             // Clean up special characters
             wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]", ""));
-
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
 
             // Filter bad lines that cause exceptions
-            wordInfos.RemoveAll(w => w.Text == "ッー");
+            // wordInfos.RemoveAll(w => w.Text is "ッー");
+            wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "[ッー]", ""));
 
             Deconjugator deconjugator = new Deconjugator();
 

@@ -8,11 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="JMDict" Version="1.0.7" />
-      <PackageReference Include="MeCab.DotNet" Version="1.2.0" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Update="resources\deconjugator.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>

@@ -1,3 +1,8 @@
+using System.Diagnostics;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using WanaKanaShaapu;
+
 namespace Jiten.Core.Data;
 
 public class Deck
@@ -11,7 +16,7 @@ public class Deck
     /// Name of the image cover file
     /// </summary>
     public string CoverName { get; set; } = "nocover.jpg";
-    
+
     /// <summary>
     /// Type of media the deck belongs to
     /// </summary>
@@ -81,7 +86,12 @@ public class Deck
     /// Parent deck, null if no parent
     /// </summary>
     public Deck? ParentDeck { get; set; }
-    
+
+    /// <summary>
+    /// Order of the deck if it's a child
+    /// </summary>
+    public int DeckOrder { get; set; }
+
     /// <summary>
     /// Child decks
     ///  </summary>
@@ -96,4 +106,75 @@ public class Deck
     /// List of links to external websites
     /// </summary>
     public List<Link> Links { get; set; }
+
+    public async Task AddChildDeckWords()
+    {
+        if (Children.Count == 0)
+            return;
+
+        DeckWords = new List<DeckWord>();
+
+        foreach (var child in Children)
+        {
+            foreach (var childDeckWord in child.DeckWords)
+            {
+                var existingDeckWord = DeckWords.FirstOrDefault(dw => dw.WordId == childDeckWord.WordId &&
+                                                                      dw.ReadingType == childDeckWord.ReadingType &&
+                                                                      dw.ReadingIndex == childDeckWord.ReadingIndex);
+                if (existingDeckWord != null)
+                {
+                    existingDeckWord.Occurrences += childDeckWord.Occurrences;
+                }
+                else
+                {
+                    DeckWords.Add(new DeckWord
+                                  {
+                                      DeckId = Id,
+                                      WordId = childDeckWord.WordId,
+                                      ReadingType = childDeckWord.ReadingType,
+                                      ReadingIndex = childDeckWord.ReadingIndex,
+                                      Occurrences = childDeckWord.Occurrences,
+                                      Deck = this
+                                  });
+                }
+            }
+        }
+        
+        CharacterCount = Children.Sum(c => c.CharacterCount);
+        WordCount = Children.Sum(c => c.WordCount);
+        UniqueWordCount = DeckWords.Select(dw => dw.WordId).Distinct().Count();
+        UniqueWordUsedOnceCount = DeckWords.Where(dw => dw.Occurrences == 1).Select(dw => dw.WordId).Distinct().Count();
+        
+        // Not the most efficient or elegant way to do it, rebuilding the text, but it works and I don't have a better idea for now
+        
+        StringBuilder sb = new();
+        
+        await using var context = new JitenDbContext();
+        
+        var wordIds = DeckWords.Select(dw => dw.WordId).ToList();
+
+        var jmdictWords = context.JMDictWords.AsNoTracking()
+                                 .Where(w => wordIds.Contains(w.WordId))
+                                 .Include(w => w.Definitions)
+                                 .ToList();
+
+        var words = DeckWords.Select(dw => new { dw, jmDictWord = jmdictWords.FirstOrDefault(w => w.WordId == dw.WordId) })
+                             .OrderBy(dw => wordIds.IndexOf(dw.dw.WordId))
+                             .ToList();
+        foreach (var word in words)
+        {
+            var reading = word.dw.ReadingType == 0
+                ? word.jmDictWord!.Readings[word.dw.ReadingIndex]
+                : word.jmDictWord!.KanaReadings[word.dw.ReadingIndex];
+
+            for (int i = 0; i < word.dw.Occurrences; i++)
+            {
+                sb.Append(reading);
+            }
+        }
+
+        var rebuiltText = sb.ToString();
+        UniqueKanjiCount = rebuiltText.Distinct().Count(c => WanaKana.IsKanji(c.ToString()));
+        UniqueKanjiUsedOnceCount = rebuiltText.GroupBy(c => c).Count(g => g.Count() == 1 && WanaKana.IsKanji(g.Key.ToString()));
+    }
 }

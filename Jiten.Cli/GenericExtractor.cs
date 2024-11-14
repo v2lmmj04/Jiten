@@ -34,9 +34,9 @@ public class GenericExtractor
                                                        "\\"
                                                    };
 
-    public async Task<string> Extract(string filePath, string encoding, bool verbose)
+    public async Task<string> Extract(string? filePath, string encoding, bool verbose)
     {
-        string[] files = [];
+        string?[] files = [];
 
         // TODO: Handle subfolders separately
         if (Directory.Exists(filePath))

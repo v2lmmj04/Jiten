@@ -14,7 +14,7 @@ public static class MetadataDownloader
 {
     private static Func<string, Task<List<Metadata>>> _currentApi;
 
-    public static async Task DownloadMetadata(string directory, string api)
+    public static async Task DownloadMetadata(string? directory, string? api)
     {
         if (!Directory.Exists(directory))
         {

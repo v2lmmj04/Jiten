@@ -1,7 +1,14 @@
-namespace Jiten.Core.Data;
-
-public class MediaType
+namespace Jiten.Core.Data
 {
-    public int MediaTypeId { get; set; }
-    public string Name { get; set; }
+    public enum MediaType
+    {
+        Anime = 1,
+        Drama = 2,
+        Movie = 3,
+        Novel = 4,
+        NonFiction = 5,
+        VideoGame = 6,
+        VisualNovel = 7,
+        WebNovel = 8
+    }
 }

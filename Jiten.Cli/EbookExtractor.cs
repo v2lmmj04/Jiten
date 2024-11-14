@@ -7,7 +7,7 @@ namespace Jiten.Cli;
 
 public class EbookExtractor
 {
-    public async Task<string> ExtractTextFromEbook(string filePath)
+    public async Task<string> ExtractTextFromEbook(string? filePath)
     {
         try
         {

@@ -5,9 +5,9 @@ namespace Jiten.Cli;
 
 public class MscExtractor
 {
-    public async Task<string> Extract(string filePath, bool verbose)
+    public async Task<string> Extract(string? filePath, bool verbose)
     {
-        string[] files = [];
+        string?[] files = [];
 
         // TODO: Handle subfolders separately
         if (Directory.Exists(filePath))

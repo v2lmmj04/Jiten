@@ -19,9 +19,9 @@ public class JimakuDownloader
     private static string _jimakuApiKey;
     private static string _tmdbApiKey;
 
-    private static readonly List<string> _supportedExtensions = [".ass", ".sub", ".srt", ".ssa"];
+    private static readonly List<string> _supportedExtensions = [".ass", ".srt", ".ssa"];
 
-    public static async Task Download(string baseDirectory, int startRange, int endRange)
+    public static async Task Download(string? baseDirectory, int startRange, int endRange)
     {
         if (string.IsNullOrEmpty(_jimakuApiKey))
         {
@@ -34,7 +34,7 @@ public class JimakuDownloader
             _tmdbApiKey = configuration["TmdbApiKey"] ?? string.Empty;
             _jimakuHttpClient.DefaultRequestHeaders.Add("Authorization", _jimakuApiKey);
         }
-
+        
         for (int n = startRange; n <= endRange; n++)
         {
             var entry = await GetEntryAsync(n);
@@ -53,7 +53,7 @@ public class JimakuDownloader
                 Console.WriteLine($"{j + 1}. {files[j].Name}");
             }
 
-            Console.WriteLine("Enter file numbers to download (comma-separated), 'a' for all, 'e' to exclude, or 's' to select by prefix:");
+            Console.WriteLine("Enter file numbers to download (comma-separated), 'a' for all, 'e' to exclude, 's' to select by prefix, or 'x' to select by suffix:");
             var input = Console.ReadLine()?.Trim().ToLower();
 
             List<JimakuFile> selectedFiles;
@@ -65,7 +65,7 @@ public class JimakuDownloader
             {
                 Console.WriteLine("Enter file numbers to exclude (comma-separated):");
                 input = Console.ReadLine()?.Trim().ToLower();
-    
+
                 var excludeNumbers = input.Split(',').Select(s => int.Parse(s.Trim()) - 1).ToList();
                 selectedFiles = files.Where((file, index) => !excludeNumbers.Contains(index)).ToList();
             }
@@ -73,17 +73,27 @@ public class JimakuDownloader
             {
                 Console.WriteLine("Enter the prefix to select files:");
                 var prefix = Console.ReadLine()?.Trim().ToLower();
-                
+
                 if (string.IsNullOrEmpty(prefix))
                     continue;
-    
+
                 selectedFiles = files.Where(file => file.Name.ToLower().StartsWith(prefix)).ToList();
+            }
+            else if (input?.StartsWith("x") == true)
+            {
+                Console.WriteLine("Enter the suffix to select files:");
+                var suffix = Console.ReadLine()?.Trim().ToLower();
+
+                if (string.IsNullOrEmpty(suffix))
+                    continue;
+
+                selectedFiles = files.Where(file => file.Name.ToLower().EndsWith(suffix)).ToList();
             }
             else
             {
                 if (string.IsNullOrEmpty(input))
                     continue;
-    
+
                 selectedFiles = input?.Split(',').Select(s => files[int.Parse(s.Trim()) - 1]).ToList() ?? [];
             }
 
@@ -93,7 +103,7 @@ public class JimakuDownloader
 
             var serializerOptions =
                 new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
-            
+
             Directory.CreateDirectory(currentDirectory);
 
             await File.WriteAllTextAsync(Path.Combine(currentDirectory, "jimaku.json"), JsonSerializer.Serialize(entry, serializerOptions));
@@ -104,21 +114,17 @@ public class JimakuDownloader
                 await DownloadFileAsync(file.Url, filePath);
 
                 if (!filePath.EndsWith(".zip") && !filePath.EndsWith(".rar") && !filePath.EndsWith(".7z")) continue;
-                
+
                 using (var archive = ArchiveFactory.Open(filePath))
                 {
                     foreach (var e in archive.Entries.Where(entry => !entry.IsDirectory))
                     {
                         string? entryFileName = Path.GetFileName(e.Key);
                         if (entryFileName == null) continue;
-        
+
                         string fullZipToPath = Path.Combine(currentDirectory, entryFileName);
 
-                        e.WriteToFile(fullZipToPath, new ExtractionOptions
-                                                     {
-                                                         ExtractFullPath = false,
-                                                         Overwrite = true
-                                                     });
+                        e.WriteToFile(fullZipToPath, new ExtractionOptions { ExtractFullPath = false, Overwrite = true });
                     }
                 }
 
@@ -136,7 +142,7 @@ public class JimakuDownloader
                 File.Delete(assFile);
             }
 
-            
+
             var subtitleFiles = Directory.GetFiles(currentDirectory)
                                          .Where(f => _supportedExtensions.Contains(Path.GetExtension(f)))
                                          .ToList();
@@ -170,7 +176,7 @@ public class JimakuDownloader
             foreach (var file in subtitleFiles)
             {
                 var parser = new SubtitlesParser.Classes.Parsers.SubParser();
-                
+
                 await using var fileStream = File.OpenRead(file);
                 var items = parser.ParseStream(fileStream);
                 List<string> lines = items.SelectMany(it => it.PlaintextLines).ToList();
@@ -192,14 +198,14 @@ public class JimakuDownloader
                 for (var i = 0; i < extractedFiles.Count; i++)
                 {
                     string? file = extractedFiles[i];
-                    metadata.Children.Add(new Metadata() { FilePath = file, OriginalTitle = $"Episode {i+1}" });
+                    metadata.Children.Add(new Metadata() { FilePath = file, OriginalTitle = $"Episode {i + 1}" });
                 }
             }
             else
             {
                 if (extractedFiles.Count == 0)
                     continue;
-                
+
                 metadata.FilePath = extractedFiles.First();
             }
 
@@ -274,8 +280,8 @@ public class JimakuDownloader
 
         var contentStream = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<AnilistResult>(contentStream,
-                                                              new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        
+                                                               new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
         if (result?.Data?.Media == null)
         {
             return new Metadata();
@@ -306,13 +312,16 @@ public class JimakuDownloader
 
         if (result == null)
             return new Metadata();
+        
+        if (result.PosterPath != null)
+            result.PosterPath = $"https://image.tmdb.org/t/p/w500/{result.PosterPath}";
 
         var links = new List<Link>();
         if (result.ImdbId != null)
         {
             links.Add(new Link { LinkType = LinkType.Imdb, Url = $"https://www.imdb.com/title/{result.ImdbId}" });
         }
-        
+
         links.Add(new Link { LinkType = LinkType.Tmdb, Url = $"https://www.themoviedb.org/movie/{tmdbId}" });
 
         return new Metadata
@@ -321,7 +330,7 @@ public class JimakuDownloader
                    EnglishTitle = result.Title,
                    ReleaseDate = result.ReleaseDate,
                    Links = links,
-                   Image = $"https://image.tmdb.org/t/p/w500/{result.PosterPath}",
+                   Image = result.PosterPath,
                };
     }
 
@@ -336,29 +345,33 @@ public class JimakuDownloader
         if (result == null)
             return new Metadata();
 
+        if (result.PosterPath != null)
+            result.PosterPath = $"https://image.tmdb.org/t/p/w500/{result.PosterPath}";
+        
+        
         return new Metadata
                {
                    OriginalTitle = result.OriginalName,
                    EnglishTitle = result.Name,
                    ReleaseDate = result.FirstAirDate,
-                   Image = $"https://image.tmdb.org/t/p/w500/{result.PosterPath}",
+                   Image = result.PosterPath,
                    Links = new List<Link> { new() { LinkType = LinkType.Tmdb, Url = $"https://www.themoviedb.org/tv/{tmdbId}" } }
                };
     }
-    
+
     private static List<string> SortFilenames(List<string> filenames)
     {
         return filenames.OrderBy(filename =>
         {
-            var match = Regex.Match(filename, @"(?:S\d{2}E(\d{2,4}))|(\d{2,4})");
-            if (match.Success)
-            {
-                var group1 = match.Groups[1].Value;
-                var group2 = match.Groups[2].Value;
-                return !string.IsNullOrEmpty(group1) ? int.Parse(group1) : int.Parse(group2);
-            }
-            return int.MaxValue;
+            var match = Regex.Match(filename, @"(?:S\d{2}E([0-9]{2,4}))|([0-9]{2,4})");
+            
+            if (!match.Success) 
+                return int.MaxValue;
+            
+            var group1 = match.Groups[1].Value;
+            var group2 = match.Groups[2].Value;
+            return !string.IsNullOrEmpty(group1) ? int.Parse(group1) : int.Parse(group2);
+
         }).ToList();
     }
-    
 }

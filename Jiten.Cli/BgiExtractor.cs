@@ -13,9 +13,9 @@ public class BgiExtractor
     /// <param name="filterNamesPath">A file with a list of names to filter out, one per line</param>
     /// <param name="verbose"></param>
     /// <returns></returns>
-    public async Task<string> Extract(string filePath, string filterNamesPath, bool verbose)
+    public async Task<string> Extract(string? filePath, string? filterNamesPath, bool verbose)
     {
-        string[] files = [];
+        string?[] files = [];
 
         // TODO: Handle subfolders separately
         if (Directory.Exists(filePath))

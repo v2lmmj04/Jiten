@@ -396,7 +396,7 @@ public static class JmDictHelper
     }
 
 
-    public static async Task<bool> Import(string dtdPath, string dictionaryPath)
+    public static async Task<bool> Import(string? dtdPath, string? dictionaryPath)
     {
         Regex reg = new Regex(@"<!ENTITY (.*) ""(.*)"">");
 
@@ -439,6 +439,9 @@ public static class JmDictHelper
                 if (reader.NodeType != XmlNodeType.EndElement) continue;
                 if (reader.Name != "entry") continue;
 
+                wordInfo.Readings = wordInfo.Readings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
+                wordInfo.KanaReadings = wordInfo.KanaReadings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
+                
                 wordInfos.Add(wordInfo);
 
                 break;

@@ -21,8 +21,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         var query = context.Decks.AsNoTracking();
 
         if (mediaType != null)
-            query = query.Where(d => d.MediaType.MediaTypeId == mediaType.MediaTypeId);
-
+            query = query.Where(d => d.MediaType == mediaType);
 
         var totalCount = query.Count();
 

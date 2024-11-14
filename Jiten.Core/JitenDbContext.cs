@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 public class JitenDbContext : DbContext
 {
-    public DbSet<MediaType> MediaTypes { get; set; }
     public DbSet<Deck> Decks { get; set; }
     public DbSet<DeckWord> DeckWords { get; set; }
 
@@ -39,27 +38,12 @@ public class JitenDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("jiten"); // Set a default schema
-
-        modelBuilder.Entity<MediaType>().HasData(
-                                                 new MediaType { MediaTypeId = 1, Name = "Animes" },
-                                                 new MediaType { MediaTypeId = 2, Name = "Dramas" },
-                                                 new MediaType { MediaTypeId = 3, Name = "Movies" },
-                                                 new MediaType { MediaTypeId = 4, Name = "Novels" },
-                                                 new MediaType { MediaTypeId = 5, Name = "Non-fiction" },
-                                                 new MediaType { MediaTypeId = 6, Name = "Video games" },
-                                                 new MediaType { MediaTypeId = 7, Name = "Visual novels" },
-                                                 new MediaType { MediaTypeId = 8, Name = "Web novels" }
-                                                );
-
+        
         modelBuilder.Entity<Deck>(entity =>
         {
             entity.Property(d => d.Id)
                   .ValueGeneratedOnAdd();
-
-            entity.HasOne(d => d.MediaType)
-                  .WithMany()
-                  .HasForeignKey(d => d.Id);
-
+            
             entity.Property(d => d.ParentDeckId)
                   .HasDefaultValue(0);
 
@@ -79,6 +63,7 @@ public class JitenDbContext : DbContext
             entity.HasIndex(d => d.OriginalTitle).HasDatabaseName("IX_OriginalTitle");
             entity.HasIndex(d => d.RomajiTitle).HasDatabaseName("IX_RomajiTitle");
             entity.HasIndex(d => d.EnglishTitle).HasDatabaseName("IX_EnglishTitle");
+            entity.HasIndex(d => d.MediaType).HasDatabaseName("IX_MediaType");
             
             entity.HasOne(d => d.ParentDeck)
                   .WithMany(p => p.Children)

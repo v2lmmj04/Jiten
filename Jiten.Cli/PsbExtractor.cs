@@ -17,9 +17,9 @@ public class PsbExtractor
         [JsonPropertyName("texts")] public List<List<object>> Texts { get; set; }
     }
 
-    public async Task<string> Extract(string filePath, bool verbose)
+    public async Task<string> Extract(string? filePath, bool verbose)
     {
-        string[] files = [];
+        string?[] files = [];
 
         // TODO: Handle subfolders separately
         if (Directory.Exists(filePath))

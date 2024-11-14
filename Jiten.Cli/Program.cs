@@ -1,4 +1,9 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using System.Text.Unicode;
 using CommandLine;
 using Jiten.Cli;
 using Jiten.Core.Data;
@@ -6,6 +11,32 @@ using Jiten.Core.Data.JMDict;
 
 public class Program
 {
+    private static List<string> _subtitleCleanStartsWith = new List<string>
+                                                           {
+                                                               "---",
+                                                               "本字幕由",
+                                                               "更多中日",
+                                                               "本整理",
+                                                               "压制",
+                                                               "日听",
+                                                               "校对",
+                                                               "时轴",
+                                                               "台本整理",
+                                                               "听翻",
+                                                               "翻译",
+                                                               "ED",
+                                                               "OP",
+                                                               "字幕",
+                                                               "诸神",
+                                                               "负责",
+                                                               "阿里",
+                                                               "日校",
+                                                               "翻译",
+                                                               "校对",
+                                                               "片源",
+                                                               "◎"
+                                                           };
+
     public class Options
     {
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
@@ -23,8 +54,8 @@ public class Program
         [Option('e', "extract", Required = false, HelpText = "Extract text from a file or a folder and all its subfolders.")]
         public string ExtractFilePath { get; set; }
 
-        [Option('p', "parse", Required = false, HelpText = "Parse text.")]
-        public bool Parse { get; set; }
+        [Option('p', "parse", Required = false, HelpText = "Parse text in directory using metadata.json.")]
+        public string Parse { get; set; }
 
         [Option('t', "threads", Required = false, HelpText = "Number of threads to use.")]
         public int Threads { get; set; } = 1;
@@ -37,12 +68,18 @@ public class Program
 
         [Option('x', "extra", Required = false, HelpText = "Extra arguments for some operations.")]
         public string Extra { get; set; }
-        
+
         [Option('m', "metadata", Required = false, HelpText = "Download metadata for a folder.")]
         public string Metadata { get; set; }
-        
+
         [Option('a', "api", Required = false, HelpText = "API to retrieve metadata from.")]
         public string Api { get; set; }
+
+        [Option(longName: "deck-type", Required = false, HelpText = "Type of deck for the parser.")]
+        public string? DeckType { get; set; }
+
+        [Option(longName: "clean-subtitles", Required = false, HelpText = "Clean subtitles from extra info.")]
+        public bool CleanSubtitles { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -50,7 +87,13 @@ public class Program
         await Parser.Default.ParseArguments<Options>(args)
                     .WithParsedAsync<Options>(async o =>
                     {
-                        var watch = System.Diagnostics.Stopwatch.StartNew();
+                        var watch = Stopwatch.StartNew();
+                        
+                        if (o.Threads > 1)
+                        {
+                            Console.WriteLine($"Using {o.Threads} threads.");
+                        }
+                        
 
                         if (o.Import)
                         {
@@ -68,104 +111,7 @@ public class Program
 
                         if (o.ExtractFilePath != null)
                         {
-                            if (o.Script == null)
-                            {
-                                Console.WriteLine("Please specify an extraction script.");
-                                return;
-                            }
-
-                            string result = "";
-                            switch (o.Script)
-                            {
-                                case "epub":
-                                    var extractor = new EbookExtractor();
-
-                                    // if it's a directory or a single file
-                                    if (Directory.Exists(o.ExtractFilePath))
-                                    {
-                                        var files = Directory.GetFiles(o.ExtractFilePath, "*.*",
-                                                                       new EnumerationOptions()
-                                                                       {
-                                                                           IgnoreInaccessible = true, RecurseSubdirectories = true
-                                                                       });
-
-                                        if (o.Verbose)
-                                            Console.WriteLine($"Found {files.Length} files to extract.");
-
-                                        var options = new ParallelOptions() { MaxDegreeOfParallelism = o.Threads };
-
-                                        await Parallel.ForEachAsync(files, options, async (file, _) =>
-                                        {
-                                            await ExtractEpub(file, extractor, o);
-                                            if (o.Verbose)
-                                            {
-                                                Console
-                                                    .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
-                                            }
-                                        });
-                                    }
-                                    else
-                                    {
-                                        var file = o.ExtractFilePath;
-                                        await ExtractEpub(file, extractor, o);
-                                    }
-
-                                    break;
-                                case "krkr":
-                                    result = await new KiriKiriExtractor().Extract(o.ExtractFilePath, o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                                case "generic":
-                                    result = await new GenericExtractor().Extract(o.ExtractFilePath, "SHIFT-JIS", o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                                case "generic-utf8":
-                                    result = await new GenericExtractor().Extract(o.ExtractFilePath, "UTF8", o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                                case "psb":
-                                    result = await new PsbExtractor().Extract(o.ExtractFilePath, o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                                case "msc":
-                                    result = await new MscExtractor().Extract(o.ExtractFilePath, o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                                case "bgi":
-                                    if (o.Extra == null)
-                                    {
-                                        Console.WriteLine("Please specify a filter file for BGI extraction with the -x option.");
-                                        return;
-                                    }
-
-                                    result = await new BgiExtractor().Extract(o.ExtractFilePath, o.Extra, o.Verbose);
-                                    if (o.Output != null)
-                                    {
-                                        await File.WriteAllTextAsync(o.Output, result);
-                                    }
-
-                                    break;
-                            }
+                            if (await Extract(o)) return;
                         }
 
                         if (o.Metadata != null)
@@ -184,7 +130,7 @@ public class Program
                                     Console.WriteLine("Please specify a range for Jimaku metadata in the form start-end.");
                                     return;
                                 }
-                                
+
                                 await JimakuDownloader.Download(o.Metadata, int.Parse(range[0]), int.Parse(range[1]));
                             }
                             else
@@ -192,13 +138,248 @@ public class Program
                                 await MetadataDownloader.DownloadMetadata(o.Metadata, o.Api);
                             }
                         }
-                        
+
+                        if (o.Parse != null)
+                        {
+                            await Parse(o);
+                        }
+
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
     }
 
-    private static async Task ExtractEpub(string file, EbookExtractor extractor, Options o)
+    private static async Task Parse(Options options)
+    {
+        if (options.DeckType == null || !Enum.TryParse(options.DeckType, out MediaType deckType))
+        {
+            Console.WriteLine("Please specify a deck type for the parser. Available types:");
+            foreach (var type in Enum.GetNames(typeof(MediaType)))
+            {
+                Console.WriteLine(type);
+            }
+
+            return;
+        }
+
+        if (options.Parse == null)
+            return;
+
+        var serializerOptions =
+            new JsonSerializerOptions
+            {
+                WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), ReferenceHandler = ReferenceHandler.Preserve
+            };
+
+        var directories = Directory.GetDirectories(options.Parse).ToList();
+        int directoryCount = directories.Count;
+
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = options.Threads };
+
+        await Parallel.ForEachAsync(directories, parallelOptions, async (directory, _) =>
+        {
+            if (File.Exists(Path.Combine(directory, "deck.json")))
+            {
+                if (options.Verbose)
+                    Console.WriteLine($"Deck already exists in {directory}, skipping.");
+                return;
+            }
+
+            if (!File.Exists(Path.Combine(directory, "metadata.json")))
+            {
+                if (options.Verbose)
+                    Console.WriteLine($"No metadata found in {directory}, skipping.");
+                return;
+            }
+
+            if (options.Verbose)
+            {
+                Console.WriteLine("=========================================");
+                Console.WriteLine($"Processing directory {directory} ({directories.IndexOf(directory) + 1}/{directoryCount}) [{(directories.IndexOf(directory) + 1) * 100 / directoryCount}%]");
+                Console.WriteLine("=========================================");
+            }
+
+            var metadata = JsonSerializer.Deserialize<Metadata>(await File.ReadAllTextAsync(Path.Combine(directory, "metadata.json")));
+            if (metadata == null) return;
+
+            var baseDeck = await ProcessMetadata(metadata, null, options, deckType, 0);
+            baseDeck.MediaType = deckType;
+            baseDeck.OriginalTitle = metadata.OriginalTitle;
+            baseDeck.RomajiTitle = metadata.RomajiTitle;
+            baseDeck.EnglishTitle = metadata.EnglishTitle;
+            baseDeck.Links = metadata.Links;
+            baseDeck.CoverName = metadata.Image ?? "nocover.jpg";
+
+            foreach (var link in baseDeck.Links)
+            {
+                link.Deck = baseDeck;
+            }
+
+            await File.WriteAllTextAsync(Path.Combine(directory, "deck.json"), JsonSerializer.Serialize(baseDeck, serializerOptions), _);
+
+            if (options.Verbose)
+                Console.WriteLine($"Base deck {baseDeck.OriginalTitle} processed with {baseDeck.DeckWords.Count} words." +
+                                  Environment.NewLine);
+        });
+
+        return;
+
+        async Task<Deck> ProcessMetadata(Metadata metadata, Deck? parentDeck, Options options, MediaType deckType, int deckOrder)
+        {
+            Deck deck = new();
+            if (!string.IsNullOrEmpty(metadata.FilePath))
+            {
+                var lines = (await File.ReadAllLinesAsync(metadata.FilePath)).ToList();
+                if (options.CleanSubtitles)
+                {
+                    // lines in revert, remove lines that start with the clean starts, filter with regex for (.*)
+                    for (int i = lines.Count - 1; i >= 0; i--)
+                    {
+                        lines[i] = lines[i].Trim();
+                        if (_subtitleCleanStartsWith.Any(s => lines[i].StartsWith(s)))
+                        {
+                            lines.RemoveAt(i);
+                            break;
+                        }
+
+                        lines[i] = Regex.Replace(lines[i], @"\((.*?)\)", "");
+
+                        if (string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            lines.RemoveAt(i);
+                        }
+                    }
+                }
+
+                deck = await Jiten.Parser.Program.ParseText(string.Join(Environment.NewLine, lines));
+                deck.ParentDeck = parentDeck;
+                deck.DeckOrder = deckOrder;
+                deck.OriginalTitle = metadata.OriginalTitle;
+                deck.MediaType = deckType;
+
+                if (options.Verbose)
+                    Console.WriteLine($"Parsed {metadata.FilePath} with {deck.DeckWords.Count} words.");
+            }
+
+            foreach (var child in metadata.Children)
+            {
+                var childDeck = await ProcessMetadata(child, deck, options, deckType, ++deckOrder);
+                deck.Children.Add(childDeck);
+            }
+
+            await deck.AddChildDeckWords();
+
+            return deck;
+        }
+    }
+
+    private static async Task<bool> Extract(Options o)
+    {
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
+        if (o.Script == null)
+        {
+            Console.WriteLine("Please specify an extraction script.");
+            return true;
+        }
+
+        string result = "";
+        switch (o.Script)
+        {
+            case "epub":
+                var extractor = new EbookExtractor();
+
+                // if it's a directory or a single file
+                if (Directory.Exists(o.ExtractFilePath))
+                {
+                    string?[] files = Directory.GetFiles(o.ExtractFilePath, "*.*",
+                                                         new EnumerationOptions()
+                                                         {
+                                                             IgnoreInaccessible = true, RecurseSubdirectories = true
+                                                         });
+
+                    if (o.Verbose)
+                        Console.WriteLine($"Found {files.Length} files to extract.");
+
+                    var options = new ParallelOptions() { MaxDegreeOfParallelism = o.Threads };
+
+                    await Parallel.ForEachAsync(files, options, async (file, _) =>
+                    {
+                        await ExtractEpub(file, extractor, o);
+                        if (o.Verbose)
+                        {
+                            Console
+                                .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
+                        }
+                    });
+                }
+                else
+                {
+                    var file = o.ExtractFilePath;
+                    await ExtractEpub(file, extractor, o);
+                }
+
+                break;
+            case "krkr":
+                result = await new KiriKiriExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            case "generic":
+                result = await new GenericExtractor().Extract(o.ExtractFilePath, "SHIFT-JIS", o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            case "generic-utf8":
+                result = await new GenericExtractor().Extract(o.ExtractFilePath, "UTF8", o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            case "psb":
+                result = await new PsbExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            case "msc":
+                result = await new MscExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            case "bgi":
+                if (o.Extra == null)
+                {
+                    Console.WriteLine("Please specify a filter file for BGI extraction with the -x option.");
+                    return true;
+                }
+
+                result = await new BgiExtractor().Extract(o.ExtractFilePath, o.Extra, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+        }
+
+        return false;
+    }
+
+    private static async Task ExtractEpub(string? file, EbookExtractor extractor, Options o)
     {
         if (o.Verbose)
         {
@@ -207,7 +388,7 @@ public class Program
             Console.WriteLine("=========================================");
         }
 
-        var extension = Path.GetExtension(file).ToLower();
+        var extension = Path.GetExtension(file)?.ToLower();
         if (extension is ".epub" or ".txt")
         {
             var text = extension switch
@@ -224,21 +405,21 @@ public class Program
                 return;
             }
 
-            if (o.Parse)
-            {
-                var result = await Jiten.Parser.Program.ParseText(text);
-                // serialize result and write to file
-                // await File.WriteAllTextAsync("parsed.json", JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
-            
-                if (o.Verbose)
-                    Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
-            
-                result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
-                //await JmDictHelper.InsertDeck(result);
-            
-                if (o.Verbose)
-                    Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
-            }
+            // if (o.Parse)
+            // {
+            //     var result = await Jiten.Parser.Program.ParseText(text);
+            //     // serialize result and write to file
+            //     // await File.WriteAllTextAsync("parsed.json", JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+            //
+            //     if (o.Verbose)
+            //         Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
+            //
+            //     result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
+            //     //await JmDictHelper.InsertDeck(result);
+            //
+            //     if (o.Verbose)
+            //         Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
+            // }
         }
     }
 }
