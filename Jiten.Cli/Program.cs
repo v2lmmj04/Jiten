@@ -412,6 +412,15 @@ public class Program
                 }
 
                 break;
+            case "cs2":
+                result = await new Cs2Extractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            
             case "bgi":
                 if (o.Extra == null)
                 {

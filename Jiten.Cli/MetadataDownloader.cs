@@ -287,10 +287,10 @@ public static class MetadataDownloader
         if (response.IsSuccessStatusCode)
         {
             var contentStream = await response.Content.ReadAsStringAsync();
+            var serializerOptions =
+                new JsonSerializerOptions { Converters = { new VndbDateTimeConverter() }, PropertyNameCaseInsensitive = true };
 
-
-            result = JsonSerializer.Deserialize<VnDbRequestPageResult>(contentStream,
-                                                                       new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            result = JsonSerializer.Deserialize<VnDbRequestPageResult>(contentStream, serializerOptions);
 
             requestResults.AddRange(result!.Results);
         }
@@ -305,7 +305,7 @@ public static class MetadataDownloader
                                EnglishTitle = requestResult.Titles.FirstOrDefault(t => t.Lang == "en")?.Title,
                                ReleaseDate = requestResult.Released,
                                Links = [new Link { LinkType = LinkType.Vndb, Url = $"https://vndb.org/{requestResult.Id}" }],
-                               Image = requestResult.Image.Url
+                               Image = requestResult.Image?.Url
                            };
 
             metadatas.Add(metadata);

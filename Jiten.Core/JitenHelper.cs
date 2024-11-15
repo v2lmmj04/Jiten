@@ -10,7 +10,7 @@ public static class JitenHelper
         // Ignore if the deck already exists
         await using var context = new JitenDbContext();
 
-        if (await context.Decks.AnyAsync(d => d.OriginalTitle == deck.OriginalTitle))
+        if (await context.Decks.AnyAsync(d => d.OriginalTitle == deck.OriginalTitle && d.MediaType == deck.MediaType))
             return;
 
         // Fix potential null references to decks

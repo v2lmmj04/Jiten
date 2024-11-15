@@ -14,6 +14,8 @@ export function getLinkTypeText(linkType: LinkType): string {
             return 'Google Books';
         case LinkType.Imdb:
             return 'IMDB';
+        case LinkType.Vndb:
+            return 'VNDB';
         default:
             return 'Unknown';
     }

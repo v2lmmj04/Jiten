@@ -60,6 +60,7 @@ public class PsbExtractor
 
                     // Filter [tags]
                     string line = Regex.Replace(text[2].ToString(), @"\[.*?\]", "", RegexOptions.None);
+                     line = Regex.Replace(line, @"\\n", "", RegexOptions.None);
 
                     extractedText.AppendLine(line);
                 }

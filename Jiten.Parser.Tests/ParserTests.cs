@@ -479,9 +479,10 @@ public class ParserTests
     [InlineData("すぐに終わってしまった", new[] { "すぐに", "終わってしまった" })]
     [InlineData("間違いない", new[] { "間違いない" })]
     [InlineData("として", new[] { "として" })]
-    [InlineData("自分でも信じられないような気分だった", new[] { "自分でも","信じられない","ような","気分","だった" })]
+    [InlineData("自分でも信じられないような気分だった", new[] { "自分でも", "信じられない", "ような", "気分", "だった" })]
     [InlineData("必要な", new[] { "必要な" })]
-
+    [InlineData("大切な", new[] { "大切な" })]
+    [InlineData("飽き始める", new[] { "飽き", "始める" })]
     public async Task SegmentationTest(string text, string[] expectedResult)
     {
         (await Parse(text)).Select(r => r.Text).Should().Equal(expectedResult);

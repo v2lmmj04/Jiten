@@ -18,7 +18,7 @@ namespace Jiten.Parser
         public static async Task Main(string[] args)
         {
             // var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-            var text = "大半は、ＡＩにより最適化されている。";
+            var text = "風景に飽き始める頃に";
 
             await ParseText(text);
         }
@@ -120,6 +120,16 @@ namespace Jiten.Parser
                                                 candidates = candidates.OrderByDescending(c => c.text.Length).ToList();
 
                                                 // if there's a candidate that's the same as the base word, put it first in the list
+                                                var baseDictionaryWord = WanaKana.ToHiragana(item.word.wordInfo.DictionaryForm);
+                                                var baseDictionaryWordIndex = candidates.FindIndex(c => c.text == baseDictionaryWord);
+                                                if (baseDictionaryWordIndex != -1)
+                                                {
+                                                    var baseDictionaryWordCandidate = candidates[baseDictionaryWordIndex];
+                                                    candidates.RemoveAt(baseDictionaryWordIndex);
+                                                    candidates.Insert(0, baseDictionaryWordCandidate);
+                                                }
+                                                
+                                                // if there's a candidate that's the same as the base word, put it first in the list
                                                 var baseWord = WanaKana.ToHiragana(item.word.wordInfo.Text);
                                                 var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
                                                 if (baseWordIndex != -1)
@@ -128,7 +138,7 @@ namespace Jiten.Parser
                                                     candidates.RemoveAt(baseWordIndex);
                                                     candidates.Insert(0, baseWordCandidate);
                                                 }
-
+                                                
                                                 foreach (var candidate in candidates)
                                                 {
                                                     foreach (var id in candidate.ids)

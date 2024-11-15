@@ -54,7 +54,7 @@ const nextLink = computed(() => {
       </Card>
     </div>
     <div v-else-if="error">Error: {{ error }}</div>
-      <VocabularyEntry v-else v-for="word in response.data" :word="word" :key="word.wordId"/>
+      <VocabularyEntry v-for="word in response.data" :word="word" :key="word.wordId" :is-compact="true"/>
   </div>
 </template>
 
