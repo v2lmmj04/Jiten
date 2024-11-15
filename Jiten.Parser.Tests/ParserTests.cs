@@ -477,6 +477,10 @@ public class ParserTests
     [InlineData("してるとこだから", new[] { "してる", "とこ", "だから" })]
     [InlineData("下記のとおりです", new[] { "下記", "の", "とおり", "です" })]
     [InlineData("すぐに終わってしまった", new[] { "すぐに", "終わってしまった" })]
+    [InlineData("間違いない", new[] { "間違いない" })]
+    [InlineData("として", new[] { "として" })]
+    [InlineData("自分でも信じられないような気分だった", new[] { "自分でも","信じられない","ような","気分","だった" })]
+    [InlineData("必要な", new[] { "必要な" })]
 
     public async Task SegmentationTest(string text, string[] expectedResult)
     {

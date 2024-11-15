@@ -344,15 +344,6 @@ public static class JmDictHelper
                                                                             { "sk", "search-only kana form" },
                                                                         };
 
-    public static async Task InsertDeck(Deck deck)
-    {
-        await using var context = new JitenDbContext();
-
-        context.Decks.Add(deck);
-
-        await context.SaveChangesAsync();
-    }
-
     public static async Task<List<JmDictWord>> LoadAllWords()
     {
         await using var context = new JitenDbContext();
@@ -441,7 +432,7 @@ public static class JmDictHelper
 
                 wordInfo.Readings = wordInfo.Readings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
                 wordInfo.KanaReadings = wordInfo.KanaReadings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
-                
+
                 wordInfos.Add(wordInfo);
 
                 break;
@@ -510,6 +501,7 @@ public static class JmDictHelper
 
         string reb = "";
         List<string> restrictions = new List<string>();
+        bool isObsolete = false;
         while (await reader.ReadAsync())
         {
             if (reader.NodeType == XmlNodeType.Element)
@@ -523,13 +515,23 @@ public static class JmDictHelper
                 {
                     restrictions.Add(await reader.ReadElementContentAsStringAsync());
                 }
+
+                if (reader.Name == "re_inf")
+                {
+                    isObsolete = true;
+                }
             }
 
             if (reader.NodeType != XmlNodeType.EndElement) continue;
             if (reader.Name != "r_ele") continue;
 
             if (restrictions.Count == 0 || wordInfo.Readings.Any(reading => restrictions.Contains(reading)))
-                wordInfo.KanaReadings.Add(reb);
+            {
+                if (isObsolete)
+                    wordInfo.ObsoleteReadings.Add(reb);
+                else
+                    wordInfo.KanaReadings.Add(reb);
+            }
 
             break;
         }

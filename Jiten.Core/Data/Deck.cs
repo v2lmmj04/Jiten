@@ -78,9 +78,9 @@ public class Deck
     public float AverageSentenceLength { get; set; }
 
     /// <summary>
-    /// Parent deck, 0 if no parent
+    /// Parent deck, null if no parent
     /// </summary>
-    public int ParentDeckId { get; set; }
+    public int? ParentDeckId { get; set; }
 
     /// <summary>
     /// Parent deck, null if no parent
@@ -139,18 +139,18 @@ public class Deck
                 }
             }
         }
-        
+
         CharacterCount = Children.Sum(c => c.CharacterCount);
         WordCount = Children.Sum(c => c.WordCount);
         UniqueWordCount = DeckWords.Select(dw => dw.WordId).Distinct().Count();
         UniqueWordUsedOnceCount = DeckWords.Where(dw => dw.Occurrences == 1).Select(dw => dw.WordId).Distinct().Count();
-        
+
         // Not the most efficient or elegant way to do it, rebuilding the text, but it works and I don't have a better idea for now
-        
+
         StringBuilder sb = new();
-        
+
         await using var context = new JitenDbContext();
-        
+
         var wordIds = DeckWords.Select(dw => dw.WordId).ToList();
 
         var jmdictWords = context.JMDictWords.AsNoTracking()
@@ -176,5 +176,20 @@ public class Deck
         var rebuiltText = sb.ToString();
         UniqueKanjiCount = rebuiltText.Distinct().Count(c => WanaKana.IsKanji(c.ToString()));
         UniqueKanjiUsedOnceCount = rebuiltText.GroupBy(c => c).Count(g => g.Count() == 1 && WanaKana.IsKanji(g.Key.ToString()));
+    }
+
+    public void SetParentsAndDeckWordDeck(Deck deck)
+    {
+        foreach (var deckWord in deck.DeckWords)
+        {
+            deckWord.Deck ??= deck;
+        }
+
+        foreach (var child in deck.Children)
+        {
+            child.ParentDeck ??= deck;
+
+            SetParentsAndDeckWordDeck(child);
+        }
     }
 }

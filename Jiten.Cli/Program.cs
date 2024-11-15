@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Text.Unicode;
 using CommandLine;
 using Jiten.Cli;
+using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 
@@ -80,6 +81,9 @@ public class Program
 
         [Option(longName: "clean-subtitles", Required = false, HelpText = "Clean subtitles from extra info.")]
         public bool CleanSubtitles { get; set; }
+
+        [Option(longName: "insert", Required = false, HelpText = "Insert the parsed deck.json into the database from a directory.")]
+        public string Insert { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -88,12 +92,12 @@ public class Program
                     .WithParsedAsync<Options>(async o =>
                     {
                         var watch = Stopwatch.StartNew();
-                        
+
                         if (o.Threads > 1)
                         {
                             Console.WriteLine($"Using {o.Threads} threads.");
                         }
-                        
+
 
                         if (o.Import)
                         {
@@ -144,9 +148,56 @@ public class Program
                             await Parse(o);
                         }
 
+                        if (o.Insert != null)
+                        {
+                            if (await Insert(o)) return;
+                        }
+
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
+    }
+
+    private static async Task<bool> Insert(Options options)
+    {
+        var directories = Directory.GetDirectories(options.Insert).ToList();
+        int directoryCount = directories.Count;
+
+        var serializerOptions = new JsonSerializerOptions
+                                {
+                                    WriteIndented = true,
+                                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+                                    ReferenceHandler = ReferenceHandler.Preserve
+                                };
+
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = options.Threads };
+
+        await Parallel.ForEachAsync(directories, parallelOptions, async (directory, _) =>
+        {
+            if (!File.Exists(Path.Combine(directory, "deck.json")))
+            {
+                if (options.Verbose)
+                    Console.WriteLine($"No deck found in {directory}, skipping.");
+                return;
+            }
+
+            if (options.Verbose)
+            {
+                Console.WriteLine("=========================================");
+                Console.WriteLine($"Processing directory {directory} ({directories.IndexOf(directory) + 1}/{directoryCount}) [{(directories.IndexOf(directory) + 1) * 100 / directoryCount}%]");
+                Console.WriteLine("=========================================");
+            }
+
+            var deck = JsonSerializer.Deserialize<Deck>(await File.ReadAllTextAsync(Path.Combine(directory, "deck.json")),
+                                                        serializerOptions);
+            if (deck == null) return;
+
+            await JitenHelper.InsertDeck(deck);
+
+            if (options.Verbose)
+                Console.WriteLine($"Deck {deck.OriginalTitle} inserted into the database.");
+        });
+        return false;
     }
 
     private static async Task Parse(Options options)
@@ -165,11 +216,12 @@ public class Program
         if (options.Parse == null)
             return;
 
-        var serializerOptions =
-            new JsonSerializerOptions
-            {
-                WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), ReferenceHandler = ReferenceHandler.Preserve
-            };
+        var serializerOptions = new JsonSerializerOptions
+                                {
+                                    WriteIndented = true,
+                                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+                                    ReferenceHandler = ReferenceHandler.Preserve
+                                };
 
         var directories = Directory.GetDirectories(options.Parse).ToList();
         int directoryCount = directories.Count;

@@ -67,7 +67,7 @@ public static class MetadataDownloader
         {
             var apiResult = await ProcessFileWithApi(file);
             if (apiResult == null) continue;
-            
+
             apiResult.FilePath = file;
             metadatas.Add(apiResult);
         }
@@ -109,12 +109,29 @@ public static class MetadataDownloader
 
         if (metadatas.Count > 1)
         {
+            var image = metadatas.First().Image;
+            var links = metadatas.First().Links;
+
+            // Ask if you want to name the first metadata originaltitle
+            Console.WriteLine($"What should **{Path.GetFileNameWithoutExtension(metadatas.First().FilePath)}** be named? Or press enter to keep the name {metadatas.First().OriginalTitle}");
+
+            var input = Console.ReadLine()?.Trim();
+            if (!string.IsNullOrEmpty(input))
+            {
+                metadatas.First().OriginalTitle = input;
+                metadatas.First().EnglishTitle = null;
+                metadatas.First().RomajiTitle = null;
+                metadatas.First().Image = null;
+                metadatas.First().Links = [];
+            }
+
             var metadata = new Metadata
                            {
                                OriginalTitle = originalTitle,
                                RomajiTitle = romajiTitle,
                                EnglishTitle = englishTitle,
-                               Image = metadatas.First().Image,
+                               Image = image,
+                               Links = links,
                                Children = metadatas,
                            };
 
@@ -197,7 +214,7 @@ public static class MetadataDownloader
                     continue;
                 }
             }
-            
+
             else if (input.Equals("a", StringComparison.OrdinalIgnoreCase) || input.Equals("abort", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
@@ -208,13 +225,13 @@ public static class MetadataDownloader
             }
 
             var results = await _currentApi.Invoke(input);
-            
+
             if (results.Count == 0)
             {
                 Console.WriteLine("No results found. Try a different query.");
                 continue;
             }
-            
+
             Console.WriteLine($"\nResults for {Path.GetFileName(filePath)}:");
 
             for (int i = 0; i < results.Count; i++)

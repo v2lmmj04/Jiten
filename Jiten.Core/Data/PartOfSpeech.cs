@@ -21,7 +21,8 @@ public enum PartOfSpeech
     Suffix = 16,
     CommonNoun = 17,
     SupplementarySymbol = 18,
-    BlankSpace = 19
+    BlankSpace = 19,
+    Expression = 20
 }
 
 public enum PartOfSpeechSection
@@ -111,6 +112,7 @@ public static class PartOfSpeechExtension
             "普通名詞" => PartOfSpeech.CommonNoun,
             "補助記号" => PartOfSpeech.SupplementarySymbol,
             "空白" => PartOfSpeech.BlankSpace,
+            "表現" or "exp" => PartOfSpeech.Expression,
             // _ => throw new ArgumentException($"Invalid part of speech : {pos}")
             _ => PartOfSpeech.Unknown
         };

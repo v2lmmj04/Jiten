@@ -17,7 +17,8 @@ namespace Jiten.Parser
 
         public static async Task Main(string[] args)
         {
-            var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
+            // var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
+            var text = "大半は、ＡＩにより最適化されている。";
 
             await ParseText(text);
         }
@@ -55,14 +56,17 @@ namespace Jiten.Parser
 
             // TODO: support elongated vowels ふ～ -> ふう
 
-            // Clean up special characters
-            wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]", ""));
+            // Only keep kanjis, kanas, digits,full width digits, latin characters, full width latin characters 
+            wordInfos.ForEach(x => x.Text =
+                                  Regex.Replace(x.Text,
+                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19]",
+                                                ""));
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
 
             // Filter bad lines that cause exceptions
             // wordInfos.RemoveAll(w => w.Text is "ッー");
-            wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "[ッー]", ""));
+            wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "ッー", ""));
 
             Deconjugator deconjugator = new Deconjugator();
 
@@ -105,13 +109,25 @@ namespace Jiten.Parser
                                                 {
                                                     if (_lookups.TryGetValue(form, out List<int> lookup))
                                                     {
-                                                        candidates.Add((form, lookup));
+                                                        // Reorder to have the most common words first. Might need a frequency list if it's not enough
+                                                        var orderedLookup = lookup.OrderBy(l => l).ToList();
+                                                        candidates.Add((form, orderedLookup));
                                                     }
                                                 }
 
                                                 if (candidates.Count == 0) return;
 
-                                                candidates = candidates.OrderBy(c => c).ToList();
+                                                candidates = candidates.OrderByDescending(c => c.text.Length).ToList();
+
+                                                // if there's a candidate that's the same as the base word, put it first in the list
+                                                var baseWord = WanaKana.ToHiragana(item.word.wordInfo.Text);
+                                                var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
+                                                if (baseWordIndex != -1)
+                                                {
+                                                    var baseWordCandidate = candidates[baseWordIndex];
+                                                    candidates.RemoveAt(baseWordIndex);
+                                                    candidates.Insert(0, baseWordCandidate);
+                                                }
 
                                                 foreach (var candidate in candidates)
                                                 {
@@ -150,14 +166,29 @@ namespace Jiten.Parser
                                                 if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
                                                 {
                                                     candidates = candidates.OrderBy(c => c).ToList();
-                                                    // We take the first word for now, let's see if we can affine that later
+                                                    
+                                                    // Try to find the best match, use the firs tcandi
+                                                    JmDictWord? bestMatch = null;
+                                                    
+                                                    foreach (var id in candidates)
+                                                    {
+                                                        if (!_allWords.TryGetValue(id, out var word)) continue;
+                                                        
+                                                        List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech()).ToList();
+                                                        if (!pos.Contains(item.word.wordInfo.PartOfSpeech)) continue;
+                                                        
+                                                        bestMatch = word;
+                                                        break;
+                                                    }
 
-                                                    var candidate = candidates[0];
-                                                    if (!_allWords.TryGetValue(candidate, out var word)) return;
+                                                    if (bestMatch == null)
+                                                    {
+                                                        if (!_allWords.TryGetValue(candidates[0], out bestMatch)) return;
+                                                    }
 
-                                                    var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                    var normalizedReadings = bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
                                                     var normalizedKanaReadings =
-                                                        word.KanaReadings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                        bestMatch.KanaReadings.Select(r => WanaKana.ToHiragana(r)).ToList();
                                                     byte readingType = normalizedReadings.Contains(textInHiragana) ? (byte)0 : (byte)1;
                                                     byte readingIndex = readingType == 0
                                                         ? (byte)normalizedReadings.IndexOf(textInHiragana)
@@ -165,7 +196,7 @@ namespace Jiten.Parser
 
                                                     DeckWord deckWord = new()
                                                                         {
-                                                                            WordId = candidate,
+                                                                            WordId = bestMatch.WordId,
                                                                             ReadingType = readingType,
                                                                             ReadingIndex = readingIndex,
                                                                             Occurrences = item.word.occurrences

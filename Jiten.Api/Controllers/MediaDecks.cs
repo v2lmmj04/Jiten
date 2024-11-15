@@ -4,8 +4,6 @@ using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Z.EntityFramework.Plus;
 
 namespace Jiten.Api.Controllers;
 
@@ -20,15 +18,18 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var query = context.Decks.AsNoTracking();
 
+        query = query.Where(d => d.ParentDeck == null);
         if (mediaType != null)
             query = query.Where(d => d.MediaType == mediaType);
-
+        
         var totalCount = query.Count();
 
-        var decks = query.OrderBy(d => d.Id)
-                         .Skip(offset ?? 0)
-                         .Take(pageSize)
-                         .ToList();
+        var decks = query
+                    .Include(d => d.Links)
+                    .OrderBy(d => d.OriginalTitle)
+                    .Skip(offset ?? 0)
+                    .Take(pageSize)
+                    .ToList();
 
         return new PaginatedResponse<List<Deck>>(decks, totalCount, pageSize, offset ?? 0);
     }
@@ -69,7 +70,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             var reading = word.dw.ReadingType == 0
                 ? word.jmDictWord.Readings[word.dw.ReadingIndex]
                 : word.jmDictWord.KanaReadings[word.dw.ReadingIndex];
-            var alternativeReadings = word.jmDictWord.Readings.Concat(word.jmDictWord.KanaReadings).ToList();
+            var alternativeReadings = word.jmDictWord.Readings.Concat(word.jmDictWord.KanaReadings).Concat(word.jmDictWord.ObsoleteReadings).ToList();
             alternativeReadings.RemoveAll(r => r == reading);
 
             int i = 1;

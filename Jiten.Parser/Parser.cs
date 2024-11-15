@@ -21,7 +21,7 @@ class SudachiInterop
 
         // Convert the result to a C# string
         string result = Marshal.PtrToStringAnsi(resultPtr) ?? string.Empty;
-        
+
         // Free the string allocated in Rust
         free_string(resultPtr);
 
@@ -29,62 +29,37 @@ class SudachiInterop
     }
 }
 
-
 public class Parser
 {
-    private static HashSet<(string, string, string)> SpecialCases3 = new HashSet<(string, string, string)> { ("な", "の", "で"),
-                                                                         ( "で", "は" ,"ない")
-                                                                     };
-    
-    private static HashSet<(string, string)> SpecialCases2 = new HashSet<(string, string)>
-                                                            {
-                                                                ("じゃ", "ない"),
-                                                                ("に", "しろ"),
-                                                                ("だ", "けど"),
-                                                                ("だ", "が"),
-                                                                ("で", "さえ"),
-                                                                ("で", "すら"),
-                                                                ("と", "いう"),
-                                                                ("と", "か"),
-                                                                ("だ", "から"),
-                                                                ("これ", "まで"),
-                                                                ("くせ", "に"),
-                                                                ("の", "で"),
-                                                                ("誰", "も"),
-                                                                ("誰", "か"),
-                                                                ("すぐ", "に"),
-                                                                ("なん", "か")
-                                                            };
+    private static HashSet<(string, string, string)> SpecialCases3 =
+        [("な", "の", "で"), ("で", "は", "ない")];
 
-    
-    // public List<WordInfo> Parse(string text)
-    // {
-    //     var parameters = new MeCabParam() { DicDir = @"Y:\CODE\JapaneseParser\CustomDics\unidic", };
-    //     var tagger = MeCabTagger.Create(parameters);
-    //     var nodes = tagger.ParseToNodes(text).ToList();
-    //     List<WordInfo> wordInfos = new List<WordInfo>();
-    //
-    //     foreach (var node in nodes)
-    //     {
-    //         if (node.CharType > 0)
-    //             wordInfos.Add(new WordInfo(node));
-    //     }
-    //
-    //     wordInfos = CombineConjunctiveParticle(wordInfos);
-    //     wordInfos = CombinePrefixes(wordInfos);
-    //     wordInfos = CombineAmounts(wordInfos);
-    //     wordInfos = CombineVerbDependant(wordInfos);
-    //     wordInfos = CombineAuxiliary(wordInfos);
-    //     wordInfos = CombineAuxiliaryVerbStem(wordInfos);
-    //     wordInfos = CombineSuffix(wordInfos);
-    //
-    //     return wordInfos;
-    // }
+    private static HashSet<(string, string)> SpecialCases2 =
+    [
+        ("じゃ", "ない"),
+        ("に", "しろ"),
+        ("だ", "けど"),
+        ("だ", "が"),
+        ("で", "さえ"),
+        ("で", "すら"),
+        ("と", "いう"),
+        ("と", "か"),
+        ("だ", "から"),
+        ("これ", "まで"),
+        ("くせ", "に"),
+        ("の", "で"),
+        ("誰", "も"),
+        ("誰", "か"),
+        ("すぐ", "に"),
+        ("なん", "か"),
+        ("だっ", "た")
+    ];
+
 
     public async Task<List<WordInfo>> Parse(string text)
     {
         // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Jiten.Parser\resources\user_dic.xml -s F:\00_RawJap\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Jiten.Parser\resources\user_dic.dic"
-        
+
         // Preprocess the text to remove invalid characters
         PreprocessText(ref text);
 
@@ -133,7 +108,7 @@ public class Parser
         wordInfos = CombineParticles(wordInfos);
 
         wordInfos = CombineFinal(wordInfos);
-        
+
         return wordInfos;
     }
 
@@ -267,13 +242,14 @@ public class Parser
                 wordInfos[i + 1].DictionaryForm == "する")
             {
                 wordInfos[i].Text += wordInfos[i + 1].Text;
+                wordInfos[i].PartOfSpeech = PartOfSpeech.Verb;
                 wordInfos.RemoveAt(i + 1);
             }
         }
 
         return wordInfos;
     }
-    
+
     private List<WordInfo> CombineAdverbialParticle(List<WordInfo> wordInfos)
     {
         // Dependants
@@ -313,11 +289,20 @@ public class Parser
         for (int i = 1; i < wordInfos.Count; i++)
         {
             if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary && (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
-                                                                                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
-                                                                               // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
-                                                                                 ))
+                                                                        wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
+                    // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
+                ))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
+                wordInfos.RemoveAt(i);
+                i--;
+            }
+
+            if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary &&
+                wordInfos[i - 1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleNaAdjective) && wordInfos[i].Text == "な")
+            {
+                wordInfos[i - 1].Text += wordInfos[i].Text;
+                wordInfos[i - 1].PartOfSpeech = PartOfSpeech.NaAdjective;
                 wordInfos.RemoveAt(i);
                 i--;
             }
@@ -330,7 +315,7 @@ public class Parser
     {
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if (/*wordInfos[i].AnyPartOfSpeechSection(PartOfSpeechSection.Suffix) &&*/
+            if ( /*wordInfos[i].AnyPartOfSpeechSection(PartOfSpeechSection.Suffix) &&*/
                 wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AuxiliaryVerbStem) &&
                 (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective))
             {
@@ -347,7 +332,8 @@ public class Parser
     {
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix)) && (wordInfos[i].DictionaryForm != "たち" || wordInfos[i-1].PartOfSpeech == PartOfSpeech.Pronoun))
+            if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix)) &&
+                (wordInfos[i].DictionaryForm != "たち" || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
@@ -362,7 +348,6 @@ public class Parser
     {
         for (int i = 0; i < wordInfos.Count - 1; i++)
         {
-            
             // には
             if (wordInfos[i].Text == "に" && wordInfos[i + 1].Text == "は")
             {
@@ -376,14 +361,14 @@ public class Parser
                 wordInfos[i].Text = "とは";
                 wordInfos.RemoveAt(i + 1);
             }
-            
+
             // では
             if (wordInfos[i].Text == "で" && wordInfos[i + 1].Text == "は")
             {
                 wordInfos[i].Text = "では";
                 wordInfos.RemoveAt(i + 1);
             }
-            
+
             // のに
             if (wordInfos[i].Text == "の" && wordInfos[i + 1].Text == "に")
             {

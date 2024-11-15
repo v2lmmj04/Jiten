@@ -45,16 +45,16 @@ public class JitenDbContext : DbContext
                   .ValueGeneratedOnAdd();
             
             entity.Property(d => d.ParentDeckId)
-                  .HasDefaultValue(0);
+                  .HasDefaultValue(null);
 
             entity.Property(d => d.OriginalTitle)
-                  .HasMaxLength(100);
+                  .HasMaxLength(200);
 
             entity.Property(d => d.RomajiTitle)
-                  .HasMaxLength(100);
+                  .HasMaxLength(200);
 
             entity.Property(d => d.EnglishTitle)
-                  .HasMaxLength(100);
+                  .HasMaxLength(200);
 
             entity.HasMany(d => d.Links)
                   .WithOne(l => l.Deck)
@@ -90,7 +90,6 @@ public class JitenDbContext : DbContext
                   .HasForeignKey(dw => dw.DeckId);
         });
 
-
         modelBuilder.Entity<JmDictWord>(entity =>
         {
             entity.ToTable("Words", "jmdict");
@@ -108,6 +107,10 @@ public class JitenDbContext : DbContext
 
             entity.Property(e => e.KanaReadings)
                   .HasColumnType("text[]");
+            
+            entity.Property(e => e.ObsoleteReadings)
+                  .HasColumnType("text[]")
+                  .IsRequired(false);
 
             entity.Property(e => e.PartsOfSpeech)
                   .HasColumnType("text[]");
