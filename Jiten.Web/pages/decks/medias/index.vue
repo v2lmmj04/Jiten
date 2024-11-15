@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {useApiFetchPaginated} from "~/composables/useApiFetch";
-import type {Deck} from "~/types";
+import {type Deck, MediaType} from "~/types";
 import Skeleton from 'primevue/skeleton';
 import Card from 'primevue/card';
 
@@ -37,8 +37,21 @@ const nextLink = computed(() => {
 
 <template>
   <div>
-    <h1>Medias</h1>
-
+    <Card>
+      <template #content>
+        <div class="flex flex-row flex-wrap justify-around">
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.Anime } }">Anime</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.Drama } }">Dramas</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.Movie } }">Movies</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.Novel } }">Novels</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.NonFiction } }">Non-Fiction</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.VideoGame } }">Video Games</NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.VisualNovel } }">Visual Novels
+          </NuxtLink>
+          <NuxtLink :to="{ path: '/decks/medias', query: { mediaType: MediaType.WebNovel } }">Web Novels</NuxtLink>
+        </div>
+      </template>
+    </Card>
     <div>
       <div class="flex flex-col gap-1">
         <div class="flex justify-between ">

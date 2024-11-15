@@ -1,3 +1,11 @@
+:root{
+    background-color: var(--p-neutral-50);
+}
+
+:root[class="dark-mode"]{
+    background-color: black;
+}
+
 .p-card {
     background-color: #fff;
     border: 1px solid #e6e6e6;

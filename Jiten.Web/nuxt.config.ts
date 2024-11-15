@@ -4,7 +4,33 @@ import Lara from '@primevue/themes/lara';
 import {definePreset} from "@primeuix/styled";
 
 // Custom theming
-const JitenPreset = definePreset(Lara, {});
+const JitenPreset = definePreset(Lara, {
+    semantic:{
+        primary: {
+            50: '{purple.50}',
+            100: '{purple.100}',
+            200: '{purple.200}',
+            300: '{purple.300}',
+            400: '{purple.400}',
+            500: '{purple.500}',
+            600: '{purple.600}',
+            700: '{purple.700}',
+            800: '{purple.800}',
+            900: '{purple.900}',
+            950: '{purple.950}'
+        },
+    },
+    components: {
+        card: {
+            caption:{
+                gap: "0"
+            },
+            body: {
+                padding: "1rem"
+            }
+        }
+    }
+});
 
 export default defineNuxtConfig({
     compatibilityDate: '2024-04-03',

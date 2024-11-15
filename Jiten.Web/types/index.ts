@@ -17,9 +17,26 @@ export interface Deck {
     links: Link[];
 }
 
-export interface MediaType {
-    mediaTypeId: number;
-    name: string;
+export enum MediaType {
+    Anime = 1,
+    Drama = 2,
+    Movie = 3,
+    Novel = 4,
+    NonFiction = 5,
+    VideoGame = 6,
+    VisualNovel = 7,
+    WebNovel = 8
+}
+
+export enum LinkType
+{
+    Web = 1,
+    Vndb = 2,
+    Tmdb = 3,
+    Anilist = 4,
+    Mal = 5, // Myanimelist
+    GoogleBooks = 6,
+    Imdb = 7
 }
 
 export interface DeckWord {
