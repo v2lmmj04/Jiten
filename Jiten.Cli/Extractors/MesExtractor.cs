@@ -3,7 +3,10 @@ using System.Text.RegularExpressions;
 
 namespace Jiten.Cli;
 
-public class MscExtractor
+/// <summary>
+/// Extract Silky's Plus Engine MES scenario files
+/// </summary>
+public class MesExtractor
 {
     public async Task<string> Extract(string? filePath, bool verbose)
     {
@@ -35,30 +38,27 @@ public class MscExtractor
         foreach (var file in files)
         {
             var lines = await File.ReadAllLinesAsync(file, Encoding.GetEncoding("Shift-JIS"));
-            bool isMessage = false;
+            bool isUncrypt = false;
 
             foreach (var line in lines)
             {
-                if (line == "#1-MESSAGE")
+                if (line == "#1-STR_UNCRYPT")
                 {
-                    isMessage = true;
+                    isUncrypt = true;
                     continue;
                 }
 
-                if (!isMessage) continue;
-
-                isMessage = false;
-                var match = Regex.Match(line, @"'([^']*)'");
-                var message = match.Groups[1].Value;
-
-                message = message.Replace("']", "").Replace("_n_r", "").Replace("'", "").Replace(@"\u3000", "").Replace("_n", "").Replace(@"\\n", "");
-                message = Regex.Replace(message, @"\【.*?\】", "", RegexOptions.None);
-                message = Regex.Replace(message, @"\“<(.*?),.*?>\”", "$1", RegexOptions.None);
-                message = Regex.Replace(message, @"<(.*?),.*?>", "$1", RegexOptions.None);
-                message = Regex.Replace(message, @"\[.*?\]", "", RegexOptions.None);
+                if (!isUncrypt) continue;
                 
+                isUncrypt = false;
+                var match = Regex.Match(line, @"\""([^\""]*)\""");
+                if (!match.Success) continue;
+                
+                var message = match.Groups[1].Value.Trim();
                 if (!string.IsNullOrWhiteSpace(message))
+                {
                     extractedText.AppendLine(message);
+                }
             }
         }
 

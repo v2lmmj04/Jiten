@@ -3,6 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace Jiten.Cli;
 
+/// <summary>
+/// Extract CatSystem2's scenario files
+/// </summary>
 public class Cs2Extractor
 {
     private List<string> _stripLinesStartingWith = new()
@@ -38,7 +41,10 @@ public class Cs2Extractor
                                                        "jump",
                                                        "movie",
                                                        "title",
-                                                       "end_of"
+                                                       "end_of",
+                                                       "init",
+                                                       "sysbtn",
+                                                       "keyskip",
                                                    };
 
     private List<string> _regexFilter = new()
@@ -112,6 +118,7 @@ public class Cs2Extractor
                 trimmedLine = Regex.Replace(trimmedLine, @"^.*?\t(?=\「.*?\」$)", "");
                 trimmedLine = Regex.Replace(trimmedLine, @"^.*?\t(?=\（.*?\）$)", "");
                 trimmedLine = Regex.Replace(trimmedLine, @"^.*?\t(?=\『.*?\』$)", "");
+                trimmedLine = Regex.Replace(trimmedLine, @"^.*?\t(?=\「.*?\」$)", "");
 
                 if (!string.IsNullOrWhiteSpace(trimmedLine))
                     extractedText.AppendLine(trimmedLine);

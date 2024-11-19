@@ -193,16 +193,18 @@ public static class MetadataDownloader
 
     private static async Task<Metadata?> ProcessFileWithApi(string filePath)
     {
+        var fileName = new DirectoryInfo(Path.GetDirectoryName(filePath)!).Name;
+
         while (true)
         {
-            var fileName = Path.GetFileNameWithoutExtension(filePath);
+            Console.WriteLine($"File: {Path.GetFileNameWithoutExtension(filePath)}");
             Console.WriteLine($"Press enter to query **{fileName}**, press 'q' or 'query' to write a custom query, 'a' or 'abort' to abort or type a string to give a custom title and return immediately:");
 
             var input = Console.ReadLine()?.Trim();
 
             if (string.IsNullOrEmpty(input))
             {
-                input = filePath;
+                input = fileName;
             }
             else if (input.Equals("q", StringComparison.OrdinalIgnoreCase) || input.Equals("query", StringComparison.OrdinalIgnoreCase))
             {
@@ -210,7 +212,7 @@ public static class MetadataDownloader
                 var queryText = Console.ReadLine()?.Trim();
                 if (!string.IsNullOrEmpty(queryText))
                 {
-                    filePath = queryText;
+                    fileName = queryText;
                     continue;
                 }
             }
@@ -232,7 +234,7 @@ public static class MetadataDownloader
                 continue;
             }
 
-            Console.WriteLine($"\nResults for {Path.GetFileName(filePath)}:");
+            Console.WriteLine($"\nResults for {Path.GetFileName(fileName)}:");
 
             for (int i = 0; i < results.Count; i++)
             {
@@ -251,7 +253,7 @@ public static class MetadataDownloader
                 var queryText = Console.ReadLine()?.Trim();
                 if (!string.IsNullOrEmpty(queryText))
                 {
-                    filePath = queryText;
+                    fileName = queryText;
                     continue;
                 }
             }

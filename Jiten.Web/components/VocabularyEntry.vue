@@ -30,7 +30,7 @@ const definitionsWithPartsOfSpeech = computed(() => {
 
 <template>
   <Card class="">
-    <template #title>{{ word.reading }}
+    <template #title><span class="font-noto-sans">{{ word.reading }}</span>
       <Button @click="toggleCompact" text size="small">{{ isCompact ? 'Expand' : 'Compact' }}</Button>
 
     </template>

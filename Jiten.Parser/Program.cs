@@ -18,7 +18,7 @@ namespace Jiten.Parser
         public static async Task Main(string[] args)
         {
             // var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-            var text = "風景に飽き始める頃に";
+            var text = "７ー";
 
             await ParseText(text);
         }
@@ -59,7 +59,7 @@ namespace Jiten.Parser
             // Only keep kanjis, kanas, digits,full width digits, latin characters, full width latin characters 
             wordInfos.ForEach(x => x.Text =
                                   Regex.Replace(x.Text,
-                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19]",
+                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
                                                 ""));
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
@@ -128,7 +128,7 @@ namespace Jiten.Parser
                                                     candidates.RemoveAt(baseDictionaryWordIndex);
                                                     candidates.Insert(0, baseDictionaryWordCandidate);
                                                 }
-                                                
+
                                                 // if there's a candidate that's the same as the base word, put it first in the list
                                                 var baseWord = WanaKana.ToHiragana(item.word.wordInfo.Text);
                                                 var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
@@ -138,7 +138,7 @@ namespace Jiten.Parser
                                                     candidates.RemoveAt(baseWordIndex);
                                                     candidates.Insert(0, baseWordCandidate);
                                                 }
-                                                
+
                                                 foreach (var candidate in candidates)
                                                 {
                                                     foreach (var id in candidate.ids)
@@ -171,22 +171,25 @@ namespace Jiten.Parser
                                             }
                                             else
                                             {
-                                                var textInHiragana = WanaKana.ToHiragana(item.word.wordInfo.Text);
+                                                var textInHiragana =
+                                                    WanaKana.ToHiragana(item.word.wordInfo.Text,
+                                                                        new DefaultOptions { ConvertLongVowelMark = false });
 
                                                 if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
                                                 {
                                                     candidates = candidates.OrderBy(c => c).ToList();
-                                                    
+
                                                     // Try to find the best match, use the firs tcandi
                                                     JmDictWord? bestMatch = null;
-                                                    
+
                                                     foreach (var id in candidates)
                                                     {
                                                         if (!_allWords.TryGetValue(id, out var word)) continue;
-                                                        
-                                                        List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech()).ToList();
+
+                                                        List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
+                                                                                     .ToList();
                                                         if (!pos.Contains(item.word.wordInfo.PartOfSpeech)) continue;
-                                                        
+
                                                         bestMatch = word;
                                                         break;
                                                     }
@@ -196,7 +199,8 @@ namespace Jiten.Parser
                                                         if (!_allWords.TryGetValue(candidates[0], out bestMatch)) return;
                                                     }
 
-                                                    var normalizedReadings = bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                                                    var normalizedReadings =
+                                                        bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
                                                     var normalizedKanaReadings =
                                                         bestMatch.KanaReadings.Select(r => WanaKana.ToHiragana(r)).ToList();
                                                     byte readingType = normalizedReadings.Contains(textInHiragana) ? (byte)0 : (byte)1;

@@ -17,6 +17,11 @@ namespace Jiten.Cli.Data.Vndb
                 if (int.TryParse(stringValue, out int year))
                     return new DateTime(year, 1, 1);
             }
+            
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                return default;
+            }
 
             throw new JsonException("Invalid date format");
         }

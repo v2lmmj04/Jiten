@@ -52,7 +52,7 @@ public class ParserTests
     [InlineData("話したくなる", new[] { "話したくなる" })]
     [InlineData("進化してく友情", new[] { "進化してく", "友情" })]
     [InlineData("私に任せてくれ", new[] { "私", "に", "任せてくれ" })]
-    [InlineData("時までに帰ってくると約束してくれるのなら外出してよろしい", new[] { "時", "まで", "に", "帰ってくる", "と", "約束してくれる", "の", "なら", "外出して", "よろしい" })]
+    [InlineData("時までに帰ってくると約束してくれるのなら外出してよろしい", new[] { "時", "まで", "に", "帰ってくる", "と", "約束して", "くれる", "の", "なら", "外出して", "よろしい" })]
     [InlineData("雨が降りそうな気がします", new[] { "雨", "が", "降りそう", "な", "気がします" })]
     [InlineData("新しそうだ", new[] { "新しそう", "だ" })]
     [InlineData("本を読んだりテレビを見たりします", new[] { "本", "を", "読んだり", "テレビ", "を", "見たり", "します" })]
@@ -471,7 +471,7 @@ public class ParserTests
     [InlineData("出来そう", new[] { "出来そう" })]
     [InlineData("その上着貸してください", new[] { "その", "上着", "貸してください" })]
     [InlineData("幸多き", new[] { "幸", "多き" })]
-    [InlineData("きっと気に入っていつかまた来てくれるよ", new[] { "きっと", "気に入って", "いつか", "また", "来てくれる", "よ" })]
+    [InlineData("きっと気に入っていつかまた来てくれるよ", new[] { "きっと", "気に入って", "いつか", "また", "来て", "くれる", "よ" })]
     [InlineData("私がいそうな場所知ってたんだから", new[] { "私", "が", "いそう", "な", "場所", "知ってた", "ん", "だから" })]
     [InlineData("うまくハメられた", new[] { "うまく", "ハメられた" })]
     [InlineData("してるとこだから", new[] { "してる", "とこ", "だから" })]
@@ -483,6 +483,7 @@ public class ParserTests
     [InlineData("必要な", new[] { "必要な" })]
     [InlineData("大切な", new[] { "大切な" })]
     [InlineData("飽き始める", new[] { "飽き", "始める" })]
+    [InlineData("教えてあげましょう", new[] { "教えて", "あげましょう" })]
     public async Task SegmentationTest(string text, string[] expectedResult)
     {
         (await Parse(text)).Select(r => r.Text).Should().Equal(expectedResult);

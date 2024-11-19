@@ -5,6 +5,9 @@ using System.Text.RegularExpressions;
 
 namespace Jiten.Cli;
 
+/// <summary>
+/// Extract KiriKiri's PSB scenario files
+/// </summary>
 public class PsbExtractor
 {
     public class Root

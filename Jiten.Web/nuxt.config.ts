@@ -40,7 +40,12 @@ export default defineNuxtConfig({
             baseURL: process.env.BASE_URL || 'https://localhost:7299/api/',
         },
     },
-    modules: ['@nuxtjs/tailwindcss', "@primevue/nuxt-module", '@nuxt/icon'],
+    modules: [
+      '@nuxtjs/tailwindcss',
+      "@primevue/nuxt-module",
+      '@nuxt/icon',
+      '@nuxtjs/google-fonts'
+    ],
     primevue: {
         options: {
             theme: {
@@ -51,5 +56,12 @@ export default defineNuxtConfig({
             }
         }
     },
+    googleFonts: {
+        families: {
+            'Noto+Sans+JP': [400, 700],
+        },
+        display: 'swap',
+    }
+    ,
     css: ['~/assets/css/main.css']
 })

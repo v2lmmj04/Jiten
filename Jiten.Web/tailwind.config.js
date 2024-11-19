@@ -2,7 +2,11 @@
 export default {
   content: [],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'noto-sans': ['Noto Sans JP', 'sans-serif'],
+      }
+    },
   },
   plugins: [],
 }

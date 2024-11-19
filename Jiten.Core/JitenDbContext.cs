@@ -13,6 +13,7 @@ public class JitenDbContext : DbContext
     public DbSet<DeckWord> DeckWords { get; set; }
 
     public DbSet<JmDictWord> JMDictWords { get; set; }
+    public DbSet<JmDictWordFrequency> JmDictWordFrequencies { get; set; }
     public DbSet<JmDictDefinition> Definitions { get; set; }
     public DbSet<JmDictLookup> Lookups { get; set; }
 
@@ -38,12 +39,12 @@ public class JitenDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("jiten"); // Set a default schema
-        
+
         modelBuilder.Entity<Deck>(entity =>
         {
             entity.Property(d => d.Id)
                   .ValueGeneratedOnAdd();
-            
+
             entity.Property(d => d.ParentDeckId)
                   .HasDefaultValue(null);
 
@@ -64,7 +65,7 @@ public class JitenDbContext : DbContext
             entity.HasIndex(d => d.RomajiTitle).HasDatabaseName("IX_RomajiTitle");
             entity.HasIndex(d => d.EnglishTitle).HasDatabaseName("IX_EnglishTitle");
             entity.HasIndex(d => d.MediaType).HasDatabaseName("IX_MediaType");
-            
+
             entity.HasOne(d => d.ParentDeck)
                   .WithMany(p => p.Children)
                   .HasForeignKey(d => d.ParentDeckId)
@@ -74,9 +75,9 @@ public class JitenDbContext : DbContext
 
         modelBuilder.Entity<DeckWord>(entity =>
         {
-              entity.Property(d => d.Id)
-                    .ValueGeneratedOnAdd();
-              
+            entity.Property(d => d.Id)
+                  .ValueGeneratedOnAdd();
+
             entity.HasKey(dw => new { dw.Id, });
 
             entity.HasIndex(dw => new { dw.WordId, dw.ReadingType, dw.ReadingIndex })
@@ -107,7 +108,7 @@ public class JitenDbContext : DbContext
 
             entity.Property(e => e.KanaReadings)
                   .HasColumnType("text[]");
-            
+
             entity.Property(e => e.ObsoleteReadings)
                   .HasColumnType("text[]")
                   .IsRequired(false);
@@ -150,6 +151,16 @@ public class JitenDbContext : DbContext
             entity.Property(e => e.WordId).IsRequired();
             entity.Property(e => e.LookupKey).IsRequired();
         });
+
+        modelBuilder.Entity<JmDictWordFrequency>(entity =>
+        {
+            entity.ToTable("WordFrequencies", "jmdict");
+            entity.HasKey(e => e.WordId);
+            entity.HasOne<JmDictWord>()
+                  .WithMany()
+                  .HasForeignKey(f => f.WordId);
+        });
+
 
         modelBuilder.Entity<Link>(entity =>
         {

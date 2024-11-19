@@ -9,6 +9,7 @@ using Jiten.Cli;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+// ReSharper disable MethodSupportsCancellation
 
 public class Program
 {
@@ -84,6 +85,9 @@ public class Program
 
         [Option(longName: "insert", Required = false, HelpText = "Insert the parsed deck.json into the database from a directory.")]
         public string Insert { get; set; }
+        
+        [Option(longName: "compute-frequencies", Required = false, HelpText = "Compute global word frequencies")]
+        public bool ComputeFrequencies { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -153,6 +157,11 @@ public class Program
                             if (await Insert(o)) return;
                         }
 
+                        if (o.ComputeFrequencies)
+                        {
+                            await JitenHelper.ComputeFrequencies();
+                        }
+                        
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
@@ -267,7 +276,7 @@ public class Program
                 link.Deck = baseDeck;
             }
 
-            await File.WriteAllTextAsync(Path.Combine(directory, "deck.json"), JsonSerializer.Serialize(baseDeck, serializerOptions), _);
+            await File.WriteAllTextAsync(Path.Combine(directory, "deck.json"), JsonSerializer.Serialize(baseDeck, serializerOptions));
 
             if (options.Verbose)
                 Console.WriteLine($"Base deck {baseDeck.OriginalTitle} processed with {baseDeck.DeckWords.Count} words." +
@@ -389,7 +398,7 @@ public class Program
 
                 break;
             case "generic-utf8":
-                result = await new GenericExtractor().Extract(o.ExtractFilePath, "UTF8", o.Verbose);
+                result = await new GenericExtractor().Extract(o.ExtractFilePath, "UTF-8", o.Verbose);
                 if (o.Output != null)
                 {
                     await File.WriteAllTextAsync(o.Output, result);
@@ -414,6 +423,24 @@ public class Program
                 break;
             case "cs2":
                 result = await new Cs2Extractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            
+            case "mes":
+                result = await new MesExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+            
+            case "nexas":
+                result = await new NexasExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
                 {
                     await File.WriteAllTextAsync(o.Output, result);

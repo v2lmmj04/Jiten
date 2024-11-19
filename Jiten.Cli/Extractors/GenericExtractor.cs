@@ -27,11 +27,17 @@ public class GenericExtractor
                                                        "return",
                                                        "sys",
                                                        "nvl",
+                                                       "[eval",
+                                                       "[bg",
                                                        "【",
                                                        "@",
                                                        "<",
                                                        "^",
-                                                       "\\"
+                                                       "none",
+                                                       "\\",
+                                                       "\u25cb",
+                                                       "\u25cf",
+                                                       "#",
                                                    };
 
     public async Task<string> Extract(string? filePath, string encoding, bool verbose)
@@ -63,7 +69,7 @@ public class GenericExtractor
 
         foreach (var file in files)
         {
-            var lines = await File.ReadAllLinesAsync(file, Encoding.GetEncoding("Shift-JIS"));
+            var lines = await File.ReadAllLinesAsync(file, Encoding.GetEncoding(encoding));
 
             foreach (var line in lines)
             {
