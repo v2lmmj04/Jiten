@@ -80,7 +80,7 @@ public class JitenDbContext : DbContext
 
             entity.HasKey(dw => new { dw.Id, });
 
-            entity.HasIndex(dw => new { dw.WordId, dw.ReadingType, dw.ReadingIndex })
+            entity.HasIndex(dw => new { dw.WordId, dw.ReadingIndex })
                   .HasDatabaseName("IX_WordReadingIndex");
 
             entity.HasIndex(dw => dw.DeckId)
@@ -106,8 +106,8 @@ public class JitenDbContext : DbContext
             entity.Property(e => e.Readings)
                   .HasColumnType("text[]");
 
-            entity.Property(e => e.KanaReadings)
-                  .HasColumnType("text[]");
+            entity.Property(e => e.ReadingTypes)
+                  .HasColumnType("int[]");
 
             entity.Property(e => e.ObsoleteReadings)
                   .HasColumnType("text[]")
@@ -160,7 +160,6 @@ public class JitenDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(f => f.WordId);
         });
-
 
         modelBuilder.Entity<Link>(entity =>
         {

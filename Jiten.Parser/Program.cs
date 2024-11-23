@@ -150,17 +150,11 @@ namespace Jiten.Parser
                                                         if (!pos.Contains(item.word.wordInfo.PartOfSpeech)) continue;
 
                                                         var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                                                        var normalizedKanaReadings = word.KanaReadings.Select(r => WanaKana.ToHiragana(r))
-                                                                                         .ToList();
-                                                        byte readingType = normalizedReadings.Contains(candidate.text) ? (byte)0 : (byte)1;
-                                                        byte readingIndex = readingType == 0
-                                                            ? (byte)normalizedReadings.IndexOf(candidate.text)
-                                                            : (byte)normalizedKanaReadings.IndexOf(candidate.text);
+                                                        byte readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
 
                                                         DeckWord deckWord = new()
                                                                             {
                                                                                 WordId = id,
-                                                                                ReadingType = readingType,
                                                                                 ReadingIndex = readingIndex,
                                                                                 Occurrences = item.word.occurrences
                                                                             };
@@ -201,17 +195,11 @@ namespace Jiten.Parser
 
                                                     var normalizedReadings =
                                                         bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                                                    var normalizedKanaReadings =
-                                                        bestMatch.KanaReadings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                                                    byte readingType = normalizedReadings.Contains(textInHiragana) ? (byte)0 : (byte)1;
-                                                    byte readingIndex = readingType == 0
-                                                        ? (byte)normalizedReadings.IndexOf(textInHiragana)
-                                                        : (byte)normalizedKanaReadings.IndexOf(textInHiragana);
+                                                    byte readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
 
                                                     DeckWord deckWord = new()
                                                                         {
                                                                             WordId = bestMatch.WordId,
-                                                                            ReadingType = readingType,
                                                                             ReadingIndex = readingIndex,
                                                                             Occurrences = item.word.occurrences
                                                                         };

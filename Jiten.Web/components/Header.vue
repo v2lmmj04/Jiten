@@ -14,6 +14,7 @@ function toggleDarkMode() {
       <nav class="space-x-6">
         <nuxt-link to="/" class="text-white">Home</nuxt-link>
         <nuxt-link to="/decks/medias" class="text-white">Medias</nuxt-link>
+        <nuxt-link to="/other" class="text-white">Other</nuxt-link>
         <Button label="Toggle Dark Mode" icon="github" @click="toggleDarkMode()" severity="secondary" >
           <Icon name="line-md:light-dark"/>
         </Button>

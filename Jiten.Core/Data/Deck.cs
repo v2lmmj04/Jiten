@@ -119,7 +119,6 @@ public class Deck
             foreach (var childDeckWord in child.DeckWords)
             {
                 var existingDeckWord = DeckWords.FirstOrDefault(dw => dw.WordId == childDeckWord.WordId &&
-                                                                      dw.ReadingType == childDeckWord.ReadingType &&
                                                                       dw.ReadingIndex == childDeckWord.ReadingIndex);
                 if (existingDeckWord != null)
                 {
@@ -131,7 +130,6 @@ public class Deck
                                   {
                                       DeckId = Id,
                                       WordId = childDeckWord.WordId,
-                                      ReadingType = childDeckWord.ReadingType,
                                       ReadingIndex = childDeckWord.ReadingIndex,
                                       Occurrences = childDeckWord.Occurrences,
                                       Deck = this
@@ -163,9 +161,7 @@ public class Deck
                              .ToList();
         foreach (var word in words)
         {
-            var reading = word.dw.ReadingType == 0
-                ? word.jmDictWord!.Readings[word.dw.ReadingIndex]
-                : word.jmDictWord!.KanaReadings[word.dw.ReadingIndex];
+            var reading = word.jmDictWord!.Readings[word.dw.ReadingIndex];
 
             for (int i = 0; i < word.dw.Occurrences; i++)
             {

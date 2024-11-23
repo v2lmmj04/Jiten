@@ -15,11 +15,6 @@ public class DeckWord
     public int WordId { get; set; }
     
     /// <summary>
-    /// 0 for reading, 1 for kanareading
-    /// </summary>
-    public byte ReadingType { get; set; }
-    
-    /// <summary>
     /// The index of the reading in the list of readings
     /// </summary>
     public byte ReadingIndex { get; set; }

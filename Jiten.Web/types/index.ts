@@ -55,10 +55,23 @@ export interface Link {
 
 export interface Word {
     wordId: number;
-    reading: string;
-    alternativeReadings: string[];
+    mainReading: Reading;
+    alternativeReadings: Reading[];
     partsOfSpeech: string[];
     definitions: Definition[];
+}
+
+export interface Reading {
+    text: string;
+    readingType: ReadingType;
+    readingIndex: number;
+    frequencyRank: number;
+    frequencyPercentage: number;
+}
+
+export enum ReadingType {
+    Reading = 0,
+    KanaReading = 1
 }
 
 export interface Definition {

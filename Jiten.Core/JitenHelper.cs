@@ -1,6 +1,8 @@
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace Jiten.Core;
 
@@ -29,10 +31,27 @@ public static class JitenHelper
         await using var context = new JitenDbContext();
 
         // Delete previous frequency data if it exists
-        context.JmDictWordFrequencies.RemoveRange(context.JmDictWordFrequencies);
-        await context.SaveChangesAsync();
+        await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE jmdict.\"WordFrequencies\"");
 
         Dictionary<int, JmDictWordFrequency> wordFrequencies = new();
+
+        // Prefill the dictionary with default values
+        var allWords = await context.JMDictWords.AsNoTracking().ToListAsync();
+
+        foreach (var word in allWords)
+        {
+            var wordFrequency = new JmDictWordFrequency
+                                {
+                                    WordId = word.WordId,
+                                    FrequencyRank = 0,
+                                    UsedInMediaAmount = 0,
+                                    ReadingsFrequencyPercentage = [..new float[word.Readings.Count]],
+                                    ReadingsFrequencyRank = [..new int[word.Readings.Count]],
+                                    ReadingsUsedInMediaAmount = [..new int[word.Readings.Count]],
+                                };
+
+            wordFrequencies.Add(word.WordId, wordFrequency);
+        }
 
         int totalEntries = await context.DeckWords.CountAsync();
         for (int i = 0; i < totalEntries; i += batchSize)
@@ -45,48 +64,12 @@ public static class JitenHelper
 
             foreach (var deckWord in deckWords)
             {
-                var word = wordFrequencies.TryGetValue(deckWord.WordId, out var wordFrequency)
-                    ? wordFrequency
-                    : new JmDictWordFrequency
-                      {
-                          WordId = deckWord.WordId,
-                          FrequencyRank = 0,
-                          UsedInMediaAmount = 0,
-                          ReadingsFrequencyPercentage = [],
-                          KanaReadingsFrequencyPercentage = [],
-                          ReadingsFrequencyRank = [],
-                          KanaReadingsFrequencyRank = [],
-                          ReadingsUsedInMediaAmount = [],
-                          KanaReadingsUsedInMediaAmount = [],
-                      };
+                var word = wordFrequencies[deckWord.WordId];
 
                 word.FrequencyRank += deckWord.Occurrences;
                 word.UsedInMediaAmount++;
-
-                if (deckWord.ReadingType == 0)
-                {
-                    while (word.ReadingsUsedInMediaAmount.Count <= deckWord.ReadingIndex)
-                    {
-                        word.ReadingsUsedInMediaAmount.Add(0);
-                        word.ReadingsFrequencyPercentage.Add(0);
-                        word.ReadingsFrequencyRank.Add(0);
-                    }
-
-                    word.ReadingsUsedInMediaAmount[deckWord.ReadingIndex]++;
-                    word.ReadingsFrequencyRank[deckWord.ReadingIndex] += deckWord.Occurrences;
-                }
-                else
-                {
-                    while (word.KanaReadingsUsedInMediaAmount.Count <= deckWord.ReadingIndex)
-                    {
-                        word.KanaReadingsUsedInMediaAmount.Add(0);
-                        word.KanaReadingsFrequencyPercentage.Add(0);
-                        word.KanaReadingsFrequencyRank.Add(0);
-                    }
-
-                    word.KanaReadingsUsedInMediaAmount[deckWord.ReadingIndex]++;
-                    word.KanaReadingsFrequencyRank[deckWord.ReadingIndex] += deckWord.Occurrences;
-                }
+                word.ReadingsUsedInMediaAmount[deckWord.ReadingIndex]++;
+                word.ReadingsFrequencyRank[deckWord.ReadingIndex] += deckWord.Occurrences;
 
                 wordFrequencies.TryAdd(deckWord.WordId, word);
             }
@@ -106,15 +89,11 @@ public static class JitenHelper
 
             for (int j = 0; j < word.ReadingsUsedInMediaAmount.Count; j++)
             {
-                word.ReadingsFrequencyPercentage[j] = word.ReadingsFrequencyRank[j] / (double)word.FrequencyRank * 100;
-            }
-
-            for (int j = 0; j < word.KanaReadingsUsedInMediaAmount.Count; j++)
-            {
-                word.KanaReadingsFrequencyPercentage[j] = word.KanaReadingsFrequencyRank[j] / (double)word.FrequencyRank * 100;
+                word.ReadingsFrequencyPercentage[j] = (word.ReadingsFrequencyRank[j] / (double)word.FrequencyRank) * 100;
             }
 
             // Keep the same rank if they have the same amount of occurences
+
             if (word.FrequencyRank == previousFrequencyRank)
             {
                 duplicateCount++;
@@ -134,7 +113,6 @@ public static class JitenHelper
         foreach (var wordFreq in sortedWordFrequencies)
         {
             allReadings.AddRange(wordFreq.ReadingsFrequencyRank);
-            allReadings.AddRange(wordFreq.KanaReadingsFrequencyRank);
         }
 
         // Sort by occurences and group the readings with the same amount of occurences so we can skip ranks 
@@ -160,21 +138,60 @@ public static class JitenHelper
                 int frequency = wordFreq.ReadingsFrequencyRank[i];
                 wordFreq.ReadingsFrequencyRank[i] = frequencyRanks[frequency];
             }
-
-            for (int i = 0; i < wordFreq.KanaReadingsFrequencyRank.Count; i++)
-            {
-                int frequency = wordFreq.KanaReadingsFrequencyRank[i];
-                wordFreq.KanaReadingsFrequencyRank[i] = frequencyRanks[frequency];
-            }
         }
 
-        batchSize = 10000;
+        // Bulk insert using PostgreSQL COPY command
+        const string tempTable = "temp_word_frequencies";
 
-        for (int i = 0; i < sortedWordFrequencies.Count; i += batchSize)
+        // Create a new connection for the COPY operation
+        await using var conn = new NpgsqlConnection(context.Database.GetConnectionString());
+        await conn.OpenAsync();
+
+        // First, retrieve the structure of the target table
+        var command = new NpgsqlCommand(@"
+        SELECT string_agg(column_name || ' ' || data_type, ', ' ORDER BY ordinal_position)
+        FROM information_schema.columns
+        WHERE table_name = 'WordFrequencies'
+          AND column_name != 'id'
+    ", conn);
+
+        string tableStructure = (string)await command.ExecuteScalarAsync();
+
+        // Create temp table with exact same structure
+        await using (var cmd = new NpgsqlCommand($@"
+        CREATE TEMP TABLE {tempTable} AS 
+        SELECT * FROM jmdict.""WordFrequencies"" WHERE 1=0;", conn))
         {
-            var batch = sortedWordFrequencies.Skip(i).Take(batchSize);
-            await context.JmDictWordFrequencies.AddRangeAsync(batch);
-            await context.SaveChangesAsync();
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+
+        // Perform the COPY operation
+        await using (var writer =
+                     await
+                         conn.BeginBinaryImportAsync($@"COPY {tempTable} (""WordId"", ""FrequencyRank"", ""UsedInMediaAmount"", ""ReadingsFrequencyPercentage"", ""ReadingsFrequencyRank"", ""ReadingsUsedInMediaAmount"") FROM STDIN (FORMAT BINARY)"))
+        {
+            foreach (var word in sortedWordFrequencies)
+            {
+                await writer.StartRowAsync();
+                await writer.WriteAsync(word.WordId);
+                await writer.WriteAsync(word.FrequencyRank);
+                await writer.WriteAsync(word.UsedInMediaAmount);
+                await writer.WriteAsync(word.ReadingsFrequencyPercentage, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Double);
+                await writer.WriteAsync(word.ReadingsFrequencyRank, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer);
+                await writer.WriteAsync(word.ReadingsUsedInMediaAmount, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer);
+            }
+
+            await writer.CompleteAsync();
+        }
+
+        // Insert from temp table to final table and cleanup
+        await using (var cmd = new NpgsqlCommand($@"
+        INSERT INTO jmdict.""WordFrequencies""
+        SELECT * FROM {tempTable};
+        DROP TABLE {tempTable};", conn))
+        {
+            await cmd.ExecuteNonQueryAsync();
         }
     }
 }

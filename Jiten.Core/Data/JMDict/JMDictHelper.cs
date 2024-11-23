@@ -431,7 +431,6 @@ public static class JmDictHelper
                 if (reader.Name != "entry") continue;
 
                 wordInfo.Readings = wordInfo.Readings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
-                wordInfo.KanaReadings = wordInfo.KanaReadings.Select(r => r.Replace("ゎ", "わ").Replace("ヮ", "わ")).ToList();
 
                 wordInfos.Add(wordInfo);
 
@@ -449,15 +448,6 @@ public static class JmDictHelper
             foreach (var r in reading.Readings)
             {
                 var lookupKey = WanaKana.ToHiragana(r.Replace("ゎ", "わ").Replace("ヮ", "わ"));
-                if (!lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == lookupKey))
-                {
-                    lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKey });
-                }
-            }
-
-            foreach (var k in reading.KanaReadings)
-            {
-                var lookupKey = WanaKana.ToHiragana(k.Replace("ゎ", "わ").Replace("ヮ", "わ"));
                 if (!lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == lookupKey))
                 {
                     lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKey });
@@ -484,6 +474,7 @@ public static class JmDictHelper
             {
                 var keb = await reader.ReadElementContentAsStringAsync();
                 wordInfo.Readings.Add(keb);
+                wordInfo.ReadingTypes.Add(JmDictReadingType.Reading);
             }
 
             if (reader.NodeType != XmlNodeType.EndElement) continue;
@@ -528,9 +519,14 @@ public static class JmDictHelper
             if (restrictions.Count == 0 || wordInfo.Readings.Any(reading => restrictions.Contains(reading)))
             {
                 if (isObsolete)
+                {
                     wordInfo.ObsoleteReadings.Add(reb);
+                }
                 else
-                    wordInfo.KanaReadings.Add(reb);
+                {
+                    wordInfo.Readings.Add(reb);
+                    wordInfo.ReadingTypes.Add(JmDictReadingType.KanaReading);
+                }
             }
 
             break;

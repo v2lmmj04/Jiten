@@ -9,7 +9,7 @@ const route = useRoute();
 const offset = computed(() => route.query.offset ? Number(route.query.offset) : 0);
 const mediaType = computed(() => route.query.mediaType ? route.query.mediaType : null);
 
-const url = computed(() => `MediaDeck/GetMediaDecks`);
+const url = computed(() => `media-deck/get-media-decks`);
 
 const {
   data: response,

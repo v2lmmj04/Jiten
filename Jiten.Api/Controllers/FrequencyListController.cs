@@ -10,10 +10,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Jiten.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class FrequencyList(JitenDbContext context) : ControllerBase
+[Route("api/frequency-list")]
+public class FrequencyListController(JitenDbContext context) : ControllerBase
 {
-    [HttpGet("GetGlobalFrequencyList")]
+    [HttpGet("get-global-frequency-list")]
     public async Task<IResult> GetGlobalFrequencyList()
     {
         var frequencies = await context.JmDictWordFrequencies.AsNoTracking().OrderBy(w => w.FrequencyRank).ToListAsync();
@@ -24,21 +24,12 @@ public class FrequencyList(JitenDbContext context) : ControllerBase
 
         foreach (var frequency in frequencies)
         {
-            var highestPercentage = frequency.ReadingsFrequencyPercentage
-                                             .Concat(frequency.KanaReadingsFrequencyPercentage)
-                                             .Max();
+            var highestPercentage = frequency.ReadingsFrequencyPercentage.Max();
 
             string word = "";
-            if (frequency.ReadingsFrequencyPercentage.Contains(highestPercentage))
-            {
-                var index = frequency.ReadingsFrequencyPercentage.IndexOf(highestPercentage);
-                word = allWords[frequency.WordId].Readings[index];
-            }
-            else if (frequency.KanaReadingsFrequencyPercentage.Contains(highestPercentage))
-            {
-                var index = frequency.KanaReadingsFrequencyPercentage.IndexOf(highestPercentage);
-                word = allWords[frequency.WordId].KanaReadings[index];
-            }
+            var index = frequency.ReadingsFrequencyPercentage.IndexOf(highestPercentage);
+            word = allWords[frequency.WordId].Readings[index];
+
 
             frequencyList.Add((word, frequency.FrequencyRank));
         }
@@ -49,7 +40,7 @@ public class FrequencyList(JitenDbContext context) : ControllerBase
 
         // Create anonymous object since CsvWriter doesn't support writing tuples
         object[] frequencyListCsv = frequencyList.Select(f => new { Word = f.word, Rank = f.rank }).ToArray<object>();
-        
+
         await csv.WriteRecordsAsync(frequencyListCsv);
         var bytes = stream.ToArray();
 

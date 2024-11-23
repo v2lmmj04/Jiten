@@ -8,7 +8,4 @@ public class JmDictWordFrequency
     public List<int> ReadingsFrequencyRank { get; set; } = new();
     public List<double> ReadingsFrequencyPercentage { get; set; } = new();
     public List<int> ReadingsUsedInMediaAmount { get; set; } = new();
-    public List<int> KanaReadingsFrequencyRank { get; set; } = new();
-    public List<double> KanaReadingsFrequencyPercentage { get; set; } = new();
-    public List<int> KanaReadingsUsedInMediaAmount { get; set; } = new();
 }

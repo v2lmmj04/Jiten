@@ -8,10 +8,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Jiten.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/media-deck")]
 public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
-    [HttpGet("GetMediaDecks")]
+    [HttpGet("get-media-decks")]
     public PaginatedResponse<List<Deck>> GetMediaDecks(string? sortOrder = "", int? offset = 0, MediaType? mediaType = null)
     {
         int pageSize = 50;
@@ -21,7 +21,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         query = query.Where(d => d.ParentDeck == null);
         if (mediaType != null)
             query = query.Where(d => d.MediaType == mediaType);
-        
+
         var totalCount = query.Count();
 
         var decks = query
@@ -58,6 +58,9 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         var words = deckWords.Select(dw => new { dw, jmDictWord = jmdictWords.FirstOrDefault(w => w.WordId == dw.WordId) })
                              .OrderBy(dw => wordIds.IndexOf(dw.dw.WordId))
                              .ToList();
+
+        var frequencies = context.JmDictWordFrequencies.AsNoTracking().Where(f => wordIds.Contains(f.WordId)).ToList();
+
         List<WordDto> dto = new();
 
         foreach (var word in words)
@@ -67,11 +70,22 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 continue;
             }
 
-            var reading = word.dw.ReadingType == 0
-                ? word.jmDictWord.Readings[word.dw.ReadingIndex]
-                : word.jmDictWord.KanaReadings[word.dw.ReadingIndex];
-            var alternativeReadings = word.jmDictWord.Readings.Concat(word.jmDictWord.KanaReadings).Concat(word.jmDictWord.ObsoleteReadings).ToList();
-            alternativeReadings.RemoveAll(r => r == reading);
+            var reading = word.jmDictWord.Readings[word.dw.ReadingIndex];
+            // remove current and take the rest
+            List<ReadingDto> alternativeReadings = word.jmDictWord.Readings.Where(r => r != reading)
+                                                       .Select((r, i) => new ReadingDto
+                                                                         {
+                                                                             Text = r,
+                                                                             ReadingIndex = i,
+                                                                             ReadingType = word.jmDictWord.ReadingTypes[i],
+                                                                             FrequencyRank =
+                                                                                 frequencies.First(f => f.WordId == word.dw.WordId)
+                                                                                            .ReadingsFrequencyRank[i],
+                                                                             FrequencyPercentage =
+                                                                                 frequencies.First(f => f.WordId == word.dw.WordId)
+                                                                                            .ReadingsFrequencyPercentage[i]
+                                                                         })
+                                                       .ToList();
 
             int i = 1;
             List<DefinitionDto> definitions = new();
@@ -88,10 +102,22 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                                 });
             }
 
+            var frequency = frequencies.First(f => f.WordId == word.dw.WordId);
+
+            var mainReading = new ReadingDto()
+                              {
+                                  Text = reading,
+                                  ReadingIndex = word.dw.ReadingIndex,
+                                  ReadingType = word.jmDictWord.ReadingTypes[word.dw.ReadingIndex],
+                                  FrequencyRank = frequency.ReadingsFrequencyRank[word.dw.ReadingIndex],
+                                  FrequencyPercentage = frequency.ReadingsFrequencyPercentage[word.dw.ReadingIndex]
+                              };
+
+
             var wordDto = new WordDto
                           {
                               WordId = word.jmDictWord.WordId,
-                              Reading = reading,
+                              MainReading = mainReading,
                               AlternativeReadings = alternativeReadings,
                               PartsOfSpeech = word.jmDictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
                               Definitions = definitions

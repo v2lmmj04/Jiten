@@ -8,7 +8,7 @@ const route = useRoute();
 const id = route.params.id;
 
 const offset = computed(() => route.query.offset ? Number(route.query.offset) : 0);
-const url = computed(() => `MediaDeck/${id}/vocabulary`);
+const url = computed(() => `media-deck/${id}/vocabulary`);
 
 const {
   data: response,
@@ -54,7 +54,9 @@ const nextLink = computed(() => {
       </Card>
     </div>
     <div v-else-if="error">Error: {{ error }}</div>
+    <div v-else>
       <VocabularyEntry v-for="word in response.data" :word="word" :key="word.wordId" :is-compact="true"/>
+    </div>
   </div>
 </template>
 

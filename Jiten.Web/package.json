@@ -10,12 +10,12 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@nuxt/icon": "^1.6.1",
+    "@nuxt/icon": "^1.8.2",
     "@nuxtjs/google-fonts": "^3.2.0",
-    "@primevue/nuxt-module": "^4.1.1",
-    "@primevue/themes": "^4.1.1",
+    "@primevue/nuxt-module": "^4.2.3",
+    "@primevue/themes": "^4.2.3",
     "@radix-icons/vue": "^1.0.0",
-    "nuxt": "^3.13.2",
+    "nuxt": "^3.14.1592",
     "vue": "latest",
     "vue-router": "latest"
   },
