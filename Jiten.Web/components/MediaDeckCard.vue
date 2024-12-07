@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type {Deck} from "~/types";
-import Card from 'primevue/card';
-import {getMediaTypeText} from "../utils/mediaTypeMapper";
-import {getLinkTypeText} from "../utils/linkTypeMapper";
+  import type { Deck } from '~/types';
+  import Card from 'primevue/card';
+  import { getMediaTypeText } from '../utils/mediaTypeMapper';
+  import { getLinkTypeText } from '../utils/linkTypeMapper';
 
-const props = defineProps<{
-  deck: Deck;
-}>();
+  const props = defineProps<{
+    deck: Deck;
+  }>();
 </script>
 
 <template>
@@ -14,11 +14,10 @@ const props = defineProps<{
     <template #title>{{ deck.originalTitle }}</template>
     <template #subtitle>{{ getMediaTypeText(deck.mediaType) }}</template>
     <template #content>
-
       <div class="flex-gap-6">
         <div class="flex-1">
           <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
-            <div><img src="/img/nocover.jpg" alt="No cover" class="h-48 w-32"/></div>
+            <div><img src="/img/nocover.jpg" alt="No cover" class="h-48 w-32" /></div>
             <div>
               <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
                 <div class="w-full md:w-64">
@@ -49,7 +48,7 @@ const props = defineProps<{
                     <span class="text-gray-600">Unique kanji used once</span>
                     <span class="ml-8 tabular-nums">{{ deck.uniqueKanjiUsedOnceCount }}</span>
                   </div>
-                  <div class="flex justify-between mb-2" v-if="deck.averageSentenceLength !== 0">
+                  <div v-if="deck.averageSentenceLength !== 0" class="flex justify-between mb-2">
                     <span class="text-gray-600">Average sentence length</span>
                     <span class="ml-8 tabular-nums">{{ deck.averageSentenceLength }}</span>
                   </div>
@@ -61,22 +60,22 @@ const props = defineProps<{
               </div>
 
               <div class="mt-4 flex flex-col md:flex-row gap-4">
-                <a v-for="link in deck.links" :href="link.url" target="_blank">{{ getLinkTypeText(link.linkType)}}</a>
+                <a v-for="link in deck.links" :href="link.url" target="_blank">{{ getLinkTypeText(link.linkType) }}</a>
               </div>
               <div>
-                <Button as="router-link" :to="`/decks/medias/${deck.id}/vocabulary`" label="View vocabulary"
-                        class="mt-4"/>
+                <Button
+                  as="router-link"
+                  :to="`/decks/medias/${deck.deckId}/vocabulary`"
+                  label="View vocabulary"
+                  class="mt-4"
+                />
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
     </template>
   </Card>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

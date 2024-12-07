@@ -1,8 +1,8 @@
+using System.Diagnostics;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using NpgsqlTypes;
 
 namespace Jiten.Core;
 
@@ -53,11 +53,19 @@ public static class JitenHelper
             wordFrequencies.Add(word.WordId, wordFrequency);
         }
 
-        int totalEntries = await context.DeckWords.CountAsync();
+        var primaryDecks = await context.Decks.AsNoTracking()
+                                      .Where(d => d.ParentDeck == null)
+                                      .Select(d => d.DeckId)
+                                      .ToListAsync();
+        
+        int totalEntries = await context.DeckWords.Where(d => primaryDecks.Contains(d.DeckId)).CountAsync();
+        var processedDecks = new HashSet<(int,int)>();
+
         for (int i = 0; i < totalEntries; i += batchSize)
         {
             var deckWords = await context.DeckWords
                                          .AsNoTracking()
+                                         .Where(d => primaryDecks.Contains(d.DeckId))
                                          .Skip(i)
                                          .Take(batchSize)
                                          .ToListAsync();
@@ -67,7 +75,14 @@ public static class JitenHelper
                 var word = wordFrequencies[deckWord.WordId];
 
                 word.FrequencyRank += deckWord.Occurrences;
-                word.UsedInMediaAmount++;
+                
+                // The word itself must be only counted once per deck
+                if (!processedDecks.Contains((deckWord.DeckId, deckWord.WordId)))
+                {
+                    word.UsedInMediaAmount++;
+                    processedDecks.Add((deckWord.DeckId, deckWord.WordId));
+                }
+                
                 word.ReadingsUsedInMediaAmount[deckWord.ReadingIndex]++;
                 word.ReadingsFrequencyRank[deckWord.ReadingIndex] += deckWord.Occurrences;
 

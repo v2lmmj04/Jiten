@@ -18,4 +18,5 @@ public class ReadingDto
     public int ReadingIndex { get; set; }
     public int FrequencyRank { get; set; }
     public double FrequencyPercentage { get; set; }
+    public int UsedInMediaAmount { get; set; }
 }

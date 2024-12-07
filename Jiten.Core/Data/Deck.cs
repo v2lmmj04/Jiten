@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using WanaKanaShaapu;
@@ -10,8 +9,12 @@ public class Deck
     /// <summary>
     /// Autoincrement id, starting at 1
     /// </summary>
-    public int Id { get; set; }
+    public int DeckId { get; set; }
 
+    public DateTimeOffset CreationDate { get; set; } = DateTime.UtcNow;
+    
+    public DateTimeOffset LastUpdate { get; set; } = DateTime.UtcNow;
+    
     /// <summary>
     /// Name of the image cover file
     /// </summary>
@@ -128,7 +131,7 @@ public class Deck
                 {
                     DeckWords.Add(new DeckWord
                                   {
-                                      DeckId = Id,
+                                      DeckId = DeckId,
                                       WordId = childDeckWord.WordId,
                                       ReadingIndex = childDeckWord.ReadingIndex,
                                       Occurrences = childDeckWord.Occurrences,

@@ -1,3 +1,5 @@
+using Jiten.Api.Dtos;
+using Jiten.Api.Helpers;
 using Jiten.Core;
 using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Mvc;
@@ -9,32 +11,49 @@ namespace Jiten.Api.Controllers;
 [Route("api/vocabulary")]
 public class VocabularyController(JitenDbContext context) : ControllerBase
 {
-    [HttpGet("{wordId}/{readingType}/{readingId}")]
-    public async Task<IResult> GetWord(int wordId, JmDictReadingType readingType, int readingId)
+    [HttpGet("{wordId}/{readingIndex}")]
+    public async Task<IResult> GetWord(int wordId, int readingIndex)
     {
         var word = await context.JMDictWords.AsNoTracking()
-                             .Include(w => w.Definitions)
-                             .Include(w => w.Readings)
-                             .Include(w => w.Definitions)
-                             .FirstOrDefaultAsync(w => w.WordId == wordId);
+                                .Include(w => w.Definitions)
+                                .FirstOrDefaultAsync(w => w.WordId == wordId);
 
         if (word == null)
             return Results.NotFound();
-        
 
-        string reading = readingType switch
-                         {
-                             JmDictReadingType.Reading => word.Readings[readingId],
-                             JmDictReadingType.KanaReading => word.Readings[readingId],
-                             _ => throw new ArgumentOutOfRangeException(nameof(readingType), readingType, null)
-                         };
+        var frequency = context.JmDictWordFrequencies.AsNoTracking().First(f => f.WordId == word.WordId);
 
-        return Results.Ok(new
+        var mainReading = new ReadingDto()
                           {
-                              word.WordId,
-                              word.Readings,
-                              word.Definitions,
-                              reading
+                              Text = word.Readings[readingIndex],
+                              ReadingIndex = readingIndex,
+                              ReadingType = word.ReadingTypes[readingIndex],
+                              FrequencyRank = frequency.ReadingsFrequencyRank[readingIndex],
+                              FrequencyPercentage = frequency.ReadingsFrequencyPercentage[readingIndex],
+                              UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[readingIndex]
+                          };
+
+        List<ReadingDto> alternativeReadings = word.Readings
+                                                   .Select((r, i) => new ReadingDto
+                                                                     {
+                                                                         Text = r,
+                                                                         ReadingIndex = i,
+                                                                         ReadingType = word.ReadingTypes[i],
+                                                                         FrequencyRank =
+                                                                             frequency.ReadingsFrequencyRank[i],
+                                                                         FrequencyPercentage =
+                                                                             frequency.ReadingsFrequencyPercentage[i],
+                                                                         UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[i]
+                                                                     })
+                                                   .ToList();
+
+        return Results.Ok(new WordDto
+                          {
+                              WordId = word.WordId,
+                              MainReading = mainReading,
+                              AlternativeReadings = alternativeReadings,
+                              Definitions = word.Definitions.ToDefinitionDtos(),
+                              PartsOfSpeech = word.PartsOfSpeech,
                           });
     }
 }

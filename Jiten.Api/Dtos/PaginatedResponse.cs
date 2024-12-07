@@ -2,6 +2,8 @@ namespace Jiten.Api.Dtos;
 
 public class PaginatedResponse<T>(T data, int totalItems, int pageSize, int currentOffset)
 {
+    
+    
     /// <summary>
     /// The current page data
     /// </summary>

@@ -44,7 +44,8 @@ export default defineNuxtConfig({
       '@nuxtjs/tailwindcss',
       "@primevue/nuxt-module",
       '@nuxt/icon',
-      '@nuxtjs/google-fonts'
+      '@nuxtjs/google-fonts',
+      '@nuxt/eslint'
     ],
     primevue: {
         options: {

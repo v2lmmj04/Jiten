@@ -1,14 +1,14 @@
 import {PaginatedResponse} from "~/types";
 
-export async function useApiFetch<T>(request: string, opts?: any): Promise<{ data: T; pending: boolean; error: any }> {
+export function useApiFetch<T>(request: string, opts?: any) : Promise<{ data: T; status: string; error: any }> {
     const config = useRuntimeConfig();
 
-    const {data, status, error} = await useFetch<T>(request, {baseURL: config.public.baseURL, ...opts});
+    const {data, status, error} = useFetch<T>(request, {baseURL: config.public.baseURL, ...opts});
 
     return {data, status, error};
 }
 
-export function useApiFetchPaginated<T>(request: string, opts?: any) {
+export function useApiFetchPaginated<T>(request: string, opts?: any) : Promise<{ data: PaginatedResponse<T>; status: string; error: any }> {
     const config = useRuntimeConfig();
 
     // Use useFetch without await, keeping the data reactive

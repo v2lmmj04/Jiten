@@ -42,7 +42,7 @@ public class JitenDbContext : DbContext
 
         modelBuilder.Entity<Deck>(entity =>
         {
-            entity.Property(d => d.Id)
+            entity.Property(d => d.DeckId)
                   .ValueGeneratedOnAdd();
 
             entity.Property(d => d.ParentDeckId)
@@ -75,10 +75,10 @@ public class JitenDbContext : DbContext
 
         modelBuilder.Entity<DeckWord>(entity =>
         {
-            entity.Property(d => d.Id)
+            entity.Property(d => d.DeckWordId)
                   .ValueGeneratedOnAdd();
 
-            entity.HasKey(dw => new { dw.Id, });
+            entity.HasKey(dw => new { Id = dw.DeckWordId, });
 
             entity.HasIndex(dw => new { dw.WordId, dw.ReadingIndex })
                   .HasDatabaseName("IX_WordReadingIndex");
@@ -89,6 +89,14 @@ public class JitenDbContext : DbContext
             entity.HasOne(dw => dw.Deck)
                   .WithMany(d => d.DeckWords)
                   .HasForeignKey(dw => dw.DeckId);
+        });
+
+        modelBuilder.Entity<Link>(entity =>
+        {
+            entity.ToTable("Links", "jiten");
+            entity.HasKey(l => l.LinkId);
+            entity.Property(l => l.Url).IsRequired();
+            entity.Property(l => l.LinkType).IsRequired();
         });
 
         modelBuilder.Entity<JmDictWord>(entity =>
@@ -159,13 +167,6 @@ public class JitenDbContext : DbContext
             entity.HasOne<JmDictWord>()
                   .WithMany()
                   .HasForeignKey(f => f.WordId);
-        });
-
-        modelBuilder.Entity<Link>(entity =>
-        {
-            entity.HasKey(l => l.LinkId);
-            entity.Property(l => l.Url).IsRequired();
-            entity.Property(l => l.LinkType).IsRequired();
         });
 
         base.OnModelCreating(modelBuilder);

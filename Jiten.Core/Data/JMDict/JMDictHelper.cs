@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.EntityFrameworkCore;
 using WanaKanaShaapu;
@@ -400,7 +401,7 @@ public static class JmDictHelper
             }
         }
 
-        var readerSettings = new XmlReaderSettings() { Async = true, DtdProcessing = DtdProcessing.Parse };
+        var readerSettings = new XmlReaderSettings() { Async = true, DtdProcessing = DtdProcessing.Parse, MaxCharactersFromEntities = 0};
         XmlReader reader = XmlReader.Create(dictionaryPath, readerSettings);
 
         await reader.MoveToContentAsync();
@@ -421,7 +422,7 @@ public static class JmDictHelper
                 {
                     if (reader.Name == "ent_seq")
                         wordInfo.WordId = reader.ReadElementContentAsInt();
-
+                    
                     wordInfo = await ParseKEle(reader, wordInfo);
                     wordInfo = await ParseREle(reader, wordInfo);
                     wordInfo = await ParseSense(reader, wordInfo);
@@ -509,7 +510,9 @@ public static class JmDictHelper
 
                 if (reader.Name == "re_inf")
                 {
-                    isObsolete = true;
+                    var inf = await reader.ReadElementContentAsStringAsync();
+                    if (inf.ToLower() == "&ok")
+                        isObsolete = true;
                 }
             }
 
