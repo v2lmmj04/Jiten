@@ -9,6 +9,7 @@ using Jiten.Cli;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+
 // ReSharper disable MethodSupportsCancellation
 
 public class Program
@@ -85,9 +86,12 @@ public class Program
 
         [Option(longName: "insert", Required = false, HelpText = "Insert the parsed deck.json into the database from a directory.")]
         public string Insert { get; set; }
-        
+
         [Option(longName: "compute-frequencies", Required = false, HelpText = "Compute global word frequencies")]
         public bool ComputeFrequencies { get; set; }
+        
+        [Option(longName: "compute-difficulty", Required = false, HelpText = "Compute difficulty for decks")]
+        public bool ComputeDifficulty { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -162,6 +166,11 @@ public class Program
                             await JitenHelper.ComputeFrequencies();
                         }
                         
+                        if (o.ComputeDifficulty)
+                        {
+                            await JitenHelper.ComputeDifficulty();
+                        }
+
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
@@ -366,21 +375,21 @@ public class Program
 
                     await Parallel.ForEachAsync(files, options, async (file, _) =>
                     {
-                        await ExtractEpub(file, extractor, o);
+                        await File.WriteAllTextAsync(file + ".extracted.txt", await ExtractEpub(file, extractor, o), _);
                         if (o.Verbose)
                         {
-                            Console
-                                .WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
+                            Console.WriteLine($"Progress: {Array.IndexOf(files, file) + 1}/{files.Length}, {Array.IndexOf(files, file) * 100 / files.Length}%, {watch.ElapsedMilliseconds} ms");
                         }
                     });
                 }
                 else
                 {
                     var file = o.ExtractFilePath;
-                    await ExtractEpub(file, extractor, o);
+                    await File.WriteAllTextAsync(file + ".extracted.txt", await ExtractEpub(file, extractor, o));
                 }
 
                 break;
+
             case "krkr":
                 result = await new KiriKiriExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
@@ -429,7 +438,7 @@ public class Program
                 }
 
                 break;
-            
+
             case "mes":
                 result = await new MesExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
@@ -438,7 +447,7 @@ public class Program
                 }
 
                 break;
-            
+
             case "nexas":
                 result = await new NexasExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
@@ -447,7 +456,7 @@ public class Program
                 }
 
                 break;
-            
+
             case "whale":
                 result = await new WhaleExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
@@ -456,7 +465,7 @@ public class Program
                 }
 
                 break;
-            
+
             case "bgi":
                 if (o.Extra == null)
                 {
@@ -476,7 +485,7 @@ public class Program
         return false;
     }
 
-    private static async Task ExtractEpub(string? file, EbookExtractor extractor, Options o)
+    private static async Task<string> ExtractEpub(string? file, EbookExtractor extractor, Options o)
     {
         if (o.Verbose)
         {
@@ -499,9 +508,10 @@ public class Program
             {
                 Console.WriteLine("ERROR: TEXT RETURNED EMPTY");
 
-                return;
+                return "";
             }
 
+            return text;
             // if (o.Parse)
             // {
             //     var result = await Jiten.Parser.Program.ParseText(text);
@@ -518,5 +528,7 @@ public class Program
             //         Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
             // }
         }
+
+        return "";
     }
 }

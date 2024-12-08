@@ -228,6 +228,25 @@ namespace Jiten.Parser
                                           .GroupBy(x => new { x.WordId, x.ReadingIndex })
                                           .Select(x => x.First())
                                           .ToList();
+            
+            // Split into sentences
+            string[] sentences = Regex.Split(text, @"(?<=[。！？」])");
+            sentences=sentences.Select(sentence =>
+            {
+                // Find the first Japanese character
+                Match match = Regex.Match(sentence, @"[\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}]");
+                if (match.Success)
+                {
+                    int startIndex = match.Index;
+                    // Remove all special characters
+                    return Regex.Replace(sentence.Substring(startIndex),
+                                             "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
+                                             "");
+                }
+                return "";
+            }).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+            
+            
             timer.Stop();
 
             double deconjugationTime = timer.Elapsed.TotalMilliseconds;
@@ -240,7 +259,7 @@ namespace Jiten.Parser
             Console.WriteLine("Unique words found after deconjugation : " + orderedProcessedUniqueWords.Count);
 
             var characterCount = wordInfos.Sum(x => x.Text.Length);
-            Console.WriteLine("Time elapsed: " + totalTime + "ms");
+            Console.WriteLine($"Time elapsed: {totalTime:0.0}ms");
             Console.WriteLine($"Mecab time: {mecabTime:0.0}ms ({(mecabTime / totalTime * 100):0}%), Deconjugation time: {deconjugationTime:0.0}ms ({(deconjugationTime / totalTime * 100):0}%)");
 
             // Character count
@@ -265,7 +284,7 @@ namespace Jiten.Parser
                        UniqueKanjiUsedOnceCount = wordInfos.SelectMany(w => w.Text).GroupBy(c => c)
                                                            .Count(g => g.Count() == 1 && WanaKana.IsKanji(g.Key.ToString())),
                        //Difficulty = 
-                       //AverageSentenceLength = 
+                       SentenceCount = sentences.Length, 
                        DeckWords = orderedProcessedUniqueWords
                    };
 

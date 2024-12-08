@@ -49,6 +49,7 @@ public class EbookExtractor
                             }
                         }
                         else if (node.NodeType == HtmlNodeType.Text &&
+                                 !node.ParentNode.Name.Equals("rb", StringComparison.OrdinalIgnoreCase) &&
                                  !node.ParentNode.Name.Equals("rt", StringComparison.OrdinalIgnoreCase))
                         {
                             string text = node.InnerText.Trim();

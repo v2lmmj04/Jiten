@@ -5,7 +5,6 @@ namespace Jiten.Cli;
 
 public class BgiExtractor
 {
-    
     /// <summary>
     /// 
     /// </summary>
@@ -36,7 +35,7 @@ public class BgiExtractor
                 Console.WriteLine(file);
             }
         }
-        
+
         List<string> names = (await File.ReadAllLinesAsync(filterNamesPath, Encoding.UTF8)).ToList();
 
         StringBuilder extractedText = new();
@@ -50,10 +49,17 @@ public class BgiExtractor
                 var match = Regex.Match(line, @"◇.+◇(.+)$");
                 if (!match.Success) continue;
                 var message = match.Groups[1].Value;
-                
+
                 // Filter out name only lines
                 if (names.Contains(message.Trim()))
                     continue;
+
+                // Filter [tags] and {tags}
+                message = Regex.Replace(message, @"\[.*?\]", "", RegexOptions.None);
+                message = Regex.Replace(message, @"{.*?}", "", RegexOptions.None);
+
+                // Filter ( 、) (KKK)
+                message = message.Replace("( 、)", "");
 
                 // message = message.Replace("']", "").Replace("_n_r", "").Replace("'", "").Replace(@"\u3000", "").Replace("_n", "")
                 //                  .Replace(@"\\n", "");

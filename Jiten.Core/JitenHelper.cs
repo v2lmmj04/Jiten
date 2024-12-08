@@ -46,6 +46,7 @@ public static class JitenHelper
                                     FrequencyRank = 0,
                                     UsedInMediaAmount = 0,
                                     ReadingsFrequencyPercentage = [..new float[word.Readings.Count]],
+                                    ReadingsObservedFrequency = [..new double[word.Readings.Count]],
                                     ReadingsFrequencyRank = [..new int[word.Readings.Count]],
                                     ReadingsUsedInMediaAmount = [..new int[word.Readings.Count]],
                                 };
@@ -54,12 +55,12 @@ public static class JitenHelper
         }
 
         var primaryDecks = await context.Decks.AsNoTracking()
-                                      .Where(d => d.ParentDeck == null)
-                                      .Select(d => d.DeckId)
-                                      .ToListAsync();
-        
+                                        .Where(d => d.ParentDeck == null)
+                                        .Select(d => d.DeckId)
+                                        .ToListAsync();
+
         int totalEntries = await context.DeckWords.Where(d => primaryDecks.Contains(d.DeckId)).CountAsync();
-        var processedDecks = new HashSet<(int,int)>();
+        var processedDecks = new HashSet<(int, int)>();
 
         for (int i = 0; i < totalEntries; i += batchSize)
         {
@@ -75,14 +76,14 @@ public static class JitenHelper
                 var word = wordFrequencies[deckWord.WordId];
 
                 word.FrequencyRank += deckWord.Occurrences;
-                
+
                 // The word itself must be only counted once per deck
                 if (!processedDecks.Contains((deckWord.DeckId, deckWord.WordId)))
                 {
                     word.UsedInMediaAmount++;
                     processedDecks.Add((deckWord.DeckId, deckWord.WordId));
                 }
-                
+
                 word.ReadingsUsedInMediaAmount[deckWord.ReadingIndex]++;
                 word.ReadingsFrequencyRank[deckWord.ReadingIndex] += deckWord.Occurrences;
 
@@ -97,6 +98,7 @@ public static class JitenHelper
         int currentRank = 0;
         int previousFrequencyRank = sortedWordFrequencies.FirstOrDefault()?.FrequencyRank ?? 0;
         int duplicateCount = 0;
+        int totalOccurences = sortedWordFrequencies.Sum(w => w.FrequencyRank);
 
         for (int i = 0; i < sortedWordFrequencies.Count; i++)
         {
@@ -104,6 +106,7 @@ public static class JitenHelper
 
             for (int j = 0; j < word.ReadingsUsedInMediaAmount.Count; j++)
             {
+                word.ReadingsObservedFrequency[j] = word.ReadingsFrequencyRank[j] / (double)totalOccurences;
                 word.ReadingsFrequencyPercentage[j] = (word.ReadingsFrequencyRank[j] / (double)word.FrequencyRank) * 100;
             }
 
@@ -120,6 +123,7 @@ public static class JitenHelper
                 previousFrequencyRank = word.FrequencyRank;
             }
 
+            word.ObservedFrequency = word.FrequencyRank / (double)totalOccurences;
             word.FrequencyRank = currentRank + 1;
         }
 
@@ -184,15 +188,17 @@ public static class JitenHelper
         // Perform the COPY operation
         await using (var writer =
                      await
-                         conn.BeginBinaryImportAsync($@"COPY {tempTable} (""WordId"", ""FrequencyRank"", ""UsedInMediaAmount"", ""ReadingsFrequencyPercentage"", ""ReadingsFrequencyRank"", ""ReadingsUsedInMediaAmount"") FROM STDIN (FORMAT BINARY)"))
+                         conn.BeginBinaryImportAsync($@"COPY {tempTable} (""WordId"", ""FrequencyRank"", ""ObservedFrequency"", ""UsedInMediaAmount"", ""ReadingsFrequencyPercentage"", ""ReadingsObservedFrequency"", ""ReadingsFrequencyRank"", ""ReadingsUsedInMediaAmount"") FROM STDIN (FORMAT BINARY)"))
         {
             foreach (var word in sortedWordFrequencies)
             {
                 await writer.StartRowAsync();
                 await writer.WriteAsync(word.WordId);
                 await writer.WriteAsync(word.FrequencyRank);
+                await writer.WriteAsync(word.ObservedFrequency);
                 await writer.WriteAsync(word.UsedInMediaAmount);
                 await writer.WriteAsync(word.ReadingsFrequencyPercentage, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Double);
+                await writer.WriteAsync(word.ReadingsObservedFrequency, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Double);
                 await writer.WriteAsync(word.ReadingsFrequencyRank, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer);
                 await writer.WriteAsync(word.ReadingsUsedInMediaAmount, NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer);
             }
@@ -207,6 +213,84 @@ public static class JitenHelper
         DROP TABLE {tempTable};", conn))
         {
             await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    /// <summary>
+    /// Calculate the difficulty of decks. Still very WIP
+    /// </summary>
+    public static async Task ComputeDifficulty()
+    {
+        int wordDifficultyWeight = 50;
+        int characterCountWeight = 5;
+        int uniqueWordCountWeight = 20;
+        int uniqueKanjiCountWeight = 20;
+        int averageSentenceLengthWeight = 5;
+
+        int batchSize = 10;
+        await using var context = new JitenDbContext();
+
+        var allDecks = await context.Decks.ToListAsync();
+        var allFrequencies = await context.JmDictWordFrequencies.AsNoTracking().ToListAsync();
+        var wordFrequencies = allFrequencies.ToDictionary(f => f.WordId, f => f);
+
+        Dictionary<int, double> wordDifficultiesTotal = new();
+
+        // Compute the word difficulty for each deck, based on the frequency rank of each words present in it
+        for (int i = 0; i < allDecks.Count; i += batchSize)
+        {
+            var decks = allDecks.Skip(i).Take(batchSize).ToList();
+            var deckWords = await context.DeckWords.AsNoTracking().Where(dw => decks.Select(d => d.DeckId).Contains(dw.DeckId))
+                                         .ToListAsync();
+
+            foreach (var deck in decks)
+            {
+                wordDifficultiesTotal.Add(deck.DeckId, 0);
+                foreach (var word in deckWords.Where(dw => dw.DeckId == deck.DeckId))
+                {
+                    var frequencyRank = wordFrequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex];
+                    wordDifficultiesTotal[word.DeckId] += ((float)word.Occurrences / deck.WordCount) *
+                                                          Math.Log2(Math.Truncate(frequencyRank / 2000f) + 1);
+                }
+            }
+        }
+
+        // Take the min and max values among all the decks
+        double minDifficulty = wordDifficultiesTotal.Values.Min();
+        double maxDifficulty = wordDifficultiesTotal.Values.Max();
+        uint minCharacterCount = (uint)allDecks.Min(d => d.CharacterCount);
+        uint maxCharacterCount = (uint)allDecks.Max(d => d.CharacterCount);
+        uint minUniqueWordCount = (uint)allDecks.Min(d => d.UniqueWordCount);
+        uint maxUniqueWordCount = (uint)allDecks.Max(d => d.UniqueWordCount);
+        uint minUniqueKanjiCount = (uint)allDecks.Min(d => d.UniqueKanjiCount);
+        uint maxUniqueKanjiCount = (uint)allDecks.Max(d => d.UniqueKanjiCount);
+        double minAverageSentenceLength = allDecks.Min(d => d.AverageSentenceLength);
+        double maxAverageSentenceLength = allDecks.Max(d => d.AverageSentenceLength);
+
+        foreach (var deck in allDecks)
+        {
+            float difficulty = 0;
+            difficulty += MapDoubleToWeight(wordDifficultiesTotal[deck.DeckId], minDifficulty, maxDifficulty, wordDifficultyWeight);
+            difficulty += MapToWeight((uint)deck.CharacterCount, minCharacterCount, maxCharacterCount, characterCountWeight);
+            difficulty += MapToWeight((uint)deck.UniqueWordCount, minUniqueWordCount, maxUniqueWordCount, uniqueWordCountWeight);
+            difficulty += MapToWeight((uint)deck.UniqueKanjiCount, minUniqueKanjiCount, maxUniqueKanjiCount, uniqueKanjiCountWeight);
+            difficulty += MapDoubleToWeight(deck.AverageSentenceLength, minAverageSentenceLength, maxAverageSentenceLength,
+                                            averageSentenceLengthWeight);
+
+            deck.Difficulty = (int)Math.Round(difficulty);
+        }
+
+        await context.SaveChangesAsync();
+
+        // Map to the weight in a linear way
+        float MapToWeight(uint value, uint min, uint max, int weight)
+        {
+            return (value - min) / (float)(max - min) * weight;
+        }
+
+        float MapDoubleToWeight(double value, double min, double max, int weight)
+        {
+            return (float)((value - min) / (max - min)) * weight;
         }
     }
 }

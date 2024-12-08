@@ -76,9 +76,14 @@ public class Deck
     public int Difficulty { get; set; }
 
     /// <summary>
+    /// Amount of sentences
+    /// </summary>
+    public int SentenceCount { get; set; }
+    
+    /// <summary>
     /// Average sentence length with decimal precision
     /// </summary>
-    public float AverageSentenceLength { get; set; }
+    public float AverageSentenceLength => SentenceCount == 0 ? 0 : (float)CharacterCount / SentenceCount;
 
     /// <summary>
     /// Parent deck, null if no parent
@@ -145,6 +150,7 @@ public class Deck
         WordCount = Children.Sum(c => c.WordCount);
         UniqueWordCount = DeckWords.Select(dw => dw.WordId).Distinct().Count();
         UniqueWordUsedOnceCount = DeckWords.Where(dw => dw.Occurrences == 1).Select(dw => dw.WordId).Distinct().Count();
+        SentenceCount = Children.Sum(c => c.SentenceCount);
 
         // Not the most efficient or elegant way to do it, rebuilding the text, but it works and I don't have a better idea for now
 
