@@ -1,12 +1,14 @@
 <script setup lang="ts">
   import type { Deck } from '~/types';
   import Card from 'primevue/card';
-  import { getMediaTypeText } from '../utils/mediaTypeMapper';
-  import { getLinkTypeText } from '../utils/linkTypeMapper';
+  import { getMediaTypeText } from '~/utils/mediaTypeMapper';
+  import { getLinkTypeText } from '~/utils/linkTypeMapper';
 
   const props = defineProps<{
     deck: Deck;
   }>();
+
+  const showDownloadDialog = ref(false);
 </script>
 
 <template>
@@ -62,13 +64,21 @@
               <div class="mt-4 flex flex-col md:flex-row gap-4">
                 <a v-for="link in deck.links" :href="link.url" target="_blank">{{ getLinkTypeText(link.linkType) }}</a>
               </div>
-              <div>
-                <Button
-                  as="router-link"
-                  :to="`/decks/medias/${deck.deckId}/vocabulary`"
-                  label="View vocabulary"
-                  class="mt-4"
-                />
+              <div class="mt-4">
+                <div class="flex flex-wrap gap-4">
+                  <Button
+                    as="router-link"
+                    :to="`/decks/medias/${deck.deckId}/vocabulary`"
+                    label="View vocabulary"
+                    class=""
+                  />
+
+                  <Button
+                    @click="showDownloadDialog = true"
+                    label="Download deck"
+                    class=""
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -76,6 +86,8 @@
       </div>
     </template>
   </Card>
+
+  <MediaDeckDownloadDialog :deck="deck" :visible="showDownloadDialog" @update:visible="showDownloadDialog = $event" />
 </template>
 
 <style scoped></style>

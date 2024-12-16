@@ -15,11 +15,11 @@
     isCompact.value = !isCompact.value;
   };
 </script>
-<Button as="router-link" :to="`/decks/medias/${deck.id}/vocabulary`" label="View vocabulary" class="mt-4" />
+
 <template>
   <Card class="">
     <template #title>
-      <router-link class="font-noto-sans" :to="`/vocabulary/${word.wordId}/${word.mainReading.readingIndex}`">
+      <router-link class="font-noto-sans font-bold" :to="`/vocabulary/${word.wordId}/${word.mainReading.readingIndex}`">
         {{ word.mainReading.text }}
       </router-link>
       <Button text size="small" @click="toggleCompact">{{ isCompact ? 'Expand' : 'Compact' }}</Button>

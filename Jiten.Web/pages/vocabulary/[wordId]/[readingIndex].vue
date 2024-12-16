@@ -1,7 +1,6 @@
 <script setup lang="ts">
   import type { Word } from '~/types';
   import { formatPercentageApprox } from '~/utils/formatPercentageApprox';
-  import Button from 'primevue/button';
 
   const route = useRoute();
   const id = route.params.wordId;

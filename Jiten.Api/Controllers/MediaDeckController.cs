@@ -1,8 +1,10 @@
+using AnkiNet;
 using Jiten.Api.Dtos;
 using Jiten.Api.Helpers;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -121,5 +123,123 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         }
 
         return new PaginatedResponse<DeckVocabularyListDto>(dto, totalCount, pageSize, offset ?? 0);
+    }
+
+    [HttpGet("{id}/download")]
+    public async Task<IResult> DownloadDeck(int id, DeckFormat format, DeckDownloadType downloadType, DeckOrder order,
+                                            int minFrequency = 0, int maxFrequency = 0)
+    {
+        var deck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == id);
+
+        if (deck == null)
+        {
+            return Results.NotFound();
+        }
+
+        IQueryable<DeckWord> deckWordsQuery = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
+        
+        switch (downloadType)
+        {
+            case DeckDownloadType.Full:
+                break;
+
+            case DeckDownloadType.TopGlobalFrequency:
+                var frequencies = context.JmDictWordFrequencies.AsNoTracking().OrderBy(w => w.FrequencyRank).ToDictionary(w => w.WordId);
+                // Get the words between frequency rank minFrequency and maxFrequency
+                deckWordsQuery = deckWordsQuery.Where(dw => context.JmDictWordFrequencies
+                                                                   .Any(f => f.WordId == dw.WordId &&
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] >= minFrequency &&
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] <= maxFrequency));
+                break;
+
+            case DeckDownloadType.TopDeckFrequency:
+                deckWordsQuery = deckWordsQuery
+                                 .OrderBy(dw => dw.Occurrences)
+                                 .Skip(minFrequency)
+                                 .Take(maxFrequency - minFrequency);
+                break;
+
+            case DeckDownloadType.TopChronological:
+                deckWordsQuery = deckWordsQuery
+                                 .OrderBy(dw => dw.DeckWordId)
+                                 .Skip(minFrequency)
+                                 .Take(maxFrequency - minFrequency);
+                break;
+            default:
+                return Results.BadRequest();
+        }
+
+        switch (order)
+        {
+            case DeckOrder.Chronological:
+                deckWordsQuery = deckWordsQuery.OrderBy(dw => dw.DeckWordId);
+                break;
+
+            case DeckOrder.GlobalFrequency:
+                deckWordsQuery = deckWordsQuery.OrderBy(dw => context.JmDictWordFrequencies
+                                                                     .Where(f => f.WordId == dw.WordId)
+                                                                     .Select(f => f.ReadingsFrequencyRank[dw.ReadingIndex])
+                                                                     .FirstOrDefault()
+                                                       );
+                break;
+
+            case DeckOrder.DeckFrequency:
+                deckWordsQuery = deckWordsQuery.OrderBy(dw => dw.Occurrences);
+                break;
+            default:
+                return Results.BadRequest();
+        }
+        
+        List<DeckWord> deckWords = await deckWordsQuery.ToListAsync();
+        var wordIds = deckWords.Select(dw => dw.WordId).Distinct().ToList();
+
+
+        var jmdictWords = context.JMDictWords.AsNoTracking()
+                                 .Where(w => wordIds.Contains(w.WordId))
+                                 .Include(w => w.Definitions)
+                                 .ToDictionary(w => w.WordId);
+
+        switch (format)
+        {
+            case DeckFormat.Anki:
+                var cardTypes = new[]
+                                {
+                                    new AnkiCardType(
+                                                     "Forwards",
+                                                     0,
+                                                     "{{Front}}",
+                                                     "{{Front}}<hr id=\"answer\">{{Back}}"
+                                                    ),
+                                };
+
+                var noteType = new AnkiNoteType(
+                                                "Basic (With hints)",
+                                                cardTypes,
+                                                new[] { "Front", "Back" }
+                                               );
+
+                var collection = new AnkiCollection();
+                var noteTypeId = collection.CreateNoteType(noteType);
+                var deckId = collection.CreateDeck(deck.OriginalTitle);
+
+                foreach (var word in deckWords)
+                {
+                    collection.CreateNote(deckId, noteTypeId, jmdictWords[word.WordId].Readings[word.ReadingIndex],
+                                          String.Join(",", jmdictWords[word.WordId].Definitions.SelectMany(d => d.EnglishMeanings)));
+                }
+
+                var stream = new MemoryStream();
+
+                await AnkiFileWriter.WriteToStreamAsync(stream, collection);
+                var bytes = stream.ToArray();
+
+                return Results.File(bytes, "application/x-binary", $"{deck.OriginalTitle}.apkg");
+            case DeckFormat.Csv:
+                break;
+            default:
+                return Results.BadRequest();
+        }
+
+        return Results.BadRequest();
     }
 }

@@ -1,10 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
-import Lara from '@primevue/themes/lara';
+import Aura from '@primevue/themes/aura';
 import {definePreset} from "@primeuix/styled";
 
 // Custom theming
-const JitenPreset = definePreset(Lara, {
+const JitenPreset = definePreset(Aura, {
     semantic:{
         primary: {
             50: '{purple.50}',

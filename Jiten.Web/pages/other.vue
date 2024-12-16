@@ -3,21 +3,22 @@
   import Button from 'primevue/button';
 
   const url = 'frequency-list/get-global-frequency-list';
+  const { $api } = useNuxtApp();
 
   const downloadFile = async () => {
     try {
-      const { data: response, status, error } = await useApiFetch<File>(url);
-      if (status.value === 'success' && response.value) {
-        const blobUrl = window.URL.createObjectURL(new Blob([response.value], { type: response.value.type }));
+      const response = await $api(url);
+      if (response) {
+        const blobUrl = window.URL.createObjectURL(new Blob([response], { type: response.type }));
         const link = document.createElement('a');
         link.href = blobUrl;
         link.setAttribute('download', 'frequency_list.csv'); // You can set the desired file name here
         document.body.appendChild(link);
         link.click();
         link.remove();
-        document.body.removeChild(link);
+        // document.body.removeChild(link);
       } else {
-        console.error('Error downloading file:', error.value);
+        console.error('Error downloading file:');
       }
     } catch (err) {
       console.error('Error:', err);

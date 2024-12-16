@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import type { DeckVocabularyList, Word } from '~/types';
+  import type { DeckVocabularyList } from '~/types';
 
   const route = useRoute();
   const id = route.params.id;
@@ -41,7 +41,7 @@
         <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
           Previous
         </NuxtLink>
-        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next </NuxtLink>
+        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
       </div>
       <div>viewing words {{ start }}-{{ end }} from {{ totalItems }} total</div>
     </div>

@@ -1,4 +1,4 @@
-import {PaginatedResponse} from "~/types";
+import {PaginatedResponse} from "~/types/types";
 
 export function useApiFetch<T>(request: string, opts?: any) : Promise<{ data: T; status: string; error: any }> {
     const config = useRuntimeConfig();
