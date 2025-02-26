@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BunnyCDN.Net.Storage;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ namespace Jiten.Core;
 
 public static class JitenHelper
 {
-    public static async Task InsertDeck(Deck deck)
+    public static async Task InsertDeck(Deck deck, byte[] cover)
     {
         // Ignore if the deck already exists
         await using var context = new JitenDbContext();
@@ -23,6 +24,11 @@ public static class JitenHelper
         context.Decks.Add(deck);
 
         await context.SaveChangesAsync();
+
+        // var coverUrl = await BunnyCdnHelper.UploadFile(cover, $"{deck.DeckId}/cover.jpg");
+        // deck.CoverName = coverUrl;
+        //
+        // await context.SaveChangesAsync();
     }
 
     public static async Task ComputeFrequencies()
@@ -219,18 +225,20 @@ public static class JitenHelper
     /// <summary>
     /// Calculate the difficulty of decks. Still very WIP
     /// </summary>
-    public static async Task ComputeDifficulty()
+    public static async Task ComputeDifficulty(bool verbose)
     {
-        int wordDifficultyWeight = 50;
+        int wordDifficultyWeight = 60;
         int characterCountWeight = 5;
-        int uniqueWordCountWeight = 20;
+        int uniqueWordCountWeight = 10;
         int uniqueKanjiCountWeight = 20;
         int averageSentenceLengthWeight = 5;
 
         int batchSize = 10;
         await using var context = new JitenDbContext();
 
-        var allDecks = await context.Decks.ToListAsync();
+        //TODO : compute the difficulty independently for each media type
+
+        var allDecks = await context.Decks.Where(d => d.MediaType == MediaType.VisualNovel).ToListAsync();
         var allFrequencies = await context.JmDictWordFrequencies.AsNoTracking().ToListAsync();
         var wordFrequencies = allFrequencies.ToDictionary(f => f.WordId, f => f);
 
@@ -245,52 +253,152 @@ public static class JitenHelper
 
             foreach (var deck in decks)
             {
-                wordDifficultiesTotal.Add(deck.DeckId, 0);
-                foreach (var word in deckWords.Where(dw => dw.DeckId == deck.DeckId))
+                Dictionary<int, double> wordFrequencyBands = new Dictionary<int, double>()
+                                                             {
+                                                                 { 1, 0 }, // Common (0-2000)
+                                                                 { 2, 0 }, // Uncommon (2001-10000)
+                                                                 { 3, 0 }, // Rare (10001-25000)
+                                                                 { 4, 0 }, // Very rare (25001-40000)
+                                                                 { 5, 0 } // Extremely rare (40001+)
+                                                             };
+
+                // Group words by ID and reading to get unique words with their occurrences
+                var wordGroups = deckWords
+                                 .Where(dw => dw.DeckId == deck.DeckId)
+                                 .GroupBy(dw => new { dw.WordId, dw.ReadingIndex })
+                                 .Select(g => new
+                                              {
+                                                  WordId = g.Key.WordId,
+                                                  ReadingIndex = g.Key.ReadingIndex,
+                                                  Occurrences = g.Sum(dw => dw.Occurrences)
+                                              })
+                                 .ToList();
+
+                double totalWeightedOccurrences = 0;
+
+                foreach (var word in wordGroups)
                 {
                     var frequencyRank = wordFrequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex];
-                    wordDifficultiesTotal[word.DeckId] += ((float)word.Occurrences / deck.WordCount) *
-                                                          Math.Log2(Math.Truncate(frequencyRank / 2000f) + 1);
+
+                    // Apply a logarithmic weighting to occurrences - words that appear many times 
+                    // matter more, but with diminishing returns
+                    double occurrenceWeight = Math.Log10(word.Occurrences + 1);
+                    totalWeightedOccurrences += occurrenceWeight;
+
+                    if (frequencyRank <= 2000)
+                        wordFrequencyBands[1] += occurrenceWeight;
+                    else if (frequencyRank <= 10000)
+                        wordFrequencyBands[2] += occurrenceWeight;
+                    else if (frequencyRank <= 25000)
+                        wordFrequencyBands[3] += occurrenceWeight;
+                    else if (frequencyRank <= 40000)
+                        wordFrequencyBands[4] += occurrenceWeight;
+                    else
+                        wordFrequencyBands[5] += occurrenceWeight;
                 }
+
+                // Calculate difficulty based on weighted proportions
+                wordDifficultiesTotal[deck.DeckId] =
+                    (wordFrequencyBands[1] / totalWeightedOccurrences * 0.1) +
+                    (wordFrequencyBands[2] / totalWeightedOccurrences * 0.3) +
+                    (wordFrequencyBands[3] / totalWeightedOccurrences * 1.0) +
+                    (wordFrequencyBands[4] / totalWeightedOccurrences * 2.0) +
+                    (wordFrequencyBands[5] / totalWeightedOccurrences * 4.0);
+
+                if (deck.DeckId == 65584 || deck.DeckId == 65580)
+                    Debugger.Break();
+                
+                // Apply a vocabulary size scaling factor 
+                // Increase the power (0.7) for more separation between large and small vocabularies
+                wordDifficultiesTotal[deck.DeckId] *= Math.Pow(Math.Log10(deck.UniqueWordCount), 0.7) * 4;
             }
         }
 
         // Take the min and max values among all the decks
-        double minDifficulty = wordDifficultiesTotal.Values.Min();
-        double maxDifficulty = wordDifficultiesTotal.Values.Max();
-        uint minCharacterCount = (uint)allDecks.Min(d => d.CharacterCount);
-        uint maxCharacterCount = (uint)allDecks.Max(d => d.CharacterCount);
-        uint minUniqueWordCount = (uint)allDecks.Min(d => d.UniqueWordCount);
-        uint maxUniqueWordCount = (uint)allDecks.Max(d => d.UniqueWordCount);
-        uint minUniqueKanjiCount = (uint)allDecks.Min(d => d.UniqueKanjiCount);
-        uint maxUniqueKanjiCount = (uint)allDecks.Max(d => d.UniqueKanjiCount);
-        double minAverageSentenceLength = allDecks.Min(d => d.AverageSentenceLength);
-        double maxAverageSentenceLength = allDecks.Max(d => d.AverageSentenceLength);
+            // We go by 1st and 9th decile to avoid outliers
+            // double minDifficulty = wordDifficultiesTotal.Values.Min();
+            // double maxDifficulty = wordDifficultiesTotal.Values.Max();
+            // uint minCharacterCount = (uint)allDecks.Min(d => d.CharacterCount);
+            // uint maxCharacterCount = (uint)allDecks.Max(d => d.CharacterCount);
+            // uint minUniqueWordCount = (uint)allDecks.Min(d => d.UniqueWordCount);
+            // uint maxUniqueWordCount = (uint)allDecks.Max(d => d.UniqueWordCount);
+            // uint minUniqueKanjiCount = (uint)allDecks.Min(d => d.UniqueKanjiCount);
+            // uint maxUniqueKanjiCount = (uint)allDecks.Max(d => d.UniqueKanjiCount);
+            // double minAverageSentenceLength = allDecks.Min(d => d.AverageSentenceLength);
+            // double maxAverageSentenceLength = allDecks.Max(d => d.AverageSentenceLength);
 
-        foreach (var deck in allDecks)
-        {
-            float difficulty = 0;
-            difficulty += MapDoubleToWeight(wordDifficultiesTotal[deck.DeckId], minDifficulty, maxDifficulty, wordDifficultyWeight);
-            difficulty += MapToWeight((uint)deck.CharacterCount, minCharacterCount, maxCharacterCount, characterCountWeight);
-            difficulty += MapToWeight((uint)deck.UniqueWordCount, minUniqueWordCount, maxUniqueWordCount, uniqueWordCountWeight);
-            difficulty += MapToWeight((uint)deck.UniqueKanjiCount, minUniqueKanjiCount, maxUniqueKanjiCount, uniqueKanjiCountWeight);
-            difficulty += MapDoubleToWeight(deck.AverageSentenceLength, minAverageSentenceLength, maxAverageSentenceLength,
-                                            averageSentenceLengthWeight);
+            double minDifficulty = wordDifficultiesTotal.Values.OrderBy(d => d).ElementAt((int)(allDecks.Count * 0.05f));
+            double maxDifficulty = wordDifficultiesTotal.Values.OrderBy(d => d).ElementAt((int)(allDecks.Count * 0.95f));
+            uint minCharacterCount = (uint)allDecks.OrderBy(d => d.CharacterCount).ElementAt((int)(allDecks.Count * 0.05f)).CharacterCount;
+            uint maxCharacterCount = (uint)allDecks.OrderBy(d => d.CharacterCount).ElementAt((int)(allDecks.Count * 0.95f)).CharacterCount;
+            uint minUniqueWordCount = (uint)allDecks.OrderBy(d => d.UniqueWordCount).ElementAt((int)(allDecks.Count * 0.05f)).UniqueWordCount;
+            uint maxUniqueWordCount = (uint)allDecks.OrderBy(d => d.UniqueWordCount).ElementAt((int)(allDecks.Count * 0.95f)).UniqueWordCount;
+            uint minUniqueKanjiCount = (uint)allDecks.OrderBy(d => d.UniqueKanjiCount).ElementAt((int)(allDecks.Count * 0.05f)).UniqueKanjiCount;
+            uint maxUniqueKanjiCount = (uint)allDecks.OrderBy(d => d.UniqueKanjiCount).ElementAt((int)(allDecks.Count * 0.95f)).UniqueKanjiCount;
+            double minAverageSentenceLength =
+                allDecks.OrderBy(d => d.AverageSentenceLength).ElementAt((int)(allDecks.Count * 0.05f)).AverageSentenceLength;
+            double maxAverageSentenceLength =
+                allDecks.OrderBy(d => d.AverageSentenceLength).ElementAt((int)(allDecks.Count * 0.95f)).AverageSentenceLength;
+            
+            foreach (var deck in allDecks)
+            {
+                double difficulty = 0;
 
-            deck.Difficulty = (int)Math.Round(difficulty);
-        }
+                float wordDifficulty =
+                    MapDoubleToWeight(wordDifficultiesTotal[deck.DeckId], minDifficulty, maxDifficulty, wordDifficultyWeight);
+                float characterCountDifficulty =
+                    MapToWeight((uint)deck.CharacterCount, minCharacterCount, maxCharacterCount, characterCountWeight);
+                float uniqueWordCountDifficulty =
+                    MapToWeight((uint)deck.UniqueWordCount, minUniqueWordCount, maxUniqueWordCount, uniqueWordCountWeight);
+                float uniqueKanjiCountDifficulty =
+                    MapToWeight((uint)deck.UniqueKanjiCount, minUniqueKanjiCount, maxUniqueKanjiCount, uniqueKanjiCountWeight);
+                float averageSentenceLengthDifficulty = MapDoubleToWeight(deck.AverageSentenceLength, minAverageSentenceLength,
+                                                                          maxAverageSentenceLength, averageSentenceLengthWeight);
 
-        await context.SaveChangesAsync();
+                difficulty += wordDifficulty;
+                difficulty += characterCountDifficulty;
+                difficulty += uniqueWordCountDifficulty;
+                difficulty += uniqueKanjiCountDifficulty;
+                difficulty += averageSentenceLengthDifficulty;
 
-        // Map to the weight in a linear way
-        float MapToWeight(uint value, uint min, uint max, int weight)
-        {
-            return (value - min) / (float)(max - min) * weight;
-        }
+                deck.Difficulty = (int)Math.Round(difficulty);
 
-        float MapDoubleToWeight(double value, double min, double max, int weight)
-        {
-            return (float)((value - min) / (max - min)) * weight;
+                if (verbose)
+                {
+                    Console.WriteLine("========");
+                    Console.WriteLine("Difficulty for deck " + deck.RomajiTitle);
+                    Console.WriteLine("Word difficulty:" + wordDifficulty);
+                    Console.WriteLine("Character count difficulty:" + characterCountDifficulty);
+                    Console.WriteLine("Unique word count difficulty:" + uniqueWordCountDifficulty);
+                    Console.WriteLine("Unique kanji count difficulty:" + uniqueKanjiCountDifficulty);
+                    Console.WriteLine("Average sentence length difficulty:" + averageSentenceLengthDifficulty);
+                    Console.WriteLine("Total difficulty:" + deck.Difficulty);
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            // Map to the weight in a linear way
+            float MapToWeight(uint value, uint min, uint max, int weight)
+            {
+                if (value < min)
+                    return 0;
+
+                if (value > max)
+                    return weight;
+
+                return (value - min) / (float)(max - min) * weight;
+            }
+
+            float MapDoubleToWeight(double value, double min, double max, int weight)
+            {
+                if (value < min)
+                    return 0;
+
+                if (value > max)
+                    return weight;
+
+                return (float)((value - min) / (max - min)) * weight;
+            }
         }
     }
-}

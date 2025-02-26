@@ -17,4 +17,11 @@
       <ProjectReference Include="..\Jiten.Core\Jiten.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="..\Shared\sharedsettings.json">
+        <Link>sharedsettings.json</Link>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>

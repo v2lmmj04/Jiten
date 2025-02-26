@@ -1,0 +1,10 @@
+{
+  "ConnectionStrings": {
+      "JitenDatabase": "Host=localhost;Database=jiten;Username=postgres;Password=password"
+  },
+  "StaticFilesPath": "C:\\Path\\To\\StaticFiles",
+  "UseBunnyCdn": false,
+  "BunnyCdnSecret": "",
+  "BunnyCdnStorageZone": "jiten",
+  "CdnBaseUrl": "https://jiten.b-cdn.net"
+}

@@ -230,7 +230,7 @@ namespace Jiten.Parser
                                           .ToList();
             
             // Split into sentences
-            string[] sentences = Regex.Split(text, @"(?<=[。！？」])");
+            string[] sentences = Regex.Split(text, @"(?<=[。！？」）])|(?<=[…—])\r\n");
             sentences=sentences.Select(sentence =>
             {
                 // Find the first Japanese character

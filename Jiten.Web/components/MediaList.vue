@@ -1,11 +1,12 @@
 <script setup lang="ts">
   import { useApiFetchPaginated } from '~/composables/useApiFetch';
-  import {type Deck, type Definition, MediaType, type Reading} from '~/types';
+  import { type Deck, type Definition, MediaType, type Reading } from '~/types';
   import Skeleton from 'primevue/skeleton';
   import Card from 'primevue/card';
+  import InputText from 'primevue/inputtext';
 
   const props = defineProps<{
-    word?: Word
+    word?: Word;
   }>();
 
   const route = useRoute();
@@ -20,7 +21,12 @@
     status,
     error,
   } = await useApiFetchPaginated<Deck[]>(url, {
-    query: { offset: offset, mediaType: mediaType, wordId: props?.word?.wordId, readingIndex: props?.word?.mainReading?.readingIndex },
+    query: {
+      offset: offset,
+      mediaType: mediaType,
+      wordId: props?.word?.wordId,
+      readingIndex: props?.word?.mainReading?.readingIndex,
+    },
     watch: [offset, mediaType],
   });
 
@@ -40,8 +46,7 @@
 </script>
 
 <template>
-  {{props.reading}}
-  <div>
+  <div class="flex flex-col gap-2">
     <Card>
       <template #content>
         <div class="flex flex-row flex-wrap justify-around">
@@ -56,6 +61,9 @@
         </div>
       </template>
     </Card>
+    <div>
+      <InputText v-model="nameSearch" type="text" placeholder="Search by name" class="w-full" />
+    </div>
     <div>
       <div class="flex flex-col gap-1">
         <div class="flex justify-between">

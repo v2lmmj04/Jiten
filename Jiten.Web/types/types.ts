@@ -2,6 +2,7 @@ import type { MediaType } from '~/types';
 
 export interface Deck {
   deckId: number;
+  coverName?: string;
   mediaType: MediaType;
   originalTitle: string;
   romajiTitle?: string;

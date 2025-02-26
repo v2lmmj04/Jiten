@@ -89,7 +89,7 @@ public class Program
 
         [Option(longName: "compute-frequencies", Required = false, HelpText = "Compute global word frequencies")]
         public bool ComputeFrequencies { get; set; }
-        
+
         [Option(longName: "compute-difficulty", Required = false, HelpText = "Compute difficulty for decks")]
         public bool ComputeDifficulty { get; set; }
     }
@@ -165,10 +165,10 @@ public class Program
                         {
                             await JitenHelper.ComputeFrequencies();
                         }
-                        
+
                         if (o.ComputeDifficulty)
                         {
-                            await JitenHelper.ComputeDifficulty();
+                            await JitenHelper.ComputeDifficulty(o.Verbose);
                         }
 
                         if (o.Verbose)
@@ -209,8 +209,16 @@ public class Program
             var deck = JsonSerializer.Deserialize<Deck>(await File.ReadAllTextAsync(Path.Combine(directory, "deck.json")),
                                                         serializerOptions);
             if (deck == null) return;
+            
+            var cover = await File.ReadAllBytesAsync(Path.Combine(directory, "cover.jpg"), _);
+            using var coverOptimized = new ImageMagick.MagickImage(cover);
 
-            await JitenHelper.InsertDeck(deck);
+            coverOptimized.Resize(400, 400);
+            coverOptimized.Strip();
+            coverOptimized.Quality = 85;
+            coverOptimized.Format = ImageMagick.MagickFormat.Jpeg;
+
+            await JitenHelper.InsertDeck(deck, coverOptimized.ToByteArray());
 
             if (options.Verbose)
                 Console.WriteLine($"Deck {deck.OriginalTitle} inserted into the database.");
@@ -273,6 +281,12 @@ public class Program
             if (metadata == null) return;
 
             var baseDeck = await ProcessMetadata(metadata, null, options, deckType, 0);
+            if (baseDeck == null)
+            {
+                Console.WriteLine("ERROR: BASE DECK RETURNED NULL");
+                return;
+            }
+
             baseDeck.MediaType = deckType;
             baseDeck.OriginalTitle = metadata.OriginalTitle;
             baseDeck.RomajiTitle = metadata.RomajiTitle;
@@ -294,12 +308,30 @@ public class Program
 
         return;
 
-        async Task<Deck> ProcessMetadata(Metadata metadata, Deck? parentDeck, Options options, MediaType deckType, int deckOrder)
+        async Task<Deck?> ProcessMetadata(Metadata metadata, Deck? parentDeck, Options options, MediaType deckType, int deckOrder)
         {
             Deck deck = new();
             if (!string.IsNullOrEmpty(metadata.FilePath))
             {
-                var lines = (await File.ReadAllLinesAsync(metadata.FilePath)).ToList();
+                List<string> lines = [];
+                if (Path.GetExtension(metadata.FilePath)?.ToLower() == ".epub")
+                {
+                    var extractor = new EbookExtractor();
+                    var text = await ExtractEpub(metadata.FilePath, extractor, options);
+
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        Console.WriteLine("ERROR: TEXT RETURNED EMPTY");
+                        return deck;
+                    }
+
+                    lines = text.Split(Environment.NewLine).ToList();
+                }
+                else
+                {
+                    lines = (await File.ReadAllLinesAsync(metadata.FilePath)).ToList();
+                }
+
                 if (options.CleanSubtitles)
                 {
                     // lines in revert, remove lines that start with the clean starts, filter with regex for (.*)
@@ -334,6 +366,12 @@ public class Program
             foreach (var child in metadata.Children)
             {
                 var childDeck = await ProcessMetadata(child, deck, options, deckType, ++deckOrder);
+                if (childDeck == null)
+                {
+                    Console.WriteLine("ERROR: CHILD DECK RETURNED NULL");
+                    return null;
+                }
+
                 deck.Children.Add(childDeck);
             }
 
@@ -466,6 +504,15 @@ public class Program
 
                 break;
 
+            case "yuris":
+                result = await new YuRisExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
+
             case "bgi":
                 if (o.Extra == null)
                 {
@@ -512,21 +559,6 @@ public class Program
             }
 
             return text;
-            // if (o.Parse)
-            // {
-            //     var result = await Jiten.Parser.Program.ParseText(text);
-            //     // serialize result and write to file
-            //     // await File.WriteAllTextAsync("parsed.json", JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
-            //
-            //     if (o.Verbose)
-            //         Console.WriteLine($"Text extracted from {file}. Found {result.CharacterCount} characters, {result.WordCount} words, {result.UniqueWordCount} unique words.");
-            //
-            //     result.OriginalTitle = Path.GetFileNameWithoutExtension(file);
-            //     //await JmDictHelper.InsertDeck(result);
-            //
-            //     if (o.Verbose)
-            //         Console.WriteLine($"Deck {result.OriginalTitle} inserted into the database.");
-            // }
         }
 
         return "";

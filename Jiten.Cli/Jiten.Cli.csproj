@@ -13,17 +13,25 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="AngleSharp" Version="1.2.0" />
       <PackageReference Include="CommandLineParser" Version="2.9.1" />
-      <PackageReference Include="HtmlAgilityPack" Version="1.11.71" />
+      <PackageReference Include="Magick.NET-Q16-x64" Version="14.5.0" />
       <PackageReference Include="SharpCompress" Version="0.38.0" />
       <PackageReference Include="SubtitlesParser" Version="1.5.1" />
-      <PackageReference Include="VersOne.Epub" Version="3.3.2" />
+      <PackageReference Include="VersOne.Epub" Version="3.3.3" />
     </ItemGroup>
 
     <ItemGroup>
       <None Update="appsettings.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\Shared\sharedsettings.json">
+        <Link>sharedsettings.json</Link>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
 </Project>

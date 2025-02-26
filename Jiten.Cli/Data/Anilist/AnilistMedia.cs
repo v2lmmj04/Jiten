@@ -9,5 +9,9 @@ public class AnilistMedia
     public string BannerImage { get; set; }
     public AnilistImage CoverImage { get; set; }
 
-    public DateTime ReleaseDate => new(StartDate.Year, StartDate.Month, StartDate.Day);
+    public DateTime ReleaseDate => new(
+                                       StartDate.Year.GetValueOrDefault(1),
+                                       StartDate.Month.GetValueOrDefault(1),
+                                       StartDate.Day.GetValueOrDefault(1)
+                                      );
 }

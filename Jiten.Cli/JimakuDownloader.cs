@@ -27,6 +27,8 @@ public class JimakuDownloader
         {
             var configuration = new ConfigurationBuilder()
                                 .SetBasePath(Directory.GetCurrentDirectory())
+                                .AddJsonFile(Path.Combine(Environment.CurrentDirectory, "..", "Shared", "sharedsettings.json"), optional:true)
+                                .AddJsonFile("sharedsettings.json", optional:true)
                                 .AddJsonFile("appsettings.json")
                                 .Build();
 

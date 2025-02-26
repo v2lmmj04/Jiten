@@ -19,7 +19,7 @@
       <div class="flex-gap-6">
         <div class="flex-1">
           <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
-            <div><img src="/img/nocover.jpg" alt="No cover" class="h-48 w-32" /></div>
+            <div><img :src="deck.coverName ?? '/img/nocover.jpg'" :alt="deck.originalTitle" class="h-48 w-32" /></div>
             <div>
               <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
                 <div class="w-full md:w-64">
@@ -29,7 +29,7 @@
                   </div>
                   <div class="flex justify-between mb-2">
                     <span class="text-gray-600">Word count</span>
-                    <span class="ml-8 tabular-nums">{{ deck.wordCount }}</span>
+                    <span class="ml-8 tabular-nums">{{ deck.wordCount.toLocaleString() }}</span>
                   </div>
                   <div class="flex justify-between mb-2">
                     <span class="text-gray-600">Unique words</span>
@@ -52,7 +52,7 @@
                   </div>
                   <div v-if="deck.averageSentenceLength !== 0" class="flex justify-between mb-2">
                     <span class="text-gray-600">Average sentence length</span>
-                    <span class="ml-8 tabular-nums">{{ deck.averageSentenceLength }}</span>
+                    <span class="ml-8 tabular-nums">{{ deck.averageSentenceLength.toFixed(1) }}</span>
                   </div>
                   <div class="flex justify-between mb-2">
                     <span class="text-gray-600">Difficulty</span>
@@ -73,11 +73,7 @@
                     class=""
                   />
 
-                  <Button
-                    @click="showDownloadDialog = true"
-                    label="Download deck"
-                    class=""
-                  />
+                  <Button @click="showDownloadDialog = true" label="Download deck" class="" />
                 </div>
               </div>
             </div>

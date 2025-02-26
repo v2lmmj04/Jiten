@@ -54,6 +54,9 @@ public class BgiExtractor
                 if (names.Contains(message.Trim()))
                     continue;
 
+                if (message.StartsWith("_"))
+                    continue;
+                
                 // Filter [tags] and {tags}
                 message = Regex.Replace(message, @"\[.*?\]", "", RegexOptions.None);
                 message = Regex.Replace(message, @"{.*?}", "", RegexOptions.None);

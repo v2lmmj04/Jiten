@@ -55,7 +55,9 @@ public static class MetadataDownloader
         {
             return;
         }
-
+        
+        files.Sort();
+        
         var orderedFiles = await GetFileOrder(files);
         if (!orderedFiles.Any())
         {
@@ -111,6 +113,7 @@ public static class MetadataDownloader
         {
             var image = metadatas.First().Image;
             var links = metadatas.First().Links;
+            var releaseDate = metadatas.First().ReleaseDate;
 
             // Ask if you want to name the first metadata originaltitle
             Console.WriteLine($"What should **{Path.GetFileNameWithoutExtension(metadatas.First().FilePath)}** be named? Or press enter to keep the name {metadatas.First().OriginalTitle}");
@@ -130,6 +133,7 @@ public static class MetadataDownloader
                                OriginalTitle = originalTitle,
                                RomajiTitle = romajiTitle,
                                EnglishTitle = englishTitle,
+                               ReleaseDate = releaseDate,
                                Image = image,
                                Links = links,
                                Children = metadatas,

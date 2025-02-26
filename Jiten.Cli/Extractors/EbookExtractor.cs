@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using HtmlAgilityPack;
+using AngleSharp.Dom;
+using AngleSharp.Html.Parser;
 using VersOne.Epub;
 
 namespace Jiten.Cli;
@@ -17,51 +18,63 @@ public class EbookExtractor
 
             // Select only the chapters with key partXXXX.html or p-XXX.html or XXXX.html
             // I'm not sure if all epub files have this format, but it works for now
-            Regex regex = new(@"\b(part\d{4}\.x?html|p-\d{3}\.x?html|\d{4}\.x?html)\b");
-            
+            // I keep having to add new ones, help me
+            Regex regex = new(@"\b(part\d{4,5}\.x?html|p-\d{3}\.x?html|\d{4}\.x?html)|text\d{4,5}\.x?html|index_split_\d{3}\.x?html|a_\d_\d{2}.x?html|k\d+_\d{4}.x?html\b");
+
             var filteredChapters = book.ReadingOrder
                                        .Where(chapter => regex.IsMatch(chapter.Key));
 
 
             foreach (var chapter in filteredChapters)
             {
-                HtmlDocument htmlDocument = new();
-                htmlDocument.LoadHtml(chapter.Content);
+                var parser = new HtmlParser();
+                var document = parser.ParseDocument(PreprocessHtml(chapter.Content));
 
-                var nodes = htmlDocument.DocumentNode.SelectNodes("//text()[not(ancestor::title)]|//ruby");
+                var nodes = document.Body
+                                    .Descendants()
+                                    .Where(n => n.NodeType == AngleSharp.Dom.NodeType.Text &&
+                                                !n.ParentElement?.TagName.Equals("TITLE", System.StringComparison.OrdinalIgnoreCase) ==
+                                                true &&
+                                                !n.ParentElement?.TagName.Equals("STYLE", System.StringComparison.OrdinalIgnoreCase) ==
+                                                true &&
+                                                !n.ParentElement?.TagName.Equals("SCRIPT", System.StringComparison.OrdinalIgnoreCase) ==
+                                                true)
+                                    .Cast<IText>();
+
 
                 if (nodes != null)
                 {
                     StringBuilder lineBuilder = new StringBuilder();
 
-                    foreach (HtmlNode node in nodes)
+                    foreach (var node in nodes)
                     {
-                        if (node.Name == "ruby")
+                        var parentElement = node.ParentElement;
+
+                        if (parentElement != null && parentElement.TagName.Equals("RUBY", StringComparison.OrdinalIgnoreCase))
                         {
                             // Extract only kanji from ruby text
-                            var rbNodes = node.SelectNodes(".//rb");
-                            if (rbNodes != null)
+                            var rbNodes = parentElement.QuerySelectorAll("rb");
+                            foreach (var rbNode in rbNodes)
                             {
-                                foreach (var rbNode in rbNodes)
-                                {
-                                    lineBuilder.Append(rbNode.InnerText.Trim());
-                                }
+                                lineBuilder.Append(rbNode.TextContent.Trim());
                             }
                         }
-                        else if (node.NodeType == HtmlNodeType.Text &&
-                                 !node.ParentNode.Name.Equals("rb", StringComparison.OrdinalIgnoreCase) &&
-                                 !node.ParentNode.Name.Equals("rt", StringComparison.OrdinalIgnoreCase))
+                        else if (parentElement != null &&
+                                 !parentElement.TagName.Equals("RB", StringComparison.OrdinalIgnoreCase) &&
+                                 !parentElement.TagName.Equals("RT", StringComparison.OrdinalIgnoreCase))
                         {
-                            string text = node.InnerText.Trim();
+                            string text = node.TextContent.Trim();
                             if (!string.IsNullOrWhiteSpace(text))
                             {
                                 lineBuilder.Append(text);
                             }
                         }
 
+
                         // Check if we've reached the end of a sentence or paragraph
                         if (lineBuilder.Length <= 0 ||
-                            (!node.InnerText.EndsWith("。") && !node.InnerText.EndsWith("！") && !node.InnerText.EndsWith("？"))) continue;
+                            (!node.Data.EndsWith("。") && !node.Data.EndsWith("！") && !node.Data.EndsWith("？"))) continue;
+
                         extractedText.AppendLine(lineBuilder.ToString());
                         lineBuilder.Clear();
                     }
@@ -85,5 +98,21 @@ public class EbookExtractor
             Console.WriteLine(e);
             return "";
         }
+    }
+
+
+    /// <summary>
+    /// Preprocess malformed html
+    /// </summary>
+    /// <param name="htmlContent"></param>
+    /// <returns></returns>
+    private string PreprocessHtml(string htmlContent)
+    {
+        htmlContent = Regex.Replace(htmlContent, @"<script[^>]*>[\s\S]*?<\/script>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        htmlContent = Regex.Replace(htmlContent, @"<script[^>]*/>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        htmlContent = Regex.Replace(htmlContent, @"<style[^>]*>[\s\S]*?<\/style>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        htmlContent = Regex.Replace(htmlContent, @"<style[^>]*/>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        return htmlContent;
     }
 }
