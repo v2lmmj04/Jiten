@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
@@ -25,6 +26,9 @@ public class EbookExtractor
                                        .Where(chapter => regex.IsMatch(chapter.Key));
 
 
+            if (!filteredChapters.Any())
+                Debugger.Break();
+            
             foreach (var chapter in filteredChapters)
             {
                 var parser = new HtmlParser();

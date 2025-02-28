@@ -92,6 +92,9 @@ public class Program
 
         [Option(longName: "compute-difficulty", Required = false, HelpText = "Compute difficulty for decks")]
         public bool ComputeDifficulty { get; set; }
+        
+        [Option(longName:"debug-deck", Required = false, HelpText = "Debug a deck by id")]
+        public int? DebugDeck { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -171,6 +174,11 @@ public class Program
                             await JitenHelper.ComputeDifficulty(o.Verbose);
                         }
 
+                        if (o.DebugDeck != null)
+                        {
+                            await JitenHelper.DebugDeck(o.DebugDeck.Value);
+                        }
+
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
@@ -210,8 +218,7 @@ public class Program
                                                         serializerOptions);
             if (deck == null) return;
             
-            var cover = await File.ReadAllBytesAsync(Path.Combine(directory, "cover.jpg"), _);
-            using var coverOptimized = new ImageMagick.MagickImage(cover);
+            using var coverOptimized = new ImageMagick.MagickImage(Path.Combine(directory, "cover.jpg"));
 
             coverOptimized.Resize(400, 400);
             coverOptimized.Strip();

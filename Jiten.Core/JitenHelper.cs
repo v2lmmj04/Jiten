@@ -311,16 +311,30 @@ public static class JitenHelper
         {
             double difficulty = 0;
 
-            float wordDifficulty =
-                MapDoubleToWeight(wordDifficultiesTotal[deck.DeckId], minDifficulty, maxDifficulty, wordDifficultyWeight);
-            float characterCountDifficulty =
-                MapToWeight((uint)deck.CharacterCount, minCharacterCount, maxCharacterCount, characterCountWeight);
-            float uniqueWordCountDifficulty =
-                MapToWeight((uint)deck.UniqueWordCount, minUniqueWordCount, maxUniqueWordCount, uniqueWordCountWeight);
-            float uniqueKanjiCountDifficulty =
-                MapToWeight((uint)deck.UniqueKanjiCount, minUniqueKanjiCount, maxUniqueKanjiCount, uniqueKanjiCountWeight);
-            float averageSentenceLengthDifficulty = MapDoubleToWeight(deck.AverageSentenceLength, minAverageSentenceLength,
-                                                                      maxAverageSentenceLength, averageSentenceLengthWeight);
+            // float wordDifficulty =
+            //     MapDoubleToWeight(wordDifficultiesTotal[deck.DeckId], minDifficulty, maxDifficulty, wordDifficultyWeight);
+            // float characterCountDifficulty =
+            //     MapToWeight((uint)deck.CharacterCount, minCharacterCount, maxCharacterCount, characterCountWeight);
+            // float uniqueWordCountDifficulty =
+            //     MapToWeight((uint)deck.UniqueWordCount, minUniqueWordCount, maxUniqueWordCount, uniqueWordCountWeight);
+            // float uniqueKanjiCountDifficulty =
+            //     MapToWeight((uint)deck.UniqueKanjiCount, minUniqueKanjiCount, maxUniqueKanjiCount, uniqueKanjiCountWeight);
+            // float averageSentenceLengthDifficulty = MapDoubleToWeight(deck.AverageSentenceLength, minAverageSentenceLength,
+            //                                                           maxAverageSentenceLength, averageSentenceLengthWeight);
+
+            float wordDifficulty = MapWithZScore(wordDifficultiesTotal[deck.DeckId], wordDifficultiesTotal.Values.ToList(),
+                                                 wordDifficultyWeight);
+            float characterCountDifficulty = MapWithZScore((uint)deck.CharacterCount,
+                                                           allDecks.Select(d => (double)d.CharacterCount).ToList(), characterCountWeight);
+            float uniqueWordCountDifficulty = MapWithZScore((uint)deck.UniqueWordCount,
+                                                            allDecks.Select(d => (double)d.UniqueWordCount).ToList(),
+                                                            uniqueWordCountWeight);
+            float uniqueKanjiCountDifficulty = MapWithZScore((uint)deck.UniqueKanjiCount,
+                                                             allDecks.Select(d => (double)d.UniqueKanjiCount).ToList(),
+                                                             uniqueKanjiCountWeight);
+            float averageSentenceLengthDifficulty = MapWithZScore(deck.AverageSentenceLength,
+                                                                  allDecks.Select(d => (double)d.AverageSentenceLength).ToList(),
+                                                                  averageSentenceLengthWeight);
 
             difficulty += wordDifficulty;
             difficulty += characterCountDifficulty;
@@ -366,6 +380,18 @@ public static class JitenHelper
                 return weight;
 
             return (float)((value - min) / (max - min)) * weight;
+        }
+
+        float MapWithZScore(double value, List<double> allValues, int weight)
+        {
+            double mean = allValues.Average(v => v);
+            double stdDev = Math.Sqrt(allValues.Average(v => Math.Pow(v - mean, 2)));
+
+            // Convert to z-score then normalize to 0-1 range (cap at ±2 std deviations)
+            double zScore = (value - mean) / stdDev;
+            double normalized = (Math.Max(-2, Math.Min(2, zScore)) + 2) / 4;
+
+            return (float)(normalized * weight);
         }
     }
 
