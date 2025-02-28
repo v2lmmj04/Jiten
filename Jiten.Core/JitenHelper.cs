@@ -264,18 +264,20 @@ public static class JitenHelper
                 {
                     var frequencyRank = wordFrequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex];
 
-                    var nRank = frequencyRank / 10000;
+                    var nRank = frequencyRank / 1000;
 
                     if (!wordFrequencyBy10k.TryAdd(nRank, 1))
                         wordFrequencyBy10k[nRank]++;
-
-                    var list = wordFrequencyBy10k.Select(x => (x.Key, x.Value))
-                                                 .OrderBy(x => x.Key)
-                                                 .ToList();
-                    foreach (var wf in list)
-                    {
-                        wordDifficultiesTotal[deck.DeckId] += (wf.Value / (double)deck.WordCount * 100) * Math.Pow(wf.Key, wf.Key);
-                    }
+                }
+                
+                var list = wordFrequencyBy10k.Select(x => (x.Key, x.Value))
+                                             .OrderBy(x => x.Key)
+                                             .ToList();
+                
+                // Scale each value by rank exponentially
+                foreach (var wf in list)
+                {
+                    wordDifficultiesTotal[deck.DeckId] += (wf.Value / (double)deck.WordCount * 100) * Math.Pow(wf.Key, wf.Key*0.1);
                 }
             }
         }
