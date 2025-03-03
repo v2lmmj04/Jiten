@@ -39,28 +39,26 @@ public static class JitenHelper
         int batchSize = 100000;
         await using var context = new JitenDbContext();
 
-        // Delete previous frequency data if it exists
-        await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE jmdict.\"WordFrequencies\"");
-
         Dictionary<int, JmDictWordFrequency> wordFrequencies = new();
 
         // Prefill the dictionary with default values
-        var allWords = await context.JMDictWords.AsNoTracking().ToListAsync();
+        var wordReadingCounts = await context.JMDictWords
+                                             .AsNoTracking()
+                                             .Select(w => new { w.WordId, ReadingsCount = w.Readings.Count })
+                                             .ToDictionaryAsync(w => w.WordId, w => w.ReadingsCount);
 
-        foreach (var word in allWords)
+        foreach (var kvp in wordReadingCounts)
         {
-            var wordFrequency = new JmDictWordFrequency
-                                {
-                                    WordId = word.WordId,
-                                    FrequencyRank = 0,
-                                    UsedInMediaAmount = 0,
-                                    ReadingsFrequencyPercentage = [..new float[word.Readings.Count]],
-                                    ReadingsObservedFrequency = [..new double[word.Readings.Count]],
-                                    ReadingsFrequencyRank = [..new int[word.Readings.Count]],
-                                    ReadingsUsedInMediaAmount = [..new int[word.Readings.Count]],
-                                };
-
-            wordFrequencies.Add(word.WordId, wordFrequency);
+            wordFrequencies.Add(kvp.Key, new JmDictWordFrequency
+                                         {
+                                             WordId = kvp.Key,
+                                             FrequencyRank = 0,
+                                             UsedInMediaAmount = 0,
+                                             ReadingsFrequencyPercentage = [..new float[kvp.Value]],
+                                             ReadingsObservedFrequency = [..new Double[kvp.Value]],
+                                             ReadingsFrequencyRank = [..new int[kvp.Value]],
+                                             ReadingsUsedInMediaAmount = [..new int[kvp.Value]],
+                                         });
         }
 
         var primaryDecks = await context.Decks.AsNoTracking()
@@ -168,6 +166,9 @@ public static class JitenHelper
             }
         }
 
+        // Delete previous frequency data if it exists
+        await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE jmdict.\"WordFrequencies\"");
+
         // Bulk insert using PostgreSQL COPY command
         const string tempTable = "temp_word_frequencies";
 
@@ -230,7 +231,8 @@ public static class JitenHelper
     /// </summary>
     public static async Task ComputeDifficulty(bool verbose)
     {
-        int wordDifficultyWeight = 40;
+        int averageWordDifficultyWeight = 25;
+        int peakWordDifficultyWeight = 15;
         int characterCountWeight = 0;
         int uniqueWordCountWeight = 15;
         int uniqueKanjiCountWeight = 30;
@@ -246,6 +248,7 @@ public static class JitenHelper
         var wordFrequencies = allFrequencies.ToDictionary(f => f.WordId, f => f);
 
         Dictionary<int, double> wordDifficultiesTotal = new();
+        Dictionary<int, double> peakWordDifficulties = new();
 
         // Compute the word difficulty for each deck, based on the frequency rank of each words present in it
         for (int i = 0; i < allDecks.Count; i += batchSize)
@@ -257,27 +260,83 @@ public static class JitenHelper
             foreach (var deck in decks)
             {
                 wordDifficultiesTotal.Add(deck.DeckId, 0);
+                peakWordDifficulties.Add(deck.DeckId, 0);
 
-                Dictionary<int, int> wordFrequencyBy10k = new Dictionary<int, int>();
+                Dictionary<int, int> wordFrequencyBy1k = new Dictionary<int, int>();
 
-                foreach (var word in deckWords.Where(dw => dw.DeckId == deck.DeckId))
+                // Get all deck words for this specific deck
+                var deckWordsList = deckWords.Where(dw => dw.DeckId == deck.DeckId).ToList();
+
+                // Calculate total occurrences in the deck
+                int totalOccurrences = deckWordsList.Sum(dw => dw.Occurrences);
+
+                // Create list of words with their rank and occurrences
+                var wordsWithRankAndOccurrences = deckWordsList
+                                                  .Select(word => (
+                                                              word,
+                                                              rank: wordFrequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex],
+                                                              occurrences: word.Occurrences
+                                                          ))
+                                                  .OrderByDescending(pair => pair.rank) // Sort by rarity first
+                                                  .ToList();
+
+                // Select rarest words until we reach 5% of total occurrences
+                var peakWordEntries = new List<(DeckWord word, int rank, int occurrences)>();
+                int accumulatedOccurrences = 0;
+                int targetOccurrences = (int)(totalOccurrences * 0.1);
+
+                foreach (var entry in wordsWithRankAndOccurrences)
+                {
+                    peakWordEntries.Add(entry);
+                    accumulatedOccurrences += entry.occurrences;
+
+                    if (accumulatedOccurrences >= targetOccurrences)
+                        break;
+                }
+
+                // Keep track of peak word entries to exclude them from average calculation
+                var peakWordEntryIds = new HashSet<int>(peakWordEntries.Select(pair => pair.word.DeckWordId));
+
+                foreach (var word in deckWordsList.Where(dw => !peakWordEntryIds.Contains(dw.DeckWordId)))
                 {
                     var frequencyRank = wordFrequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex];
 
                     var nRank = frequencyRank / 1000;
 
-                    if (!wordFrequencyBy10k.TryAdd(nRank, 1))
-                        wordFrequencyBy10k[nRank]++;
+                    if (!wordFrequencyBy1k.TryAdd(nRank, 1))
+                        wordFrequencyBy1k[nRank] += word.Occurrences;
                 }
-                
-                var list = wordFrequencyBy10k.Select(x => (x.Key, x.Value))
-                                             .OrderBy(x => x.Key)
-                                             .ToList();
-                
+
+                var list = wordFrequencyBy1k.Select(x => (x.Key, x.Value))
+                                            .OrderBy(x => x.Key)
+                                            .ToList();
+
                 // Scale each value by rank exponentially
                 foreach (var wf in list)
                 {
-                    wordDifficultiesTotal[deck.DeckId] += (wf.Value / (double)deck.WordCount * 100) * Math.Pow(wf.Key, wf.Key*0.1);
+                    wordDifficultiesTotal[deck.DeckId] +=
+                        (wf.Value / (double)deck.WordCount * 100) * Math.Exp(wf.Key / 10.0);
+                }
+
+                Dictionary<int, int> peakWordFrequencyBy1k = new Dictionary<int, int>();
+
+                foreach (var word in peakWordEntries)
+                {
+                    var nRank = word.rank / 1000;
+
+                    if (!peakWordFrequencyBy1k.TryAdd(nRank, 1))
+                        peakWordFrequencyBy1k[nRank]++;
+                }
+
+                var peakWordList = wordFrequencyBy1k.Select(x => (x.Key, x.Value))
+                                                    .OrderBy(x => x.Key)
+                                                    .ToList();
+
+                // Scale each value by rank exponentially
+                foreach (var wf in peakWordList)
+                {
+                    peakWordDifficulties[deck.DeckId] +=
+                        (wf.Value / (double)deck.WordCount * 100) * Math.Exp(wf.Key / 5.0);
                 }
             }
         }
@@ -325,7 +384,9 @@ public static class JitenHelper
             //                                                           maxAverageSentenceLength, averageSentenceLengthWeight);
 
             float wordDifficulty = MapWithZScore(wordDifficultiesTotal[deck.DeckId], wordDifficultiesTotal.Values.ToList(),
-                                                 wordDifficultyWeight);
+                                                 averageWordDifficultyWeight);
+            float peakWordDifficulty = MapWithZScore(peakWordDifficulties[deck.DeckId], peakWordDifficulties.Values.ToList(),
+                                                     peakWordDifficultyWeight);
             float characterCountDifficulty = MapWithZScore((uint)deck.CharacterCount,
                                                            allDecks.Select(d => (double)d.CharacterCount).ToList(), characterCountWeight);
             float uniqueWordCountDifficulty = MapWithZScore((uint)deck.UniqueWordCount,
@@ -339,6 +400,7 @@ public static class JitenHelper
                                                                   averageSentenceLengthWeight);
 
             difficulty += wordDifficulty;
+            difficulty += peakWordDifficulty;
             difficulty += characterCountDifficulty;
             difficulty += uniqueWordCountDifficulty;
             difficulty += uniqueKanjiCountDifficulty;
@@ -351,6 +413,7 @@ public static class JitenHelper
                 Console.WriteLine("========");
                 Console.WriteLine("Difficulty for deck " + deck.OriginalTitle);
                 Console.WriteLine("Word difficulty:" + wordDifficulty);
+                Console.WriteLine("Peak word difficulty:" + peakWordDifficulty);
                 Console.WriteLine("Character count difficulty:" + characterCountDifficulty);
                 Console.WriteLine("Unique word count difficulty:" + uniqueWordCountDifficulty);
                 Console.WriteLine("Unique kanji count difficulty:" + uniqueKanjiCountDifficulty);
@@ -469,7 +532,7 @@ public static class JitenHelper
         foreach (var w in words)
         {
             var frequencyRank = wordFrequencies.First(wf => wf.WordId == w.WordId).FrequencyRank;
-            var nRank = frequencyRank / 10000;
+            var nRank = frequencyRank / 1000;
 
             if (wordFrequencyBy10k.ContainsKey(nRank))
                 wordFrequencyBy10k[nRank]++;
@@ -480,10 +543,22 @@ public static class JitenHelper
         var list = wordFrequencyBy10k.Select(x => (x.Key, x.Value))
                                      .OrderBy(x => x.Key)
                                      .ToList();
+
+        double totalPoints = 0;
         foreach (var wf in list)
         {
-            Console.WriteLine($"Percentage of words in rank {wf.Key} : {wf.Value / (double)words.Count * 100}");
-            Console.WriteLine("Points: " + (wf.Value / (double)words.Count * 100) * Math.Pow(wf.Key, wf.Key));
+            var points = (wf.Value / (double)words.Count * 100) * Math.Exp(wf.Key / 10.0);
+            totalPoints += points;
         }
+
+        foreach (var wf in list)
+        {
+            var points = (wf.Value / (double)words.Count * 100) * Math.Exp(wf.Key / 10.0);
+
+            Console.WriteLine($"Percentage of words in rank {wf.Key} : {(wf.Value / (double)words.Count * 100f).ToString("F2")}%");
+            Console.WriteLine("Points: " + points + " - Percentage of total points: " + (points / totalPoints * 100f).ToString("F2") + "%");
+        }
+
+        Console.WriteLine("Total points: " + totalPoints);
     }
 }
