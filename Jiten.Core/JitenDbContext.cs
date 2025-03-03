@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.Extensions.Configuration;
@@ -40,6 +39,8 @@ public class JitenDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("fuzzystrmatch");
+
         modelBuilder.HasDefaultSchema("jiten"); // Set a default schema
 
         modelBuilder.Entity<Deck>(entity =>

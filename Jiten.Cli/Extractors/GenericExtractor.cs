@@ -29,7 +29,7 @@ public class GenericExtractor
                                                        "nvl",
                                                        "[eval",
                                                        "[bg",
-                                                       "【",
+                                                       // "【",
                                                        "@",
                                                        "<",
                                                        "^",

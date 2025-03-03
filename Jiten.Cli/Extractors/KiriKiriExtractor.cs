@@ -13,7 +13,8 @@ public class KiriKiriExtractor
         "tf",
         "if",
         "kag",
-        "f."
+        "f.",
+        "["
     };
     
     public async Task<string> Extract(string? filePath, bool verbose)
@@ -54,7 +55,7 @@ public class KiriKiriExtractor
                 if (string.IsNullOrEmpty(trimmedLine) || _stripLinesStartingWith.Any(trimmedLine.StartsWith))
                     continue;
 
-                var match = Regex.Match(line, @"^\t(?<tabbed>.*)$|(?<ending>.*)\[(r|np|p|plc)\]$");
+                var match = Regex.Match(line, @"^\t?(?<tabbed>.*)$|(?<ending>.*)\[(r|np|p|plc)\]$");
                 if (!match.Success) continue;
 
                 string editedLine = match.Groups["tabbed"].Success ? match.Groups["tabbed"].Value : match.Groups["ending"].Value;

@@ -519,6 +519,15 @@ public class Program
                 }
 
                 break;
+            
+            case "utf":
+                result = await new UtfExtractor().Extract(o.ExtractFilePath, o.Verbose);
+                if (o.Output != null)
+                {
+                    await File.WriteAllTextAsync(o.Output, result);
+                }
+
+                break;
 
             case "bgi":
                 if (o.Extra == null)

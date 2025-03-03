@@ -4,6 +4,7 @@
   import Skeleton from 'primevue/skeleton';
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
+  import { debounce } from 'perfect-debounce';
 
   const props = defineProps<{
     word?: Word;
@@ -13,6 +14,17 @@
 
   const offset = computed(() => (route.query.offset ? Number(route.query.offset) : 0));
   const mediaType = computed(() => (route.query.mediaType ? route.query.mediaType : null));
+
+  const titleFilter = ref('');
+  const debouncedTitleFilter = ref(titleFilter.value);
+
+  const updateDebounced = debounce(async (newValue) => {
+    debouncedTitleFilter.value = newValue;
+  }, 300);
+
+  watch(titleFilter, (newValue) => {
+    updateDebounced(newValue);
+  });
 
   const url = computed(() => `media-deck/get-media-decks`);
 
@@ -26,6 +38,7 @@
       mediaType: mediaType,
       wordId: props?.word?.wordId,
       readingIndex: props?.word?.mainReading?.readingIndex,
+      titleFilter: debouncedTitleFilter,
     },
     watch: [offset, mediaType],
   });
@@ -38,10 +51,12 @@
   const end = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value));
 
   const previousLink = computed(() => {
-    return response.value?.hasPreviousPage ? { query: { offset: response.value.previousOffset } } : null;
+    return response.value?.hasPreviousPage
+      ? { query: { ...route.query, offset: response.value.previousOffset } }
+      : null;
   });
   const nextLink = computed(() => {
-    return response.value?.hasNextPage ? { query: { offset: response.value.nextOffset } } : null;
+    return response.value?.hasNextPage ? { query: { ...route.query, offset: response.value.nextOffset } } : null;
   });
 </script>
 
@@ -62,7 +77,7 @@
       </template>
     </Card>
     <div>
-      <InputText v-model="nameSearch" type="text" placeholder="Search by name" class="w-full" />
+      <InputText v-model="titleFilter" type="text" placeholder="Search by name" class="w-full" />
     </div>
     <div>
       <div class="flex flex-col gap-1">
@@ -91,6 +106,12 @@
         <div v-else class="flex flex-col gap-4">
           <MediaDeckCard v-for="deck in response.data" :key="deck.id" :deck="deck" />
         </div>
+      </div>
+      <div class="flex gap-8">
+        <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
+          Previous
+        </NuxtLink>
+        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next </NuxtLink>
       </div>
     </div>
   </div>

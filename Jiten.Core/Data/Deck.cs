@@ -12,9 +12,9 @@ public class Deck
     public int DeckId { get; set; }
 
     public DateTimeOffset CreationDate { get; set; } = DateTime.UtcNow;
-    
+
     public DateTimeOffset LastUpdate { get; set; } = DateTime.UtcNow;
-    
+
     /// <summary>
     /// Name of the image cover file
     /// </summary>
@@ -33,12 +33,21 @@ public class Deck
     /// <summary>
     /// Romaji transcription of the title
     /// </summary>
-    public string? RomajiTitle { get; set; }
+    public string? RomajiTitle
+    {
+        get => _romajiTitle ?? OriginalTitle;
+        set => _romajiTitle = value;
+    }
 
     /// <summary>
     /// English translation of the title, if it exists
     /// </summary>
-    public string? EnglishTitle { get; set; }
+    public string? EnglishTitle
+    {
+        get => _englishTitle ?? RomajiTitle;
+        set => _englishTitle = value;
+    }
+
 
     /// <summary>
     /// Total character count, without punctuation
@@ -79,7 +88,7 @@ public class Deck
     /// Amount of sentences
     /// </summary>
     public int SentenceCount { get; set; }
-    
+
     /// <summary>
     /// Average sentence length with decimal precision
     /// </summary>
@@ -114,6 +123,9 @@ public class Deck
     /// List of links to external websites
     /// </summary>
     public List<Link> Links { get; set; }
+
+    private string? _romajiTitle;
+    private string? _englishTitle;
 
     public async Task AddChildDeckWords()
     {

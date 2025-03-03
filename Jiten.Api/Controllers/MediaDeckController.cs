@@ -16,7 +16,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-media-decks")]
     public PaginatedResponse<List<Deck>> GetMediaDecks(string? sortOrder = "", int? offset = 0, MediaType? mediaType = null,
-                                                       int wordId = 0, int readingIndex = 0)
+                                                       int wordId = 0, int readingIndex = 0, string? titleFilter = "")
     {
         int pageSize = 50;
 
@@ -25,7 +25,22 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         query = query.Where(d => d.ParentDeck == null);
         if (mediaType != null)
             query = query.Where(d => d.MediaType == mediaType);
-
+        
+        if (!string.IsNullOrEmpty(titleFilter))
+        {
+            query = query.Where(d =>
+                                    // Fuzzy matching
+                                    EF.Functions.FuzzyStringMatchLevenshtein(d.OriginalTitle, titleFilter) <= 3 ||
+                                    EF.Functions.FuzzyStringMatchLevenshtein(d.RomajiTitle, titleFilter) <= 3 ||
+                                    EF.Functions.FuzzyStringMatchLevenshtein(d.EnglishTitle, titleFilter) <= 3 ||
+        
+                                    // Substring matching
+                                    EF.Functions.ILike(d.OriginalTitle, $"%{titleFilter}%") ||
+                                    EF.Functions.ILike(d.RomajiTitle, $"%{titleFilter}%") ||
+                                    EF.Functions.ILike(d.EnglishTitle, $"%{titleFilter}%")
+                               );
+        }
+        
         if (wordId != 0)
             query = query.Where(d => d.DeckWords.Any(dw => dw.WordId == wordId && dw.ReadingIndex == readingIndex));
 
@@ -33,10 +48,17 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var decks = query
                     .Include(d => d.Links)
-                    .OrderBy(d => d.OriginalTitle)
                     .Skip(offset ?? 0)
                     .Take(pageSize)
                     .ToList();
+
+        switch (sortOrder)
+        {
+            case "title":
+            default:
+                decks = decks.OrderBy(d => d.RomajiTitle).ToList();
+                break;
+        }
 
         return new PaginatedResponse<List<Deck>>(decks, totalCount, pageSize, offset ?? 0);
     }
@@ -137,7 +159,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         }
 
         IQueryable<DeckWord> deckWordsQuery = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
-        
+
         switch (downloadType)
         {
             case DeckDownloadType.Full:
@@ -189,7 +211,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             default:
                 return Results.BadRequest();
         }
-        
+
         List<DeckWord> deckWords = await deckWordsQuery.ToListAsync();
         var wordIds = deckWords.Select(dw => dw.WordId).Distinct().ToList();
 
