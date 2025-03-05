@@ -7,15 +7,18 @@ using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jiten.Api.Controllers;
 
 [ApiController]
 [Route("api/media-deck")]
+[EnableRateLimiting("fixed")]
 public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-media-decks")]
+    [ResponseCache(Duration = 300)]
     public PaginatedResponse<List<Deck>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,
                                                        int wordId = 0, int readingIndex = 0, string? titleFilter = "", string? sortBy = "",
                                                        SortOrder sortOrder = SortOrder.Ascending)
@@ -89,6 +92,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     }
 
     [HttpGet("{id}/vocabulary")]
+    [ResponseCache(Duration = 600)]
     public PaginatedResponse<DeckVocabularyListDto> GetVocabulary(int id, string? sortOrder = "", int? offset = 0)
     {
         int pageSize = 100;
@@ -173,6 +177,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     }
 
     [HttpGet("{id}/download")]
+    [EnableRateLimiting("download")]
     public async Task<IResult> DownloadDeck(int id, DeckFormat format, DeckDownloadType downloadType, DeckOrder order,
                                             int minFrequency = 0, int maxFrequency = 0)
     {

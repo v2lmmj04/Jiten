@@ -1,17 +1,19 @@
 using Jiten.Api.Dtos;
 using Jiten.Api.Helpers;
 using Jiten.Core;
-using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jiten.Api.Controllers;
 
 [ApiController]
 [Route("api/vocabulary")]
+[EnableRateLimiting("fixed")]
 public class VocabularyController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("{wordId}/{readingIndex}")]
+    [ResponseCache(Duration = 3600)]
     public async Task<IResult> GetWord(int wordId, int readingIndex)
     {
         var word = await context.JMDictWords.AsNoTracking()

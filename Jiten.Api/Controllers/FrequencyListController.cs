@@ -5,6 +5,7 @@ using Jiten.Core;
 using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jiten.Api.Controllers;
@@ -14,6 +15,7 @@ namespace Jiten.Api.Controllers;
 public class FrequencyListController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-global-frequency-list")]
+    [EnableRateLimiting("download")]
     public async Task<IResult> GetGlobalFrequencyList()
     {
         var frequencies = await context.JmDictWordFrequencies.AsNoTracking().OrderBy(w => w.FrequencyRank).ToListAsync();

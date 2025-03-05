@@ -81,7 +81,7 @@
   <div class="flex flex-col gap-2">
     <Card>
       <template #content>
-        <div class="flex flex-row flex-wrap justify-around">
+        <div class="flex flex-row flex-wrap justify-around gap-2">
           <NuxtLink :to="{ query: { } }">All</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Anime } }">Anime</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Drama } }">Dramas</NuxtLink>
