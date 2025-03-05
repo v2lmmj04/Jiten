@@ -41,3 +41,8 @@ export enum DeckOrder {
   GlobalFrequency = 2,
   DeckFrequency = 3,
 }
+
+export enum SortOrder {
+  Ascending = 0,
+  Descending = 1,
+}

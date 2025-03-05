@@ -58,7 +58,7 @@
                     <span
                       class="text-gray-600"
                       v-tooltip="
-                        'This is a work in progress.\nThe current analysis only takes into account the vocabulary and not the grammar patterns, which might make some works easier or harder than the score they\'re given.'
+                        'This is a work in progress.\nThe current analysis only takes into account the vocabulary and not the grammar patterns, cultural references or wordplay, which might make some works easier or harder than the score they\'re given.'
                       "
                     >
                       Difficulty
@@ -73,14 +73,13 @@
                 <a v-for="link in deck.links" :href="link.url" target="_blank">{{ getLinkTypeText(link.linkType) }}</a>
               </div>
               <div class="mt-4">
-                <div class="flex flex-wrap gap-4">
+                <div class="flex flex-col md:flex-row gap-4">
                   <Button
                     as="router-link"
                     :to="`/decks/medias/${deck.deckId}/vocabulary`"
                     label="View vocabulary"
                     class=""
                   />
-
                   <Button @click="showDownloadDialog = true" label="Download deck" class="" />
                 </div>
               </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { useApiFetchPaginated } from '~/composables/useApiFetch';
-  import { type Deck, type Definition, MediaType, type Reading } from '~/types';
+  import { type Deck, type Definition, MediaType, type Reading, SortOrder } from '~/types';
   import Skeleton from 'primevue/skeleton';
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
@@ -26,6 +26,21 @@
     updateDebounced(newValue);
   });
 
+  const sortByOptions = ref([
+    { label: 'Title', value: 'title' },
+    { label: 'Difficulty', value: 'difficulty' },
+    { label: 'Character Count', value: 'charCount' },
+    { label: 'Average Sentence Length', value: 'sentenceLength' },
+    { label: 'Word Count', value: 'wordCount' },
+    { label: 'Unique Kanji', value: 'uKanji' },
+    { label: 'Unique Word Count', value: 'uWordCount' },
+    { label: 'Unique Kanji Used Once', value: 'uKanjiOnce' },
+  ]);
+
+  const sortOrder = ref(SortOrder.Ascending);
+
+  const sortBy = ref(sortByOptions.value[0].value);
+
   const url = computed(() => `media-deck/get-media-decks`);
 
   const {
@@ -39,6 +54,8 @@
       wordId: props?.word?.wordId,
       readingIndex: props?.word?.mainReading?.readingIndex,
       titleFilter: debouncedTitleFilter,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
     },
     watch: [offset, mediaType],
   });
@@ -65,6 +82,7 @@
     <Card>
       <template #content>
         <div class="flex flex-row flex-wrap justify-around">
+          <NuxtLink :to="{ query: { } }">All</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Anime } }">Anime</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Drama } }">Dramas</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Movie } }">Movies</NuxtLink>
@@ -76,12 +94,33 @@
         </div>
       </template>
     </Card>
-    <div>
-      <InputText v-model="titleFilter" type="text" placeholder="Search by name" class="w-full" />
+    <div class="flex flex-col md:flex-row gap-2">
+      <FloatLabel variant="on">
+        <Select
+          v-model="sortBy"
+          :options="sortByOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Sort by"
+          inputId="sortBy"
+          class="w-full md:w-56"
+        />
+        <label for="sortBy">Sort by</label>
+      </FloatLabel>
+      <Button @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending">
+        <Icon v-if="sortOrder == SortOrder.Descending" name="mingcute:az-sort-descending-letters-line" size="1.25em"  />
+        <Icon v-if="sortOrder == SortOrder.Ascending" name="mingcute:az-sort-ascending-letters-line" size="1.25em" />
+      </Button>
+      <IconField>
+        <InputIcon>
+          <Icon name="material-symbols:search-rounded" />
+        </InputIcon>
+        <InputText v-model="titleFilter" type="text" placeholder="Search by name" class="w-full" />
+      </IconField>
     </div>
     <div>
       <div class="flex flex-col gap-1">
-        <div class="flex justify-between">
+        <div class="flex flex-col md:flex-row justify-between">
           <div class="flex gap-8">
             <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
               Previous
@@ -111,7 +150,7 @@
         <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
           Previous
         </NuxtLink>
-        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next </NuxtLink>
+        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
       </div>
     </div>
   </div>

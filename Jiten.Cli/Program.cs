@@ -37,7 +37,8 @@ public class Program
                                                                "翻译",
                                                                "校对",
                                                                "片源",
-                                                               "◎"
+                                                               "◎",
+                                                               "m"
                                                            };
 
     public class Options

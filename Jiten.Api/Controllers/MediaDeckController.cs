@@ -1,5 +1,6 @@
 using AnkiNet;
 using Jiten.Api.Dtos;
+using Jiten.Api.Enums;
 using Jiten.Api.Helpers;
 using Jiten.Core;
 using Jiten.Core.Data;
@@ -15,8 +16,9 @@ namespace Jiten.Api.Controllers;
 public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-media-decks")]
-    public PaginatedResponse<List<Deck>> GetMediaDecks(string? sortOrder = "", int? offset = 0, MediaType? mediaType = null,
-                                                       int wordId = 0, int readingIndex = 0, string? titleFilter = "")
+    public PaginatedResponse<List<Deck>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,
+                                                       int wordId = 0, int readingIndex = 0, string? titleFilter = "", string? sortBy = "",
+                                                       SortOrder sortOrder = SortOrder.Ascending)
     {
         int pageSize = 50;
 
@@ -25,7 +27,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         query = query.Where(d => d.ParentDeck == null);
         if (mediaType != null)
             query = query.Where(d => d.MediaType == mediaType);
-        
+
         if (!string.IsNullOrEmpty(titleFilter))
         {
             query = query.Where(d =>
@@ -33,32 +35,55 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                                     EF.Functions.FuzzyStringMatchLevenshtein(d.OriginalTitle, titleFilter) <= 3 ||
                                     EF.Functions.FuzzyStringMatchLevenshtein(d.RomajiTitle, titleFilter) <= 3 ||
                                     EF.Functions.FuzzyStringMatchLevenshtein(d.EnglishTitle, titleFilter) <= 3 ||
-        
+
                                     // Substring matching
                                     EF.Functions.ILike(d.OriginalTitle, $"%{titleFilter}%") ||
                                     EF.Functions.ILike(d.RomajiTitle, $"%{titleFilter}%") ||
                                     EF.Functions.ILike(d.EnglishTitle, $"%{titleFilter}%")
                                );
         }
-        
+
         if (wordId != 0)
             query = query.Where(d => d.DeckWords.Any(dw => dw.WordId == wordId && dw.ReadingIndex == readingIndex));
 
         var totalCount = query.Count();
+
+        if (string.IsNullOrEmpty(sortBy))
+            sortBy = "title";
+
+        query = sortBy switch
+        {
+            "difficulty" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.Difficulty)
+                : query.OrderByDescending(d => d.Difficulty),
+            "charCount" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.CharacterCount)
+                : query.OrderByDescending(d => d.CharacterCount),
+            "sentenceLength" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.CharacterCount / (d.SentenceCount + 1))
+                : query.OrderByDescending(d => d.CharacterCount / (d.SentenceCount + 1)),
+            "wordCount" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.WordCount)
+                : query.OrderByDescending(d => d.WordCount),
+            "uKanji" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.UniqueKanjiCount)
+                : query.OrderByDescending(d => d.UniqueKanjiCount),
+            "uWordCount" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.UniqueWordCount)
+                : query.OrderByDescending(d => d.UniqueWordCount),
+            "uKanjiOnce" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.UniqueKanjiUsedOnceCount)
+                : query.OrderByDescending(d => d.UniqueKanjiUsedOnceCount),
+            _ => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.RomajiTitle)
+                : query.OrderByDescending(d => d.RomajiTitle),
+        };
 
         var decks = query
                     .Include(d => d.Links)
                     .Skip(offset ?? 0)
                     .Take(pageSize)
                     .ToList();
-
-        switch (sortOrder)
-        {
-            case "title":
-            default:
-                decks = decks.OrderBy(d => d.RomajiTitle).ToList();
-                break;
-        }
 
         return new PaginatedResponse<List<Deck>>(decks, totalCount, pageSize, offset ?? 0);
     }
@@ -212,14 +237,13 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 return Results.BadRequest();
         }
 
-        List<DeckWord> deckWords = await deckWordsQuery.ToListAsync();
-        var wordIds = deckWords.Select(dw => dw.WordId).Distinct().ToList();
+        var wordIds = await deckWordsQuery.Select(dw => dw.WordId).Distinct().ToListAsync();
+        var deckWords = await deckWordsQuery.Select(dw => new { dw.WordId, dw.ReadingIndex }).Distinct().ToListAsync();
 
-
-        var jmdictWords = context.JMDictWords.AsNoTracking()
-                                 .Where(w => wordIds.Contains(w.WordId))
-                                 .Include(w => w.Definitions)
-                                 .ToDictionary(w => w.WordId);
+        var jmdictWords = await context.JMDictWords.AsNoTracking()
+                                       .Include(w => w.Definitions)
+                                       .Where(w => wordIds.Contains(w.WordId))
+                                       .ToDictionaryAsync(w => w.WordId);
 
         switch (format)
         {
