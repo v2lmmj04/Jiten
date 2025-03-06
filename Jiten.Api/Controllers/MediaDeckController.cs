@@ -242,8 +242,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 return Results.BadRequest();
         }
 
-        var wordIds = await deckWordsQuery.Select(dw => dw.WordId).Distinct().ToListAsync();
-        var deckWords = await deckWordsQuery.Select(dw => new { dw.WordId, dw.ReadingIndex }).Distinct().ToListAsync();
+        var wordIds = await deckWordsQuery.Select(dw => dw.WordId).ToListAsync();
+        var deckWords = await deckWordsQuery.Select(dw => new { dw.WordId, dw.ReadingIndex }).ToListAsync();
 
         var jmdictWords = await context.JMDictWords.AsNoTracking()
                                        .Include(w => w.Definitions)
