@@ -131,9 +131,9 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 continue;
             }
 
-            var reading = word.jmDictWord.Readings[word.dw.ReadingIndex];
+            var reading = word.jmDictWord.ReadingsFurigana[word.dw.ReadingIndex];
 
-            List<ReadingDto> alternativeReadings = word.jmDictWord.Readings
+            List<ReadingDto> alternativeReadings = word.jmDictWord.ReadingsFurigana
                                                        .Select((r, i) => new ReadingDto
                                                                          {
                                                                              Text = r,

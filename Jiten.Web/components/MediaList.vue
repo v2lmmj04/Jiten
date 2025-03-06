@@ -11,20 +11,13 @@
   }>();
 
   const route = useRoute();
+  const router = useRouter();
 
   const offset = computed(() => (route.query.offset ? Number(route.query.offset) : 0));
   const mediaType = computed(() => (route.query.mediaType ? route.query.mediaType : null));
 
-  const titleFilter = ref('');
+  const titleFilter = ref(route.query.title ? route.query.title : null);
   const debouncedTitleFilter = ref(titleFilter.value);
-
-  const updateDebounced = debounce(async (newValue) => {
-    debouncedTitleFilter.value = newValue;
-  }, 300);
-
-  watch(titleFilter, (newValue) => {
-    updateDebounced(newValue);
-  });
 
   const sortByOptions = ref([
     { label: 'Title', value: 'title' },
@@ -37,9 +30,41 @@
     { label: 'Unique Kanji Used Once', value: 'uKanjiOnce' },
   ]);
 
-  const sortOrder = ref(SortOrder.Ascending);
+  const sortOrder = ref(route.query.sortOrder ? route.query.sortOrder : SortOrder.Ascending);
 
-  const sortBy = ref(sortByOptions.value[0].value);
+  const sortBy = ref(route.query.sortBy ? route.query.sortBy : sortByOptions.value[0].value);
+
+  const updateDebounced = debounce(async (newValue) => {
+    debouncedTitleFilter.value = newValue;
+  }, 300);
+
+  watch(titleFilter, (newValue) => {
+    updateDebounced(newValue);
+    router.replace({
+      query: {
+        ...route.query,
+        title: newValue || undefined,
+      },
+    });
+  });
+
+  watch(sortOrder, (newValue) => {
+    router.replace({
+      query: {
+        ...route.query,
+        sortOrder: newValue,
+      },
+    });
+  });
+
+  watch(sortBy, (newValue) => {
+    router.replace({
+      query: {
+        ...route.query,
+        sortBy: newValue,
+      },
+    });
+  });
 
   const url = computed(() => `media-deck/get-media-decks`);
 
@@ -82,7 +107,7 @@
     <Card>
       <template #content>
         <div class="flex flex-row flex-wrap justify-around gap-2">
-          <NuxtLink :to="{ query: { } }">All</NuxtLink>
+          <NuxtLink :to="{ query: {} }">All</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Anime } }">Anime</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Drama } }">Dramas</NuxtLink>
           <NuxtLink :to="{ query: { mediaType: MediaType.Movie } }">Movies</NuxtLink>
@@ -108,7 +133,7 @@
         <label for="sortBy">Sort by</label>
       </FloatLabel>
       <Button @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending">
-        <Icon v-if="sortOrder == SortOrder.Descending" name="mingcute:az-sort-descending-letters-line" size="1.25em"  />
+        <Icon v-if="sortOrder == SortOrder.Descending" name="mingcute:az-sort-descending-letters-line" size="1.25em" />
         <Icon v-if="sortOrder == SortOrder.Ascending" name="mingcute:az-sort-ascending-letters-line" size="1.25em" />
       </Button>
       <IconField>

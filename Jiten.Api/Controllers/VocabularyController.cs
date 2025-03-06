@@ -27,7 +27,7 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
 
         var mainReading = new ReadingDto()
                           {
-                              Text = word.Readings[readingIndex],
+                              Text = word.ReadingsFurigana[readingIndex],
                               ReadingIndex = readingIndex,
                               ReadingType = word.ReadingTypes[readingIndex],
                               FrequencyRank = frequency.ReadingsFrequencyRank[readingIndex],
