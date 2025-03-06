@@ -24,4 +24,14 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="resources\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="resources\lapis.apkg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

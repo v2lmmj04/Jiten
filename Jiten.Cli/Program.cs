@@ -54,6 +54,9 @@ public class Program
 
         [Option("dic", Required = false, HelpText = "Path to the JMdict dictionary file.")]
         public string DictionaryPath { get; set; }
+        
+        [Option("furi", Required = false, HelpText = "Path to the JMDict Furigana dictionary file.")]
+        public string FuriganaPath { get; set; }
 
         [Option('e', "extract", Required = false, HelpText = "Extract text from a file or a folder and all its subfolders.")]
         public string ExtractFilePath { get; set; }
@@ -115,14 +118,14 @@ public class Program
                         {
                             //TODO: auto download them from the latest version
 
-                            if (string.IsNullOrEmpty(o.XmlPath) || string.IsNullOrEmpty(o.DictionaryPath))
+                            if (string.IsNullOrEmpty(o.XmlPath) || string.IsNullOrEmpty(o.DictionaryPath) || string.IsNullOrEmpty(o.FuriganaPath))
                             {
-                                Console.WriteLine("For import, you need to specify -xml path/to/jmdict_dtd.xml and -dic path/to/jmdict");
+                                Console.WriteLine("For import, you need to specify -xml path/to/jmdict_dtd.xml, -dic path/to/jmdict and -furi path/to/JmdictFurigana.json.");
                                 return;
                             }
 
                             Console.WriteLine("Importing JMdict...");
-                            await JmDictHelper.Import(o.XmlPath, o.DictionaryPath);
+                            await JmDictHelper.Import(o.XmlPath, o.DictionaryPath, o.FuriganaPath);
                         }
 
                         if (o.ExtractFilePath != null)

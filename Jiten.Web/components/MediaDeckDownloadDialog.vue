@@ -19,7 +19,13 @@
   const format = defineModel<DeckFormat>('deckFormat', { default: DeckFormat.Anki });
   const downloadType = defineModel<DeckDownloadType>('downloadType', { default: DeckDownloadType.TopDeckFrequency });
   const deckOrder = defineModel<DeckOrder>('deckOrder', { default: DeckOrder.DeckFrequency });
-  const frequencyRange = defineModel<number[]>('frequencyRange', { default: [0, 5000] });
+  const frequencyRange = defineModel<number[]>('frequencyRange');
+
+  onMounted(() => {
+    if (!frequencyRange.value) {
+      frequencyRange.value = [0, Math.min(props.deck.uniqueWordCount, 5000)];
+    }
+  });
 
   watch(
     () => props.visible,
@@ -52,7 +58,11 @@
         const blobUrl = window.URL.createObjectURL(new Blob([response], { type: response.type }));
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.setAttribute('download', `${props.deck.originalTitle}.apkg`); // You can set the desired file name here
+        if (format.value === DeckFormat.Anki) {
+          link.setAttribute('download', `${props.deck.originalTitle}.apkg`); // You can set the desired file name here
+        } else if (format.value === DeckFormat.Csv) {
+          link.setAttribute('download', `${props.deck.originalTitle}.csv`); // You can set the desired file name here
+        }
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -77,6 +87,9 @@
         <div class="text-gray-500 text-sm">Format</div>
         <SelectButton v-model="format" :options="deckFormats" option-value="value" option-label="label" size="small" />
       </div>
+      <span v-if="format == DeckFormat.Anki" class="text-sm"
+        >Uses the Lapis template from <a href="https://github.com/donkuri/lapis/tree/main">Lapis</a></span
+      >
       <div>
         <div class="text-gray-500 text-sm">Filter type</div>
         <Select
@@ -91,7 +104,7 @@
         <div class="text-gray-500 text-sm">Sort order</div>
         <Select v-model="deckOrder" :options="deckOrders" option-value="value" option-label="label" size="small" />
       </div>
-      <div>
+      <div v-if="downloadType != DeckDownloadType.Full">
         <div class="text-gray-500 text-sm">Range</div>
         <div class="flex flex-row flex-wrap gap-2 items-center">
           <InputNumber v-model="frequencyRange[0]" show-buttons fluid size="small" class="max-w-20 flex-shrink-0" />

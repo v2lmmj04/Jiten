@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.EntityFrameworkCore;
@@ -388,7 +389,7 @@ public static class JmDictHelper
     }
 
 
-    public static async Task<bool> Import(string? dtdPath, string? dictionaryPath)
+    public static async Task<bool> Import(string dtdPath, string dictionaryPath, string furiganaPath)
     {
         Regex reg = new Regex(@"<!ENTITY (.*) ""(.*)"">");
 
@@ -401,7 +402,7 @@ public static class JmDictHelper
             }
         }
 
-        var readerSettings = new XmlReaderSettings() { Async = true, DtdProcessing = DtdProcessing.Parse, MaxCharactersFromEntities = 0};
+        var readerSettings = new XmlReaderSettings() { Async = true, DtdProcessing = DtdProcessing.Parse, MaxCharactersFromEntities = 0 };
         XmlReader reader = XmlReader.Create(dictionaryPath, readerSettings);
 
         await reader.MoveToContentAsync();
@@ -422,7 +423,7 @@ public static class JmDictHelper
                 {
                     if (reader.Name == "ent_seq")
                         wordInfo.WordId = reader.ReadElementContentAsInt();
-                    
+
                     wordInfo = await ParseKEle(reader, wordInfo);
                     wordInfo = await ParseREle(reader, wordInfo);
                     wordInfo = await ParseSense(reader, wordInfo);
@@ -441,26 +442,41 @@ public static class JmDictHelper
 
         reader.Close();
 
+        var furiganas = await JsonSerializer.DeserializeAsync<List<JMDictFurigana>>(File.OpenRead(furiganaPath));
+        Dictionary<string, string> furiganaDict = new();
+        foreach (var f in furiganas)
+        {
+            // We only take the first one
+            if (!furiganaDict.ContainsKey(f.Text))
+                furiganaDict.Add(f.Text, f.Parse());
+        }
+
         await using var context = new JitenDbContext();
         foreach (var reading in wordInfos)
         {
             List<JmDictLookup> lookups = new();
+            reading.ReadingsFurigana = new List<string>();
 
-            foreach (var r in reading.Readings)
+            for (var i = 0; i < reading.Readings.Count; i++)
             {
+                string? r = reading.Readings[i];
                 var lookupKey = WanaKana.ToHiragana(r.Replace("ゎ", "わ").Replace("ヮ", "わ"));
                 if (!lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == lookupKey))
                 {
                     lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKey });
                 }
+
+                furiganaDict.TryGetValue(r, out var furiReading);
+                reading.ReadingsFurigana.Add(furiReading ?? "");
             }
 
             reading.PartsOfSpeech = reading.Definitions.SelectMany(d => d.PartsOfSpeech).Distinct().ToList();
             reading.Lookups = lookups;
         }
 
-        context.ChangeTracker.AutoDetectChangesEnabled = false;
-        await context.BulkInsertOptimizedAsync(wordInfos, options => options.IncludeGraph = true);
+        context.JMDictWords.AddRange(wordInfos);
+        
+        await context.SaveChangesAsync();
 
         return true;
     }

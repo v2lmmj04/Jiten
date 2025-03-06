@@ -4,3 +4,4 @@
 - [JL](https://github.com/rampaa/JL/tree/master) Updated deconjugation rules, deconjugator port
 - [Ichiran](https://github.com/tshatrov/ichiran) Parser tests
 - [JMDict](https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project) Dictionary
+- [JmdictFurigana](https://github.com/Doublevil/JmdictFurigana) Furigana dictionary for JMDict
