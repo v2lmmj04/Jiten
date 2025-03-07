@@ -35,7 +35,7 @@
 </script>
 
 <template>
-  <div class="flex flex-col gap-1">
+  <div class="flex flex-col gap-2">
     <div class="flex justify-between">
       <div class="flex gap-8">
         <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
@@ -45,7 +45,7 @@
       </div>
       <div>viewing words {{ start }}-{{ end }} from {{ totalItems }} total</div>
     </div>
-    <div v-if="status === 'pending'" class="flex flex-col gap-4">
+    <div v-if="status === 'pending'" class="flex flex-col gap-2">
       <Card v-for="i in 10" :key="i" class="p-2">
         <template #content>
           <Skeleton width="100%" height="50px" />
@@ -53,7 +53,7 @@
       </Card>
     </div>
     <div v-else-if="error">Error: {{ error }}</div>
-    <div v-else>
+    <div v-else class="flex flex-col gap-2">
       <VocabularyEntry v-for="word in response.data.words" :key="word.wordId" :word="word" :is-compact="true" />
     </div>
   </div>

@@ -3,7 +3,7 @@
   import Card from 'primevue/card';
   import Button from 'primevue/button';
   import VocabularyDefinitions from '~/components/VocabularyDefinitions.vue';
-  import {convertToRuby} from "../utils/convertToRuby";
+  import { convertToRuby } from '../utils/convertToRuby';
 
   const props = defineProps<{
     word: Word;
@@ -20,10 +20,14 @@
 <template>
   <Card class="">
     <template #title>
-      <router-link class="font-noto-sans font-bold" :to="`/vocabulary/${word.wordId}/${word.mainReading.readingIndex}`"
-                   v-html="convertToRuby(word.mainReading.text)">
+      <div class="flex flex-row gap-4">
+      <router-link
+        class="font-noto-sans text-2xl"
+        :to="`/vocabulary/${word.wordId}/${word.mainReading.readingIndex}`"
+        v-html="convertToRuby(word.mainReading.text)">
       </router-link>
-      <Button text size="small" @click="toggleCompact">{{ isCompact ? 'Expand' : 'Compact' }}</Button>
+      <Button text @click="toggleCompact">{{ isCompact ? 'Expand' : 'Compact' }}</Button>
+      </div>
     </template>
     <template #subtitle />
     <template #content>

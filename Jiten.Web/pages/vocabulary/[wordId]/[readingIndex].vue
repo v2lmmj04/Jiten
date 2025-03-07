@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import type { Word } from '~/types';
   import { formatPercentageApprox } from '~/utils/formatPercentageApprox';
+  import { convertToRuby } from '~/utils/convertToRuby';
 
   const route = useRoute();
   const id = route.params.wordId;
@@ -28,7 +29,7 @@
     <template v-if="response" #content>
       <div class="flex flex-col gap-4">
         <div class="flex justify-between">
-          <div class="text-3xl font-noto-sans">{{ response.mainReading.text }}</div>
+          <div class="text-3xl font-noto-sans" v-html="convertToRuby(response.mainReading.text)"></div>
           <div class="italic">#{{ response.mainReading.frequencyRank }}</div>
         </div>
 

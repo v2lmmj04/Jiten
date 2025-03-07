@@ -14,11 +14,35 @@ namespace Jiten.Parser
         private static Dictionary<int, JmDictWord> _allWords = new();
         private static bool _initialized = false;
         private static readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
+        
+        // Those cases are hardcoded, a better solution would be preferable but they don't work well with the current rules
+        private static Dictionary<string, int> _specialCases = new()
+        {
+            {"この", 1582920},
+            {"こと", 1313580},
+            {"もの", 1502390},
+            {"もん", 2780660},
+            {"くせ", 1509350},
+            {"いくら", 1219980},
+            {"とき", 1315840},
+            {"な", 2029110},
+            {"どん", 2142690},
+            {"いる", 1577980},
+            {"そう", 1006610},
+            {"ない", 1529520},
+            {"なんだ", 2119750},
+            {"わけ", 1538330},
+            {"いう", 1587040},
+            {"まま", 1585410},
+            {"いく", 1219950},
+            {"つく", 1495740},
+            {"たら", 2029050},
+        };
 
         public static async Task Main(string[] args)
         {
             // var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-            var text = "７ー";
+            var text = "こと";
 
             await ParseText(text);
         }
@@ -191,6 +215,11 @@ namespace Jiten.Parser
                                                     if (bestMatch == null)
                                                     {
                                                         if (!_allWords.TryGetValue(candidates[0], out bestMatch)) return;
+                                                    }
+                                                    
+                                                    if (_specialCases.TryGetValue(textInHiragana, out int specialCaseId))
+                                                    {
+                                                        bestMatch = _allWords[specialCaseId];
                                                     }
 
                                                     var normalizedReadings =
