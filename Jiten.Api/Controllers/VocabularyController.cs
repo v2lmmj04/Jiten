@@ -1,6 +1,7 @@
 using Jiten.Api.Dtos;
 using Jiten.Api.Helpers;
 using Jiten.Core;
+using Jiten.Core.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,20 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
 
         var frequency = context.JmDictWordFrequencies.AsNoTracking().First(f => f.WordId == word.WordId);
 
+        var usedInMediaByType = await context.DeckWords.AsNoTracking()
+                                             .Where(dw => dw.WordId == wordId && dw.ReadingIndex == readingIndex)
+                                             .Join(
+                                                   context.Decks.AsNoTracking()
+                                                          .Where(d => d.ParentDeckId == null)
+                                                          .Select(d => new { d.DeckId, d.MediaType }),
+                                                   dw => dw.DeckId,
+                                                   d => d.DeckId,
+                                                   (dw, d) => d.MediaType
+                                                  )
+                                             .GroupBy(mediaType => mediaType)
+                                             .Select(g => new { MediaType = g.Key, Count = g.Count() })
+                                             .ToDictionaryAsync(x => (int)x.MediaType, x => x.Count);
+
         var mainReading = new ReadingDto()
                           {
                               Text = word.ReadingsFurigana[readingIndex],
@@ -32,7 +47,8 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
                               ReadingType = word.ReadingTypes[readingIndex],
                               FrequencyRank = frequency.ReadingsFrequencyRank[readingIndex],
                               FrequencyPercentage = frequency.ReadingsFrequencyPercentage[readingIndex],
-                              UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[readingIndex]
+                              UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[readingIndex],
+                              UsedInMediaAmountByType = usedInMediaByType
                           };
 
         List<ReadingDto> alternativeReadings = word.Readings
@@ -57,5 +73,53 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
                               Definitions = word.Definitions.ToDefinitionDtos(),
                               PartsOfSpeech = word.PartsOfSpeech,
                           });
+    }
+
+    [HttpGet("parse")]
+    public async Task<IResult> Parse(string text)
+    {
+        if (text.Length > 100)
+            return Results.BadRequest("Text is too long");
+
+        var parsedWords = await Parser.Program.ParseText(text);
+
+        // We want both parsed words and unparsed ones
+        var allWords = new List<DeckWord>();
+
+        var wordsWithPositions = new List<(DeckWord Word, int Position)>();
+        int currentPosition = 0;
+
+        foreach (var word in parsedWords)
+        {
+            int position = text.IndexOf(word.OriginalText, currentPosition, StringComparison.Ordinal);
+            if (position >= 0)
+            {
+                wordsWithPositions.Add((word, position));
+                currentPosition = position + word.OriginalText.Length;
+            }
+        }
+
+        currentPosition = 0;
+        foreach (var (word, position) in wordsWithPositions)
+        {
+            // If there's a gap before this word, add it as an unparsed word
+            if (position > currentPosition)
+            {
+                string gap = text.Substring(currentPosition, position - currentPosition);
+                allWords.Add(new DeckWord { OriginalText = gap });
+            }
+
+            allWords.Add(word);
+
+            currentPosition = position + word.OriginalText.Length;
+        }
+
+        if (currentPosition < text.Length)
+        {
+            string gap = text.Substring(currentPosition);
+            allWords.Add(new DeckWord { OriginalText = gap });
+        }
+
+        return Results.Ok(allWords);
     }
 }

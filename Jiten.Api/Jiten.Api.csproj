@@ -7,31 +7,22 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="7.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="7.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="7.0.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="7.0.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Jiten.Core\Jiten.Core.csproj" />
+        <ProjectReference Include="..\Jiten.Core\Jiten.Core.csproj"/>
+        <ProjectReference Include="..\Jiten.Parser\Jiten.Parser.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <Content Include="..\Shared\sharedsettings.json">
-        <Link>sharedsettings.json</Link>
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
-    </ItemGroup>
+    <Target Name="CopySharedFiles" AfterTargets="Build">
+        <ItemGroup>
+            <SharedFiles Include="..\Shared\**\*.*"/>
+        </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="resources\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Update="resources\lapis.apkg">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
+        <Copy SourceFiles="@(SharedFiles)" DestinationFolder="$(OutputPath)\%(RecursiveDir)"/>
+    </Target>
 </Project>

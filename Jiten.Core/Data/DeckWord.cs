@@ -15,6 +15,11 @@ public class DeckWord
     public int WordId { get; set; }
     
     /// <summary>
+    /// Original text before any deconjugation
+    /// </summary>
+    public string OriginalText { get; set; }
+    
+    /// <summary>
     /// The index of the reading in the list of readings
     /// </summary>
     public byte ReadingIndex { get; set; }

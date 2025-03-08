@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using Jiten.Core.Data;
 
 namespace Jiten.Parser;
@@ -6,11 +7,16 @@ namespace Jiten.Parser;
 class SudachiInterop
 {
     // Import the `run_cli_ffi` function from the Rust DLL
-    [DllImport(@"Y:\CODE\Forks\sudachi.rs\target\release\sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("resources/sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr run_cli_ffi(string configPath, string filePath, string dictionaryPath, string outputPath);
 
+    [DllImport("resources/sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr process_text_ffi(string configPath, IntPtr inputText, string dictionaryPath, char mode, bool printAll,
+                                                  bool wakati);
+
+
     // Import the `free_string` function to free memory allocated in Rust
-    [DllImport(@"Y:\CODE\Forks\sudachi.rs\target\release\sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("resources/sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void free_string(IntPtr ptr);
 
 
@@ -24,6 +30,24 @@ class SudachiInterop
 
         // Free the string allocated in Rust
         free_string(resultPtr);
+
+        return result;
+    }
+
+    public static string ProcessText(string configPath, string inputText, string dictionaryPath, char mode = 'C', bool printAll = true,
+                                     bool wakati = false)
+    {
+        byte[] inputBytes = Encoding.UTF8.GetBytes(inputText + "\0");
+        IntPtr inputTextPtr = Marshal.AllocHGlobal(inputBytes.Length);
+        Marshal.Copy(inputBytes, 0, inputTextPtr, inputBytes.Length);
+
+        IntPtr resultPtr = process_text_ffi(configPath, inputTextPtr, dictionaryPath, mode, printAll, wakati);
+        string result = Marshal.PtrToStringUTF8(resultPtr) ?? string.Empty;
+
+        free_string(resultPtr);
+
+        Marshal.FreeHGlobal(inputTextPtr);
+
 
         return result;
     }
@@ -64,31 +88,10 @@ public class Parser
         // Preprocess the text to remove invalid characters
         PreprocessText(ref text);
 
-        //TODO: find a better way than using a temp file
-        string tempFilePath = Path.GetTempFileName();
-        await File.WriteAllTextAsync(tempFilePath, text);
-
-        var outputFile = Path.GetTempFileName();
-        var configPath = @"Y:\CODE\Jiten\Jiten.Parser\resources\sudachi.json";
+        var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "sudachi.json");
         var dic = @"F:\00_RawJap\sudachi.rs\resources\system_full.dic";
 
-        var path = @$"F:\00_RawJap\sudachi.rs\target\release\deps\sudachi.exe";
-
-        SudachiInterop.RunCli(configPath, tempFilePath, dic, outputFile);
-
-        // var process = new Process();
-        // process.StartInfo.FileName = path;
-        // process.StartInfo.Arguments = $"--dict {dic} -a -o {outputFile} -r {configPath}  {tempFilePath}";
-        //
-        // process.Start();
-        //
-        // await process.WaitForExitAsync();
-
-        var output = (await File.ReadAllLinesAsync(outputFile)).ToList();
-
-        // Delete temp files
-        File.Delete(tempFilePath);
-        File.Delete(outputFile);
+        var output = SudachiInterop.ProcessText(configPath, text, dic).Split("\n");
 
         List<WordInfo> wordInfos = new();
 

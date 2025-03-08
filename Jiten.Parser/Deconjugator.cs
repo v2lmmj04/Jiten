@@ -17,8 +17,11 @@ public class Deconjugator
                           ReadCommentHandling = JsonCommentHandling.Skip,
                           Converters = { new StringArrayConverter() }
                       };
-
-        var rules = JsonSerializer.Deserialize<List<DeconjugationRule>>(File.ReadAllText("resources/deconjugator.json"), options);
+        var rules =
+            JsonSerializer
+                .Deserialize<
+                    List<DeconjugationRule>>(File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "deconjugator.json")),
+                                             options);
         foreach (var rule in rules)
         {
             Rules.Add(rule);
@@ -136,13 +139,13 @@ public class Deconjugator
 
         if (form.Tags.Count > 0 && form.Tags[^1] != rule.ConTag)
             return null;
-        
+
 
         var newText = form.Text[..^rule.ConEnd.Length] + rule.DecEnd;
-        
+
         if (newText == form.OriginalText)
             return null;
-        
+
         DeconjugationForm newForm = new(text: newText, originalText: form.OriginalText, tags: form.Tags.ToList(),
                                         seenText: [..form.SeenText], process: form.Process.ToList());
         newForm.Process.Add(rule.Detail);

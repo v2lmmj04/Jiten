@@ -364,7 +364,7 @@ public class Program
                     }
                 }
 
-                deck = await Jiten.Parser.Program.ParseText(string.Join(Environment.NewLine, lines));
+                deck = await Jiten.Parser.Program.ParseTextToDeck(string.Join(Environment.NewLine, lines));
                 deck.ParentDeck = parentDeck;
                 deck.DeckOrder = deckOrder;
                 deck.OriginalTitle = metadata.OriginalTitle;

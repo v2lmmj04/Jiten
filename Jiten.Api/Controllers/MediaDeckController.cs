@@ -20,7 +20,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-media-decks")]
     [ResponseCache(Duration = 300)]
-    public PaginatedResponse<List<Deck>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,
+    public async Task<PaginatedResponse<List<Deck>>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,
                                                        int wordId = 0, int readingIndex = 0, string? titleFilter = "", string? sortBy = "",
                                                        SortOrder sortOrder = SortOrder.Ascending)
     {
@@ -28,7 +28,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var query = context.Decks.AsNoTracking();
 
-        query = query.Where(d => d.ParentDeck == null);
+        query = query.Where(d => d.ParentDeckId == null);
         if (mediaType != null)
             query = query.Where(d => d.MediaType == mediaType);
 
@@ -37,18 +37,28 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             query = query.Where(d =>
                                     // Fuzzy matching
                                     EF.Functions.FuzzyStringMatchLevenshtein(d.OriginalTitle, titleFilter) <= 3 ||
-                                    EF.Functions.FuzzyStringMatchLevenshtein(d.RomajiTitle, titleFilter) <= 3 ||
-                                    EF.Functions.FuzzyStringMatchLevenshtein(d.EnglishTitle, titleFilter) <= 3 ||
+                                    EF.Functions.FuzzyStringMatchLevenshtein(d.RomajiTitle!, titleFilter) <= 3 ||
+                                    EF.Functions.FuzzyStringMatchLevenshtein(d.EnglishTitle!, titleFilter) <= 3 ||
 
                                     // Substring matching
                                     EF.Functions.ILike(d.OriginalTitle, $"%{titleFilter}%") ||
-                                    EF.Functions.ILike(d.RomajiTitle, $"%{titleFilter}%") ||
-                                    EF.Functions.ILike(d.EnglishTitle, $"%{titleFilter}%")
+                                    EF.Functions.ILike(d.RomajiTitle!, $"%{titleFilter}%") ||
+                                    EF.Functions.ILike(d.EnglishTitle!, $"%{titleFilter}%")
                                );
         }
 
         if (wordId != 0)
-            query = query.Where(d => d.DeckWords.Any(dw => dw.WordId == wordId && dw.ReadingIndex == readingIndex));
+        {
+            // Execute this query first and materialize the results
+            var deckIds = await context.DeckWords
+                                       .Where(dw => dw.WordId == wordId && dw.ReadingIndex == readingIndex)
+                                       .Select(dw => dw.DeckId)
+                                       .Distinct()
+                                       .ToListAsync(); // Get the IDs in memory first
+
+            // Then use the in-memory collection for filtering
+            query = query.Where(d => deckIds.Contains(d.DeckId));
+        }
 
         var totalCount = query.Count();
 
@@ -313,7 +323,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 var bytes = stream.ToArray();
 
                 return Results.File(bytes, "application/x-binary", $"{deck.OriginalTitle}.apkg");
-            
+
             case DeckFormat.Csv:
                 StringBuilder sb = new StringBuilder();
                 foreach (var word in deckWords)
@@ -338,4 +348,17 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         return Results.BadRequest();
     }
+
+    [HttpGet("decks-count")]
+    [ResponseCache(Duration = 600)]
+    public IResult GetDecksCountByMediaType()
+    {
+        Dictionary<int, int> decksCount = context.Decks.AsNoTracking()
+                                         .Where(d => d.ParentDeckId == null)
+                                         .GroupBy(d => d.MediaType)
+                                         .ToDictionary(g => (int)g.Key, g => g.Count());
+
+        return Results.Ok(decksCount);
+    }
+
 }

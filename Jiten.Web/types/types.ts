@@ -28,6 +28,7 @@ export interface DeckVocabularyList {
 
 export interface DeckWord {
   deckId: number;
+  originalText: string;
   wordId: number;
   readingType: string;
   readingIndex: number;
@@ -55,6 +56,7 @@ export interface Reading {
   frequencyRank: number;
   frequencyPercentage: number;
   usedInMediaAmount: number;
+  usedInMediaAmountByType: Record<MediaType, number>;
 }
 
 export interface Definition {

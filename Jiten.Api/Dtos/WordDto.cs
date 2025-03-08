@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 
 namespace Jiten.Api.Dtos;
@@ -19,4 +21,5 @@ public class ReadingDto
     public int FrequencyRank { get; set; }
     public double FrequencyPercentage { get; set; }
     public int UsedInMediaAmount { get; set; }
+    public Dictionary<int, int> UsedInMediaAmountByType { get; set; } = new();
 }

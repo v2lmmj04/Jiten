@@ -466,8 +466,16 @@ public static class JmDictHelper
                     lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKey });
                 }
 
-                furiganaDict.TryGetValue(r, out var furiReading);
-                reading.ReadingsFurigana.Add(furiReading ?? reading.Readings[i]);
+                // For single kanjis only words, the furigana deck will probably be wrong, so we need an alternative
+                if (r.Length == 1 && WanaKana.IsKanji(r))
+                {
+                    reading.ReadingsFurigana.Add($"{r}[{reading.Readings.First(WanaKana.IsKana)}]");
+                }
+                else
+                {
+                    furiganaDict.TryGetValue(r, out var furiReading);
+                    reading.ReadingsFurigana.Add(furiReading ?? reading.Readings[i]);
+                }
             }
 
             reading.PartsOfSpeech = reading.Definitions.SelectMany(d => d.PartsOfSpeech).Distinct().ToList();
@@ -475,7 +483,7 @@ public static class JmDictHelper
         }
 
         context.JMDictWords.AddRange(wordInfos);
-        
+
         await context.SaveChangesAsync();
 
         return true;

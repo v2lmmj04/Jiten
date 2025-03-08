@@ -29,7 +29,7 @@
   <div v-if="!isCompact">
     <ul>
       <li v-for="definition in definitionsWithPartsOfSpeech" :key="definition.index">
-        <div v-if="definition.isDifferentPartOfSpeech" class="font-bold">{{ definition.partsOfSpeech.join(',') }}</div>
+        <div v-if="definition.isDifferentPartOfSpeech" class="font-bold">{{ definition.partsOfSpeech.join(', ') }}</div>
         <span class="text-gray-400">{{ definition.index }}.</span> {{ definition.meanings.join('; ') }}
       </li>
     </ul>

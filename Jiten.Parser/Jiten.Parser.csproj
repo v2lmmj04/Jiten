@@ -8,13 +8,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <None Update="resources\deconjugator.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <ProjectReference Include="..\Jiten.Core\Jiten.Core.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\Jiten.Core\Jiten.Core.csproj" />
-    </ItemGroup>
+    <Target Name="CopySharedFiles" AfterTargets="Build">
+        <ItemGroup>
+            <SharedFiles Include="..\Shared\**\*.*"/>
+        </ItemGroup>
 
+        <Copy SourceFiles="@(SharedFiles)" DestinationFolder="$(OutputPath)\%(RecursiveDir)"/>
+    </Target>
 </Project>
