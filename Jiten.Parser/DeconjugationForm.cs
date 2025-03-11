@@ -8,6 +8,9 @@ public class DeconjugationForm
     public HashSet<string> SeenText { get; }
     public List<String> Process { get; }
 
+    private readonly int _hashCode;
+
+
     public DeconjugationForm(string text, string originalText, List<string> tags, HashSet<string> seenText, List<string> process)
     {
         Text = text;
@@ -15,6 +18,26 @@ public class DeconjugationForm
         Tags = tags;
         SeenText = seenText;
         Process = process;
+
+        var hash = new HashCode();
+        hash.Add(Text, StringComparer.Ordinal);
+        hash.Add(OriginalText, StringComparer.Ordinal);
+        foreach (var tag in Tags)
+        {
+            hash.Add(tag, StringComparer.Ordinal);
+        }
+
+        foreach (var p in Process)
+        {
+            hash.Add(p, StringComparer.Ordinal);
+        }
+
+        foreach (var st in SeenText)
+        {
+            hash.Add(st, StringComparer.Ordinal);
+        }
+
+        _hashCode = hash.ToHashCode();
     }
 
     public override bool Equals(object obj)
@@ -32,24 +55,6 @@ public class DeconjugationForm
 
     public override int GetHashCode()
     {
-        var hash = new HashCode();
-        hash.Add(Text, StringComparer.Ordinal);
-        hash.Add(OriginalText, StringComparer.Ordinal);
-        foreach (var tag in Tags)
-        {
-            hash.Add(tag, StringComparer.Ordinal);
-        }
-
-        foreach (var process in Process)
-        {
-            hash.Add(process, StringComparer.Ordinal);
-        }
-
-        foreach (var seenText in SeenText)
-        {
-            hash.Add(seenText, StringComparer.Ordinal);
-        }
-
-        return hash.ToHashCode();
+        return _hashCode;
     }
 }

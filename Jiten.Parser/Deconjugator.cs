@@ -1,6 +1,7 @@
 /// Reimplementation from https://github.com/wareya/nazeka/blob/master/background-script.js
 /// Original code is licenced under Apache 2.0 https://www.apache.org/licenses/LICENSE-2.0
 
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Jiten.Parser;
@@ -8,6 +9,9 @@ namespace Jiten.Parser;
 public class Deconjugator
 {
     public List<DeconjugationRule> Rules = new();
+
+    private static readonly ConcurrentDictionary<string, HashSet<DeconjugationForm>> _deconjugationCache
+        = new(StringComparer.Ordinal);
 
     public Deconjugator()
     {
@@ -30,6 +34,11 @@ public class Deconjugator
 
     public HashSet<DeconjugationForm> Deconjugate(string text)
     {
+        if (_deconjugationCache.TryGetValue(text, out var cached))
+        {
+            return new HashSet<DeconjugationForm>(cached); // Return copy to prevent modification
+        }
+        
         var processed = new HashSet<DeconjugationForm>();
 
         if (string.IsNullOrEmpty(text))
@@ -77,6 +86,11 @@ public class Deconjugator
 
         // processed.Remove(startForm);
 
+        if (text.Length <= 20 && _deconjugationCache.Count < 1000000)
+        {
+            _deconjugationCache[text] = new HashSet<DeconjugationForm>(processed);
+        }
+        
         return processed;
     }
 
