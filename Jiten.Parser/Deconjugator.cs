@@ -86,7 +86,7 @@ public class Deconjugator
 
         // processed.Remove(startForm);
 
-        if (text.Length <= 20 && _deconjugationCache.Count < 1000000)
+        if (text.Length <= 20 && processed.Count < 55 && _deconjugationCache.Count < 250000)
         {
             _deconjugationCache[text] = new HashSet<DeconjugationForm>(processed);
         }

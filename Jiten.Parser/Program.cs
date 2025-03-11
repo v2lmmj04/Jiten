@@ -14,6 +14,9 @@ namespace Jiten.Parser
         private static Dictionary<int, JmDictWord> _allWords = new();
         private static bool _initialized = false;
         private static readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
+        
+        private record DeckWordCacheKey(string Text, PartOfSpeech PartOfSpeech, string DictionaryForm);
+        private static readonly ConcurrentDictionary<DeckWordCacheKey, DeckWord> _deckWordCache = new();
 
         // Those cases are hardcoded, a better solution would be preferable but they don't work well with the current rules
         private static Dictionary<string, int> _specialCases = new()
@@ -42,9 +45,10 @@ namespace Jiten.Parser
 
         public static async Task Main(string[] args)
         {
-            // var text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.09.10_12.47.32-2024.09.10_15.34.53.txt");
-            var text = "風";
+            var text = "「あそこ美味しいよねー。早くお祭り終わって欲しいなー。ノンビリ遊びに行きたーい」";
+            text = await File.ReadAllTextAsync(@"Y:\00_JapaneseStudy\JL\Backlogs\Default_2024.12.28_10.52.47-2024.12.28_19.58.40.txt");
 
+            await ParseTextToDeck(text);
             await ParseTextToDeck(text);
         }
 
@@ -76,25 +80,29 @@ namespace Jiten.Parser
             var parser = new Parser();
             var wordInfos = await parser.Parse(text);
 
-            // Only keep kanjis, kanas, digits,full width digits, latin characters, full width latin characters 
-            wordInfos.ForEach(x => x.Text =
-                                  Regex.Replace(x.Text,
-                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
-                                                ""));
+
+            // Only keep kanjis, kanas, digits,full width digits, latin characters, full width latin characters
+            foreach (WordInfo wi in wordInfos)
+            {
+                wi.Text = Regex.Replace(wi.Text,
+                                        "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
+                                        "");
+            }
+
             // Remove empty lines
-            wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
+            wordInfos.RemoveAll(x => string.IsNullOrWhiteSpace(x.Text));
 
             // Filter bad lines that cause exceptions
             wordInfos.ForEach(x => x.Text = Regex.Replace(x.Text, "ッー", ""));
 
             Deconjugator deconjugator = new Deconjugator();
 
-            var processWords = wordInfos.Select((word, index) => ProcessWord((word, 0), index, deconjugator)).ToList();
+            var processWords = wordInfos.Select(word => ProcessWord((word, 0), deconjugator)).ToList();
 
             var processedWords = await Task.WhenAll(processWords);
             return processedWords
                    .Where(result => result != null)
-                   .Select(result => result!.Value.word)
+                   .Select(result => result!)
                    .ToList();
         }
 
@@ -155,44 +163,35 @@ namespace Jiten.Parser
             }
 
             // Create a thread-safe dictionary to store results with their original index
-            var processedUniqueWords = new ConcurrentDictionary<int, DeckWord>();
+            // var processedUniqueWords = new ConcurrentDictionary<int, DeckWord>();
 
             timer.Stop();
             double mecabTime = timer.Elapsed.TotalMilliseconds;
 
             timer.Restart();
 
-            var processWords = uniqueWords.Select((word, index) => ProcessWord(word, index, deconjugator)).ToList();
+            var processWords = uniqueWords.Select(word => ProcessWord(word, deconjugator)).ToList();
 
             var processedWords = await Task.WhenAll(processWords);
-            foreach (var result in processedWords)
-            {
-                if (result == null)
-                    continue;
-
-                processedUniqueWords.TryAdd(result.Value.index, result.Value.word);
-            }
-
-            // Sort the results by their original index
-            var orderedProcessedUniqueWords = processedUniqueWords
-                                              .OrderBy(kvp => kvp.Key)
-                                              .Select(kvp => kvp.Value)
-                                              .ToList();
+            processedWords = processedWords
+                             .Where(result => result != null)
+                             .Select(result => result!)
+                             .ToArray();
 
             // Assign the occurences for each word
-            foreach (var deckWord in orderedProcessedUniqueWords)
+            foreach (var deckWord in processedWords)
             {
                 // Remove one since we already counted it at the start
                 deckWord.Occurrences--;
                 deckWord.Occurrences +=
-                    orderedProcessedUniqueWords.Count(x => x.WordId == deckWord.WordId && x.ReadingIndex == deckWord.ReadingIndex);
+                    processedWords.Count(x => x.WordId == deckWord.WordId && x.ReadingIndex == deckWord.ReadingIndex);
             }
 
             // deduplicate deconjugated words
-            orderedProcessedUniqueWords = orderedProcessedUniqueWords
-                                          .GroupBy(x => new { x.WordId, x.ReadingIndex })
-                                          .Select(x => x.First())
-                                          .ToList();
+            processedWords = processedWords
+                             .GroupBy(x => new { x.WordId, x.ReadingIndex })
+                             .Select(x => x.First())
+                             .ToArray();
 
             // Split into sentences
             string[] sentences = Regex.Split(text, @"(?<=[。！？」）])|(?<=[…—])\r\n");
@@ -212,7 +211,6 @@ namespace Jiten.Parser
                 return "";
             }).Where(s => !string.IsNullOrEmpty(s)).ToArray();
 
-
             timer.Stop();
 
             double deconjugationTime = timer.Elapsed.TotalMilliseconds;
@@ -222,7 +220,7 @@ namespace Jiten.Parser
             Console.WriteLine("Total words found : " + wordInfos.Count);
 
             // Console.WriteLine("Unique words found before deconjugation : " + uniqueWordInfos.Count);
-            Console.WriteLine("Unique words found after deconjugation : " + orderedProcessedUniqueWords.Count);
+            Console.WriteLine("Unique words found after deconjugation : " + processedWords.Length);
 
             var characterCount = wordInfos.Sum(x => x.Text.Length);
             Console.WriteLine($"Time elapsed: {totalTime:0.0}ms");
@@ -234,147 +232,202 @@ namespace Jiten.Parser
             Console.WriteLine($"Time per 10000 characters: {(totalTime / characterCount * 10000):0.0}ms");
             // Time for 1million characters
             Console.WriteLine($"Time per 1 million characters: {(totalTime / characterCount * 1000000):0.0}ms");
-
-            // write text to local file 1 by line "result"
-            // await File.WriteAllLinesAsync(@"result.txt", wordInfos.Select(x => x.Text));
-            // write results deconjugated
-            // await File.WriteAllLinesAsync(@"deconjugated.txt", orderedProcessedUniqueWords);
-
+            
             return new Deck
                    {
                        CharacterCount = characterCount,
                        WordCount = wordInfos.Count,
-                       UniqueWordCount = orderedProcessedUniqueWords.Count,
-                       UniqueWordUsedOnceCount = orderedProcessedUniqueWords.Count(x => x.Occurrences == 1),
+                       UniqueWordCount = processedWords.Length,
+                       UniqueWordUsedOnceCount = processedWords.Count(x => x.Occurrences == 1),
                        UniqueKanjiCount = wordInfos.SelectMany(w => w.Text).Distinct().Count(c => WanaKana.IsKanji(c.ToString())),
                        UniqueKanjiUsedOnceCount = wordInfos.SelectMany(w => w.Text).GroupBy(c => c)
                                                            .Count(g => g.Count() == 1 && WanaKana.IsKanji(g.Key.ToString())),
                        SentenceCount = sentences.Length,
-                       DeckWords = orderedProcessedUniqueWords
+                       DeckWords = processedWords
                    };
         }
 
-        private static async Task<(int index, DeckWord word)?> ProcessWord((WordInfo wordInfo, int occurrences) wordData, int index,
-                                                                           Deconjugator deconjugator)
+        private static async Task<DeckWord?> ProcessWord((WordInfo wordInfo, int occurrences) wordData, Deconjugator deconjugator)
         {
+            var cacheKey = new DeckWordCacheKey(
+                                            wordData.wordInfo.Text,
+                                            wordData.wordInfo.PartOfSpeech,
+                                            wordData.wordInfo.DictionaryForm
+                                           );
+            
+            if (_deckWordCache.TryGetValue(cacheKey, out var cachedWord))
+            {
+                return new DeckWord
+                       {
+                           WordId = cachedWord.WordId,
+                           OriginalText = cachedWord.OriginalText,
+                           ReadingIndex = cachedWord.ReadingIndex,
+                           Occurrences = wordData.occurrences
+                       };
+            }
+            DeckWord? processedWord;
+
             if (wordData.wordInfo.PartOfSpeech is PartOfSpeech.Verb or PartOfSpeech.IAdjective
                 or PartOfSpeech.NaAdjective)
             {
-                var deconjugated = deconjugator.Deconjugate(WanaKana.ToHiragana(wordData.wordInfo.Text))
-                                               .Select(d => d.Text).ToList();
-                deconjugated = deconjugated.OrderByDescending(d => d.Length).ToList();
+                if (!DeconjugateVerbOrAdjective(wordData, deconjugator, out processedWord))
+                    DeconjugateWord(wordData, out processedWord); // The word might be a noun misparsed as a verb/adjective like お祭り
 
-                List<(string text, List<int> ids)> candidates = new();
-                foreach (var form in deconjugated)
-                {
-                    if (_lookups.TryGetValue(form, out List<int> lookup))
-                    {
-                        // Reorder to have the most common words first. Might need a frequency list if it's not enough
-                        var orderedLookup = lookup.OrderBy(l => l).ToList();
-                        candidates.Add((form, orderedLookup));
-                    }
-                }
-
-                if (candidates.Count == 0) return null;
-
-                candidates = candidates.OrderByDescending(c => c.text.Length).ToList();
-
-                // if there's a candidate that's the same as the base word, put it first in the list
-                var baseDictionaryWord = WanaKana.ToHiragana(wordData.wordInfo.DictionaryForm);
-                var baseDictionaryWordIndex = candidates.FindIndex(c => c.text == baseDictionaryWord);
-                if (baseDictionaryWordIndex != -1)
-                {
-                    var baseDictionaryWordCandidate = candidates[baseDictionaryWordIndex];
-                    candidates.RemoveAt(baseDictionaryWordIndex);
-                    candidates.Insert(0, baseDictionaryWordCandidate);
-                }
-
-                // if there's a candidate that's the same as the base word, put it first in the list
-                var baseWord = WanaKana.ToHiragana(wordData.wordInfo.Text);
-                var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
-                if (baseWordIndex != -1)
-                {
-                    var baseWordCandidate = candidates[baseWordIndex];
-                    candidates.RemoveAt(baseWordIndex);
-                    candidates.Insert(0, baseWordCandidate);
-                }
-
-                foreach (var candidate in candidates)
-                {
-                    foreach (var id in candidate.ids)
-                    {
-                        if (!_allWords.TryGetValue(id, out var word)) continue;
-
-                        List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
-                                                     .ToList();
-                        if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
-
-                        var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                        byte readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
-
-                        DeckWord deckWord = new()
-                                            {
-                                                WordId = id,
-                                                OriginalText = wordData.wordInfo.Text,
-                                                ReadingIndex = readingIndex,
-                                                Occurrences = wordData.occurrences
-                                            };
-                        return (index, deckWord);
-                        break;
-                    }
-                }
             }
             else
             {
-                var textInHiragana =
-                    WanaKana.ToHiragana(wordData.wordInfo.Text,
-                                        new DefaultOptions { ConvertLongVowelMark = false });
+                DeconjugateWord(wordData, out processedWord);
+            }
 
-                if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
+            if (processedWord != null)
+            {
+                processedWord.Occurrences = wordData.occurrences;
+
+                _deckWordCache.TryAdd(cacheKey, new DeckWord
+                                            {
+                                                WordId = processedWord.WordId,
+                                                OriginalText = processedWord.OriginalText,
+                                                ReadingIndex = processedWord.ReadingIndex
+                                            });
+            }
+
+            return processedWord;
+        }
+  
+        private static bool DeconjugateWord((WordInfo wordInfo, int occurrences) wordData, out DeckWord? processedWord)
+        {
+            var textInHiragana =
+                WanaKana.ToHiragana(wordData.wordInfo.Text,
+                                    new DefaultOptions { ConvertLongVowelMark = false });
+
+            if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
+            {
+                candidates = candidates.OrderBy(c => c).ToList();
+
+                JmDictWord? bestMatch = null;
+
+                foreach (var id in candidates)
                 {
-                    candidates = candidates.OrderBy(c => c).ToList();
+                    if (!_allWords.TryGetValue(id, out var word)) continue;
 
-                    // Try to find the best match, use the firs tcandi
-                    JmDictWord? bestMatch = null;
-
-                    foreach (var id in candidates)
-                    {
-                        if (!_allWords.TryGetValue(id, out var word)) continue;
-
-                        List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
-                                                     .ToList();
-                        if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
-
-                        bestMatch = word;
-                        break;
-                    }
-
+                    // Initialize to the first word in case it fails
                     if (bestMatch == null)
-                    {
-                        if (!_allWords.TryGetValue(candidates[0], out bestMatch)) return null;
-                    }
+                        bestMatch = word;
 
-                    if (_specialCases.TryGetValue(textInHiragana, out int specialCaseId))
-                    {
-                        bestMatch = _allWords[specialCaseId];
-                    }
+                    List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
+                                                 .ToList();
+                    if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
 
-                    var normalizedReadings =
-                        bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                    byte readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
+                    bestMatch = word;
+                    break;
+                }
+
+                if (bestMatch == null)
+                {
+                    if (!_allWords.TryGetValue(candidates[0], out bestMatch))
+                    {
+                        processedWord = null;
+                        return true;
+                    }
+                }
+
+                if (_specialCases.TryGetValue(textInHiragana, out int specialCaseId))
+                {
+                    bestMatch = _allWords[specialCaseId];
+                }
+
+                var normalizedReadings =
+                    bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                byte readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
+
+                DeckWord deckWord = new()
+                                    {
+                                        WordId = bestMatch.WordId,
+                                        OriginalText = wordData.wordInfo.Text,
+                                        ReadingIndex = readingIndex,
+                                        Occurrences = wordData.occurrences
+                                    };
+                processedWord = deckWord;
+                return true;
+            }
+
+            processedWord = null;
+            return false;
+        }
+
+        private static bool DeconjugateVerbOrAdjective((WordInfo wordInfo, int occurrences) wordData, Deconjugator deconjugator,
+                                                       out DeckWord? processedWord)
+        {
+            var deconjugated = deconjugator.Deconjugate(WanaKana.ToHiragana(wordData.wordInfo.Text))
+                                           .Select(d => d.Text).ToList();
+            deconjugated = deconjugated.OrderByDescending(d => d.Length).ToList();
+
+            List<(string text, List<int> ids)> candidates = new();
+            foreach (var form in deconjugated)
+            {
+                if (_lookups.TryGetValue(form, out List<int> lookup))
+                {
+                    // Reorder to have the most common words first. Might need a frequency list if it's not enough
+                    var orderedLookup = lookup.OrderBy(l => l).ToList();
+                    candidates.Add((form, orderedLookup));
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                processedWord = null;
+                return true;
+            }
+
+            candidates = candidates.OrderByDescending(c => c.text.Length).ToList();
+
+            // if there's a candidate that's the same as the base word, put it first in the list
+            var baseDictionaryWord = WanaKana.ToHiragana(wordData.wordInfo.DictionaryForm);
+            var baseDictionaryWordIndex = candidates.FindIndex(c => c.text == baseDictionaryWord);
+            if (baseDictionaryWordIndex != -1)
+            {
+                var baseDictionaryWordCandidate = candidates[baseDictionaryWordIndex];
+                candidates.RemoveAt(baseDictionaryWordIndex);
+                candidates.Insert(0, baseDictionaryWordCandidate);
+            }
+
+            // if there's a candidate that's the same as the base word, put it first in the list
+            var baseWord = WanaKana.ToHiragana(wordData.wordInfo.Text);
+            var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
+            if (baseWordIndex != -1)
+            {
+                var baseWordCandidate = candidates[baseWordIndex];
+                candidates.RemoveAt(baseWordIndex);
+                candidates.Insert(0, baseWordCandidate);
+            }
+
+            foreach (var candidate in candidates)
+            {
+                foreach (var id in candidate.ids)
+                {
+                    if (!_allWords.TryGetValue(id, out var word)) continue;
+
+                    List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
+                                                 .ToList();
+                    if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
+
+                    var normalizedReadings = word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                    byte readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
 
                     DeckWord deckWord = new()
                                         {
-                                            WordId = bestMatch.WordId,
+                                            WordId = id,
                                             OriginalText = wordData.wordInfo.Text,
                                             ReadingIndex = readingIndex,
                                             Occurrences = wordData.occurrences
                                         };
-                    return (index, deckWord);
+                    processedWord = deckWord;
+                    return true;
                 }
             }
 
-            return null;
+            processedWord = null;
+            return false;
         }
     }
 }
