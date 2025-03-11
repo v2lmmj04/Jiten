@@ -460,10 +460,19 @@ public static class JmDictHelper
             for (var i = 0; i < reading.Readings.Count; i++)
             {
                 string? r = reading.Readings[i];
-                var lookupKey = WanaKana.ToHiragana(r.Replace("ゎ", "わ").Replace("ヮ", "わ"));
+                var lookupKey = WanaKana.ToHiragana(r.Replace("ゎ", "わ").Replace("ヮ", "わ"),
+                                                    new DefaultOptions() { ConvertLongVowelMark = false });
+                var lookupKeyWithoutLongVowelMark = WanaKana.ToHiragana(r.Replace("ゎ", "わ").Replace("ヮ", "わ"));
+
                 if (!lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == lookupKey))
                 {
                     lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKey });
+                }
+
+                if (lookupKeyWithoutLongVowelMark != lookupKey &&
+                    !lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == lookupKeyWithoutLongVowelMark))
+                {
+                    lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKeyWithoutLongVowelMark });
                 }
 
                 // For single kanjis only words, the furigana deck will probably be wrong, so we need an alternative

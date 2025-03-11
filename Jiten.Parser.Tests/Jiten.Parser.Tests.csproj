@@ -23,4 +23,12 @@
       <ProjectReference Include="..\Jiten.Parser\Jiten.Parser.csproj" />
     </ItemGroup>
 
+    <Target Name="CopySharedFiles" AfterTargets="Build">
+        <ItemGroup>
+            <SharedFiles Include="..\Shared\**\*.*"/>
+        </ItemGroup>
+
+        <Copy SourceFiles="@(SharedFiles)" DestinationFolder="$(OutputPath)\%(RecursiveDir)"/>
+    </Target>
+
 </Project>

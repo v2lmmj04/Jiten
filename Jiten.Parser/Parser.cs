@@ -48,7 +48,6 @@ class SudachiInterop
 
         Marshal.FreeHGlobal(inputTextPtr);
 
-
         return result;
     }
 }
@@ -77,13 +76,15 @@ public class Parser
         ("すぐ", "に", null),
         ("なん", "か", null),
         ("だっ", "た", null),
-        ("よう", "に", PartOfSpeech.Expression)
+        ("よう", "に", PartOfSpeech.Expression),
+        ("ん", "です", PartOfSpeech.Expression),
+        ("です", "か", PartOfSpeech.Expression)
     ];
 
 
     public async Task<List<WordInfo>> Parse(string text)
     {
-        // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Jiten.Parser\resources\user_dic.xml -s F:\00_RawJap\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Jiten.Parser\resources\user_dic.dic"
+        // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Shared\resources\user_dic.xml -s F:\00_RawJap\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Shared\resources\user_dic.dic"
 
         // Preprocess the text to remove invalid characters
         PreprocessText(ref text);
@@ -253,6 +254,8 @@ public class Parser
                 wordInfos[i].DictionaryForm != "かける" &&
                 wordInfos[i].DictionaryForm != "あげる" &&
                 wordInfos[i].DictionaryForm != "くれる" &&
+                wordInfos[i].DictionaryForm != "終わる" &&
+                wordInfos[i].DictionaryForm != "欲しい" &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -328,7 +331,7 @@ public class Parser
     {
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary && wordInfos[i].Text != "な" &&
+            if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary && wordInfos[i].Text != "な" && wordInfos[i].Text != "です" &&
                 (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
                  wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
                     // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
