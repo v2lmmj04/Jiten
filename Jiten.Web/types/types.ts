@@ -20,6 +20,11 @@ export interface Deck {
   links: Link[];
 }
 
+export interface DeckDetail {
+  mainDeck: Deck;
+  subDecks: Deck[];
+}
+
 export interface DeckVocabularyList {
   deckId: number;
   title: string;

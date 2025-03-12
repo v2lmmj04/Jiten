@@ -27,6 +27,14 @@
     return response.value?.hasNextPage ? { query: { offset: response.value.nextOffset } } : null;
   });
 
+  const title = computed(() => {
+    return response.value?.data.title;
+  });
+
+  const deckId = computed(() => {
+    return response.value?.data.deckId;
+  });
+
   useHead(() => {
     return {
       title: `${response.value?.data.title} - Vocabulary`,
@@ -36,6 +44,12 @@
 
 <template>
   <div class="flex flex-col gap-2">
+    <div>
+      Vocabulary for
+      <NuxtLink :to="`/decks/medias/${deckId}/detail`">
+        {{ title }}
+      </NuxtLink>
+    </div>
     <div class="flex justify-between">
       <div class="flex gap-8">
         <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">

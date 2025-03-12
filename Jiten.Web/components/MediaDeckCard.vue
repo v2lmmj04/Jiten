@@ -6,6 +6,7 @@
 
   const props = defineProps<{
     deck: Deck;
+    isCompact?: bool;
   }>();
 
   const showDownloadDialog = ref(false);
@@ -14,14 +15,14 @@
 <template>
   <Card class="p-2">
     <template #title>{{ deck.originalTitle }}</template>
-    <template #subtitle>{{ getMediaTypeText(deck.mediaType) }}</template>
+    <template #subtitle v-if="!isCompact">{{ getMediaTypeText(deck.mediaType) }}</template>
     <template #content>
       <div class="flex-gap-6">
         <div class="flex-1">
           <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
-            <div><img :src="deck.coverName ?? '/img/nocover.jpg'" :alt="deck.originalTitle" class="h-48 w-34" /></div>
+            <div v-if="!isCompact"><img :src="deck.coverName == 'nocover.jpg' ? '/img/nocover.jpg' : deck.coverName" :alt="deck.originalTitle" class="h-48 w-34" /></div>
             <div>
-              <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
+              <div class="flex flex-col gap-x-8 gap-y-2" :class="isCompact ? '' : 'md:flex-row'">
                 <div class="w-full md:w-64">
                   <div class="flex justify-between mb-2">
                     <span class="text-gray-600">Character count</span>
@@ -56,10 +57,10 @@
                   </div>
                   <div class="flex justify-between mb-2">
                     <span
-                      class="text-gray-600"
                       v-tooltip="
                         'This is a work in progress.\nThe current analysis only takes into account the vocabulary and not the grammar patterns, cultural references or wordplay, which might make some works easier or harder than the score they\'re given.'
                       "
+                      class="text-gray-600"
                     >
                       Difficulty
                       <span class="text-purple-500 text-xs align-super"> beta </span>
@@ -74,6 +75,7 @@
               </div>
               <div class="mt-4">
                 <div class="flex flex-col md:flex-row gap-4">
+                  <Button as="router-link" :to="`/decks/medias/${deck.deckId}/detail`" label="View details" class="" />
                   <Button
                     as="router-link"
                     :to="`/decks/medias/${deck.deckId}/vocabulary`"

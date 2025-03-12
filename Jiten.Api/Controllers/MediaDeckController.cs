@@ -21,8 +21,9 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     [HttpGet("get-media-decks")]
     [ResponseCache(Duration = 300)]
     public async Task<PaginatedResponse<List<Deck>>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,
-                                                       int wordId = 0, int readingIndex = 0, string? titleFilter = "", string? sortBy = "",
-                                                       SortOrder sortOrder = SortOrder.Ascending)
+                                                                   int wordId = 0, int readingIndex = 0, string? titleFilter = "",
+                                                                   string? sortBy = "",
+                                                                   SortOrder sortOrder = SortOrder.Ascending)
     {
         int pageSize = 50;
 
@@ -185,6 +186,27 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         }
 
         return new PaginatedResponse<DeckVocabularyListDto>(dto, totalCount, pageSize, offset ?? 0);
+    }
+
+    [HttpGet("{id}/detail")]
+    [ResponseCache(Duration = 600)]
+    public PaginatedResponse<DeckDetailDto> GetMediaDeckDetail(int id, int? offset = 0)
+    {
+        int pageSize = 25;
+
+        var deck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == id);
+        var subDecks = context.Decks.AsNoTracking()
+                              .Where(d => d.ParentDeckId == id);
+        int totalCount = subDecks.Count();
+
+        subDecks = subDecks
+                   .OrderBy(dw => dw.DeckOrder)
+                   .Skip(offset ?? 0)
+                   .Take(pageSize);
+
+        var dto = new DeckDetailDto { MainDeck = deck, SubDecks = subDecks.ToList() };
+
+        return new PaginatedResponse<DeckDetailDto>(dto, totalCount, pageSize, offset ?? 0);
     }
 
     [HttpGet("{id}/download")]
@@ -354,11 +376,10 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     public IResult GetDecksCountByMediaType()
     {
         Dictionary<int, int> decksCount = context.Decks.AsNoTracking()
-                                         .Where(d => d.ParentDeckId == null)
-                                         .GroupBy(d => d.MediaType)
-                                         .ToDictionary(g => (int)g.Key, g => g.Count());
+                                                 .Where(d => d.ParentDeckId == null)
+                                                 .GroupBy(d => d.MediaType)
+                                                 .ToDictionary(g => (int)g.Key, g => g.Count());
 
         return Results.Ok(decksCount);
     }
-
 }

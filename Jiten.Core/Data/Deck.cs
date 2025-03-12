@@ -152,6 +152,7 @@ public class Deck
                                       WordId = childDeckWord.WordId,
                                       ReadingIndex = childDeckWord.ReadingIndex,
                                       Occurrences = childDeckWord.Occurrences,
+                                      OriginalText = childDeckWord.OriginalText,
                                       Deck = this
                                   });
                 }

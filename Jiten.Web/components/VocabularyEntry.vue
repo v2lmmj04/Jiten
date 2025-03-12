@@ -22,7 +22,7 @@
     <template #title>
       <div class="flex flex-row gap-4">
       <router-link
-        class="font-noto-sans text-2xl"
+        class="text-2xl"
         :to="`/vocabulary/${word.wordId}/${word.mainReading.readingIndex}`"
         v-html="convertToRuby(word.mainReading.text)">
       </router-link>

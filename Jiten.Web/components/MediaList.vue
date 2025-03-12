@@ -103,7 +103,7 @@
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-4">
     <Card>
       <template #content>
         <div class="flex flex-row flex-wrap justify-around gap-2">
@@ -120,23 +120,33 @@
       </template>
     </Card>
     <div class="flex flex-col md:flex-row gap-2">
-      <FloatLabel variant="on">
-        <Select
-          v-model="sortBy"
-          :options="sortByOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Sort by"
-          inputId="sortBy"
-          class="w-full md:w-56"
-        />
-        <label for="sortBy">Sort by</label>
-      </FloatLabel>
-      <Button @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending">
-        <Icon v-if="sortOrder == SortOrder.Descending" name="mingcute:az-sort-descending-letters-line" size="1.25em" />
-        <Icon v-if="sortOrder == SortOrder.Ascending" name="mingcute:az-sort-ascending-letters-line" size="1.25em" />
-      </Button>
-      <IconField>
+      <div class="flex flex-row gap-2">
+        <FloatLabel variant="on" class="w-full">
+          <Select
+            v-model="sortBy"
+            :options="sortByOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="Sort by"
+            inputId="sortBy"
+            class="w-full md:w-56"
+          />
+          <label for="sortBy">Sort by</label>
+        </FloatLabel>
+        <Button
+          @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending"
+          class="w-12"
+        >
+          <Icon
+            v-if="sortOrder == SortOrder.Descending"
+            name="mingcute:az-sort-descending-letters-line"
+            size="1.25em"
+          />
+          <Icon v-if="sortOrder == SortOrder.Ascending" name="mingcute:az-sort-ascending-letters-line" size="1.25em" />
+        </Button>
+      </div>
+
+      <IconField class="w-full">
         <InputIcon>
           <Icon name="material-symbols:search-rounded" />
         </InputIcon>
@@ -146,7 +156,7 @@
     <div>
       <div class="flex flex-col gap-1">
         <div class="flex flex-col md:flex-row justify-between">
-          <div class="flex gap-8">
+          <div class="flex gap-8 pl-2">
             <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
               Previous
             </NuxtLink>
@@ -154,7 +164,7 @@
               Next
             </NuxtLink>
           </div>
-          <div>viewing decks {{ start }}-{{ end }} from {{ totalItems }} total</div>
+          <div class="pr-2">viewing decks {{ start }}-{{ end }} from {{ totalItems }} total</div>
         </div>
 
         <div v-if="status === 'pending'" class="flex flex-col gap-4">
@@ -167,7 +177,7 @@
 
         <div v-else-if="error">Error: {{ error }}</div>
 
-        <div v-else class="flex flex-col gap-4">
+        <div v-else class="flex flex-col gap-2">
           <MediaDeckCard v-for="deck in response.data" :key="deck.id" :deck="deck" />
         </div>
       </div>

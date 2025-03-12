@@ -2,6 +2,7 @@
   import { useApiFetch } from '~/composables/useApiFetch';
   import type { DeckWord } from '~/types';
   import WordSearch from '~/components/WordSearch.vue';
+  import { select } from '@clack/prompts';
 
   const route = useRoute();
 
@@ -52,7 +53,7 @@
 <template>
   <div>
     <WordSearch />
-    <span v-for="word in words" :key="word.wordId" class="pr-2">
+    <span v-for="word in words" :key="word.wordId" class="pr-2 font-noto-sans">
       <span
         v-if="word.wordId != 0"
         class="text-purple-600 text-lg underline underline-offset-4 cursor-pointer hover:font-bold"
@@ -65,9 +66,17 @@
     </span>
 
     <div v-if="selectedWord">
-      <VocabularyDetail :word-id="selectedWord.wordId" :reading-index="selectedWord.readingIndex" />
+      <Transition name="fade" mode="out-in">
+        <VocabularyDetail
+          :key="`${selectedWord.wordId}-${selectedWord.readingIndex}`"
+          :word-id="selectedWord.wordId"
+          :reading-index="selectedWord.readingIndex"
+        />
+      </Transition>
     </div>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+
+</style>
