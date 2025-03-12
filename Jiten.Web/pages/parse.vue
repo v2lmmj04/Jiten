@@ -7,21 +7,66 @@
 
   const url = computed(() => `vocabulary/parse`);
 
+  const searchContent = ref(route.query.text || '');
+
+  useHead(() => {
+    return {
+      title: 'Search ' + searchContent.value,
+    };
+  });
+
   const {
     data: response,
     status,
     error,
-  } = await useApiFetch<DeckWord[]>(url.value, { query: { text: route.query.text } });
+  } = await useApiFetch<DeckWord[]>(url.value, { query: { text: searchContent }, watch: [searchContent] });
 
-  const words = computed(() => response.value);
-  console.log(words.value);
+  watch(
+    () => route.query.text,
+    (newText) => {
+      if (newText) {
+        response.value = [];
+        searchContent.value = newText;
+        selectedWord.value = response.value?.find((word) => word.wordId != 0);
+      }
+    }
+  );
+
+  const words = computed<DeckWord[]>(() => response.value || []);
+  const selectedWord = ref<DeckWord | undefined>();
+
+  if (status.value === 'success') {
+    selectedWord.value = response.value?.find((word) => word.wordId != 0);
+  }
+
+  watch(
+    () => status.value,
+    (newStatus) => {
+      if (newStatus === 'success') {
+        selectedWord.value = response.value?.find((word) => word.wordId != 0);
+      }
+    }
+  );
 </script>
 
 <template>
-  <WordSearch />
-  <div v-for="word in words" :key="word.wordId">
-    {{ word.originalText }}
-   <VocabularyEntry word="word" />
+  <div>
+    <WordSearch />
+    <span v-for="word in words" :key="word.wordId" class="pr-2">
+      <span
+        v-if="word.wordId != 0"
+        class="text-purple-600 text-lg underline underline-offset-4 cursor-pointer hover:font-bold"
+        @click="selectedWord = word"
+      >
+        {{ word.originalText }}
+      </span>
+      <span v-else>{{ word.originalText }}</span>
+      <!--   <VocabularyEntry word="word" />-->
+    </span>
+
+    <div v-if="selectedWord">
+      <VocabularyDetail :word-id="selectedWord.wordId" :reading-index="selectedWord.readingIndex" />
+    </div>
   </div>
 </template>
 

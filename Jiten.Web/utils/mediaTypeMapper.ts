@@ -1,7 +1,6 @@
 import { MediaType } from '~/types';
 
 export function getMediaTypeText(mediaType: MediaType): string {
-  console.log(MediaType.Anime);
   switch (mediaType) {
     case MediaType.Anime:
       return 'Anime';

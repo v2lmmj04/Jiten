@@ -456,10 +456,16 @@ public class Parser
         {
             foreach (var honorific in HonorificsSuffixes)
             {
-                if (!wordInfos[i].Text.EndsWith(honorific) || wordInfos[i].Text.Length <= honorific.Length || (!wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PersonName) && !wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.ProperNoun))) continue;
+                if (!wordInfos[i].Text.EndsWith(honorific) || wordInfos[i].Text.Length <= honorific.Length ||
+                    (!wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PersonName) &&
+                     !wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.ProperNoun))) continue;
 
-                wordInfos[i].Text = wordInfos[i].Text.Substring(0, wordInfos[i].Text.Length - honorific.Length);;
-                wordInfos[i].DictionaryForm = wordInfos[i].DictionaryForm.Substring(0, wordInfos[i].DictionaryForm.Length - honorific.Length);;
+                wordInfos[i].Text = wordInfos[i].Text.Substring(0, wordInfos[i].Text.Length - honorific.Length);
+                if (wordInfos[i].DictionaryForm.EndsWith(honorific))
+                {
+                    wordInfos[i].DictionaryForm =
+                        wordInfos[i].DictionaryForm.Substring(0, wordInfos[i].DictionaryForm.Length - honorific.Length);
+                }
 
                 var suffix = new WordInfo()
                              {

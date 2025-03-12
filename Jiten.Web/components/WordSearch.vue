@@ -2,8 +2,9 @@
   import InputText from 'primevue/inputtext';
 
   const router = useRouter();
+  const route = useRoute();
 
-  const searchContent = ref('');
+  const searchContent = ref(route.query.text || '');
 
   const onSearch = async () => {
     await navigateTo({
