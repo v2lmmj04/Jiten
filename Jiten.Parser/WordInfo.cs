@@ -15,6 +15,8 @@ public class WordInfo
     public string Reading { get; set; }
     public bool IsInvalid { get; set; }
     
+    public WordInfo(){}
+    
     public WordInfo(string sudachiLine)
     {
         var parts = Regex.Split(sudachiLine, @"\t");

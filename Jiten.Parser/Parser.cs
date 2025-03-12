@@ -19,6 +19,8 @@ class SudachiInterop
     [DllImport("resources/sudachi_lib.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void free_string(IntPtr ptr);
 
+    private static readonly object ProcessTextLock = new object();
+
 
     public static string RunCli(string configPath, string filePath, string dictionaryPath, string outputPath)
     {
@@ -37,18 +39,21 @@ class SudachiInterop
     public static string ProcessText(string configPath, string inputText, string dictionaryPath, char mode = 'C', bool printAll = true,
                                      bool wakati = false)
     {
-        byte[] inputBytes = Encoding.UTF8.GetBytes(inputText + "\0");
-        IntPtr inputTextPtr = Marshal.AllocHGlobal(inputBytes.Length);
-        Marshal.Copy(inputBytes, 0, inputTextPtr, inputBytes.Length);
+        lock (ProcessTextLock)
+        {
+            byte[] inputBytes = Encoding.UTF8.GetBytes(inputText + "\0");
+            IntPtr inputTextPtr = Marshal.AllocHGlobal(inputBytes.Length);
+            Marshal.Copy(inputBytes, 0, inputTextPtr, inputBytes.Length);
 
-        IntPtr resultPtr = process_text_ffi(configPath, inputTextPtr, dictionaryPath, mode, printAll, wakati);
-        string result = Marshal.PtrToStringUTF8(resultPtr) ?? string.Empty;
+            IntPtr resultPtr = process_text_ffi(configPath, inputTextPtr, dictionaryPath, mode, printAll, wakati);
+            string result = Marshal.PtrToStringUTF8(resultPtr) ?? string.Empty;
 
-        free_string(resultPtr);
+            free_string(resultPtr);
 
-        Marshal.FreeHGlobal(inputTextPtr);
+            Marshal.FreeHGlobal(inputTextPtr);
 
-        return result;
+            return result;
+        }
     }
 }
 
@@ -59,28 +64,32 @@ public class Parser
 
     private static HashSet<(string, string, PartOfSpeech?)> SpecialCases2 =
     [
-        ("じゃ", "ない", null),
-        ("に", "しろ", null),
-        ("だ", "けど", null),
-        ("だ", "が", null),
-        ("で", "さえ", null),
-        ("で", "すら", null),
-        ("と", "いう", null),
-        ("と", "か", null),
-        ("だ", "から", null),
-        ("これ", "まで", null),
-        ("くせ", "に", null),
-        ("の", "で", null),
-        ("誰", "も", null),
-        ("誰", "か", null),
-        ("すぐ", "に", null),
-        ("なん", "か", null),
-        ("だっ", "た", null),
+        ("じゃ", "ない", PartOfSpeech.Expression),
+        ("に", "しろ", PartOfSpeech.Expression),
+        ("だ", "けど", PartOfSpeech.Conjunction),
+        ("だ", "が", PartOfSpeech.Conjunction),
+        ("で", "さえ", PartOfSpeech.Expression),
+        ("で", "すら", PartOfSpeech.Expression),
+        ("と", "いう", PartOfSpeech.Expression),
+        ("と", "か", PartOfSpeech.Conjunction),
+        ("だ", "から", PartOfSpeech.Conjunction),
+        ("これ", "まで", PartOfSpeech.Expression),
+        ("それ", "も", PartOfSpeech.Conjunction),
+        ("くせ", "に", PartOfSpeech.Conjunction),
+        ("の", "で", PartOfSpeech.Particle),
+        ("誰", "も", PartOfSpeech.Expression),
+        ("誰", "か", PartOfSpeech.Expression),
+        ("すぐ", "に", PartOfSpeech.Adverb),
+        ("なん", "か", PartOfSpeech.Particle),
+        ("だっ", "た", PartOfSpeech.Expression),
+        ("だっ", "たら", PartOfSpeech.Conjunction),
         ("よう", "に", PartOfSpeech.Expression),
         ("ん", "です", PartOfSpeech.Expression),
+        ("ん", "だ", PartOfSpeech.Expression),
         ("です", "か", PartOfSpeech.Expression)
     ];
 
+    private static readonly List<string> HonorificsSuffixes = ["さん", "ちゃん", "くん"];
 
     public async Task<List<WordInfo>> Parse(string text)
     {
@@ -118,6 +127,8 @@ public class Parser
         wordInfos = CombineParticles(wordInfos);
 
         wordInfos = CombineFinal(wordInfos);
+
+        wordInfos = SeparateSuffixHonorifics(wordInfos);
 
         return wordInfos;
     }
@@ -256,6 +267,7 @@ public class Parser
                 wordInfos[i].DictionaryForm != "くれる" &&
                 wordInfos[i].DictionaryForm != "終わる" &&
                 wordInfos[i].DictionaryForm != "欲しい" &&
+                wordInfos[i].DictionaryForm != "始める" &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -299,6 +311,7 @@ public class Parser
         {
             // i.e　だり, たり
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AdverbialParticle) &&
+                wordInfos[i].DictionaryForm != "くらい" &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -331,7 +344,11 @@ public class Parser
     {
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary && wordInfos[i].Text != "な" && wordInfos[i].Text != "です" &&
+            if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary
+                && wordInfos[i].Text != "な"
+                && wordInfos[i].Text != "です"
+                && wordInfos[i].DictionaryForm != "らしい"
+                && wordInfos[i].Text != "なら" &&
                 (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
                  wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
                     // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
@@ -379,7 +396,8 @@ public class Parser
     {
         for (int i = 1; i < wordInfos.Count; i++)
         {
-            if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix)) &&
+            if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix))
+                && wordInfos[i].DictionaryForm != "っぽい" &&
                 (wordInfos[i].DictionaryForm != "たち" || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -421,6 +439,39 @@ public class Parser
             {
                 wordInfos[i].Text = "のに";
                 wordInfos.RemoveAt(i + 1);
+            }
+        }
+
+        return wordInfos;
+    }
+
+    /// <summary>
+    /// Separate the honorifics from the proper names
+    /// </summary>
+    /// <param name="wordInfos"></param>
+    /// <returns></returns>
+    private List<WordInfo> SeparateSuffixHonorifics(List<WordInfo> wordInfos)
+    {
+        for (var i = 0; i < wordInfos.Count; i++)
+        {
+            foreach (var honorific in HonorificsSuffixes)
+            {
+                if (!wordInfos[i].Text.EndsWith(honorific) || wordInfos[i].Text.Length <= honorific.Length || (!wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PersonName) && !wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.ProperNoun))) continue;
+
+                wordInfos[i].Text = wordInfos[i].Text.Substring(0, wordInfos[i].Text.Length - honorific.Length);;
+                wordInfos[i].DictionaryForm = wordInfos[i].DictionaryForm.Substring(0, wordInfos[i].DictionaryForm.Length - honorific.Length);;
+
+                var suffix = new WordInfo()
+                             {
+                                 Text = honorific,
+                                 PartOfSpeech = PartOfSpeech.Suffix,
+                                 Reading = honorific,
+                                 DictionaryForm = honorific
+                             };
+                wordInfos.Insert(i + 1, suffix);
+                i++;
+
+                break;
             }
         }
 

@@ -10,7 +10,9 @@ public class Deconjugator
 {
     public List<DeconjugationRule> Rules = new();
 
-    private static readonly ConcurrentDictionary<string, HashSet<DeconjugationForm>> _deconjugationCache
+    private static readonly bool UseCache = false;
+
+    private static readonly ConcurrentDictionary<string, HashSet<DeconjugationForm>> DeconjugationCache
         = new(StringComparer.Ordinal);
 
     public Deconjugator()
@@ -34,11 +36,11 @@ public class Deconjugator
 
     public HashSet<DeconjugationForm> Deconjugate(string text)
     {
-        if (_deconjugationCache.TryGetValue(text, out var cached))
+        if (UseCache && DeconjugationCache.TryGetValue(text, out var cached))
         {
             return new HashSet<DeconjugationForm>(cached); // Return copy to prevent modification
         }
-        
+
         var processed = new HashSet<DeconjugationForm>();
 
         if (string.IsNullOrEmpty(text))
@@ -86,11 +88,11 @@ public class Deconjugator
 
         // processed.Remove(startForm);
 
-        if (text.Length <= 20 && processed.Count < 55 && _deconjugationCache.Count < 250000)
+        if (UseCache && text.Length <= 20 && processed.Count < 55 && DeconjugationCache.Count < 250000)
         {
-            _deconjugationCache[text] = new HashSet<DeconjugationForm>(processed);
+            DeconjugationCache[text] = new HashSet<DeconjugationForm>(processed);
         }
-        
+
         return processed;
     }
 
