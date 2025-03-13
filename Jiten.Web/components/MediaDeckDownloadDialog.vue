@@ -59,9 +59,9 @@
         const link = document.createElement('a');
         link.href = blobUrl;
         if (format.value === DeckFormat.Anki) {
-          link.setAttribute('download', `${props.deck.originalTitle}.apkg`); // You can set the desired file name here
+          link.setAttribute('download', `${localiseTitle(props.deck).substring(0, 30)}.apkg`); // You can set the desired file name here
         } else if (format.value === DeckFormat.Csv) {
-          link.setAttribute('download', `${props.deck.originalTitle}.csv`); // You can set the desired file name here
+          link.setAttribute('download', `${localiseTitle(props.deck).substring(0, 30)}.csv`); // You can set the desired file name here
         }
         document.body.appendChild(link);
         link.click();
@@ -80,8 +80,7 @@
 </script>
 
 <template>
-  <Dialog v-model:visible="localVisible" modal header="Edit Profile" :style="{ width: '30rem' }">
-    <span class="text-surface-500 dark:text-surface-400 block mb-8">Update your information.</span>
+  <Dialog v-model:visible="localVisible" modal :header="`Download deck ${localiseTitle(deck)}`" :style="{ width: '30rem' }">
     <div class="flex flex-col gap-2">
       <div>
         <div class="text-gray-500 text-sm">Format</div>

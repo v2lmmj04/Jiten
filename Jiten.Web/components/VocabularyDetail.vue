@@ -78,18 +78,20 @@
         <div class="flex flex-col gap-4 max-w-2xl">
           <div class="flex justify-between">
             <div class="text-3xl font-noto-sans" v-html="convertToRuby(response.data.mainReading.text)"></div>
-            <div class="text-gray-500 text-right md:hidden">Rank #{{ response.data.mainReading.frequencyRank }}</div>
+            <div class="text-gray-500 dark:text-gray-300 text-right md:hidden">
+              Rank #{{ response.data.mainReading.frequencyRank }}
+            </div>
           </div>
 
           <div>
-            <h1 class="text-gray-500 text-sm">Meanings</h1>
+            <h1 class="text-gray-500 dark:text-gray-300 text-sm">Meanings</h1>
             <div class="pl-2">
               <VocabularyDefinitions :definitions="response.data.definitions" :is-compact="false" />
             </div>
           </div>
 
           <div>
-            <h1 class="text-gray-500 font-noto-sans text-sm">Readings</h1>
+            <h1 class="text-gray-500 dark:text-gray-300 font-noto-sans text-sm">Readings</h1>
             <div class="pl-2 flex flex-row flex-wrap gap-8">
               <span v-for="reading in sortedReadings" :key="reading.readingIndex">
                 <div :class="reading.readingIndex === currentReadingIndex ? 'font-bold' : ''">
@@ -106,7 +108,7 @@
           </div>
         </div>
         <div class="min-w-64">
-          <div class="text-gray-500 text-right hidden md:block">
+          <div class="text-gray-500 dark:text-gray-300 text-right hidden md:block">
             Rank #{{ response.data.mainReading.frequencyRank }}
           </div>
           <div class="md:text-right pt-4">
@@ -116,8 +118,8 @@
             <thead>
               <tr>
                 <th></th>
-                <th class="text-gray-500 text-sm pl-4">Amount</th>
-                <th class="text-gray-500 text-sm pl-4">% of total</th>
+                <th class="text-gray-500 dark:text-gray-300 text-sm pl-4">Amount</th>
+                <th class="text-gray-500 dark:text-gray-300 text-sm pl-4">% of total</th>
               </tr>
             </thead>
             <tr v-for="(amount, mediaType) in response.data.mainReading.usedInMediaAmountByType" :key="mediaType">

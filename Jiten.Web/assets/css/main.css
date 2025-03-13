@@ -12,8 +12,12 @@
     border: 1px solid #e6e6e6;
 }
 
-a {
+a:not(.p-button) {
     @apply text-blue-500 hover:underline
+}
+
+.dark-mode a:not(.p-button) {
+    @apply text-blue-300 hover:underline
 }
 
 :root {

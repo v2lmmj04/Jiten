@@ -128,7 +128,7 @@
             option-label="label"
             option-value="value"
             placeholder="Sort by"
-            inputId="sortBy"
+            input-id="sortBy"
             class="w-full md:w-56"
           />
           <label for="sortBy">Sort by</label>

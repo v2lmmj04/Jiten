@@ -28,11 +28,15 @@
   });
 
   const title = computed(() => {
-    return response.value?.data.title;
+    if (!response.value?.data) {
+      return '';
+    }
+
+    return localiseTitle(response.value?.data.deck);
   });
 
   const deckId = computed(() => {
-    return response.value?.data.deckId;
+    return response.value?.data.deck.deckId;
   });
 
   useHead(() => {

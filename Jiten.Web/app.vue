@@ -15,14 +15,12 @@
     // TODO remove after primevue fix
     document.documentElement.classList.add('loaded');
   });
-
-
 </script>
 
 <template>
   <div id="app">
     <NuxtLoadingIndicator />
-    <Header />
+    <AppHeader />
     <div class="container mx-auto pl-4 pr-4 max-w-6xl">
       <NuxtPage />
     </div>

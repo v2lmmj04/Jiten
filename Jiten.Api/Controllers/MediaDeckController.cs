@@ -133,7 +133,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var frequencies = context.JmDictWordFrequencies.AsNoTracking().Where(f => wordIds.Contains(f.WordId)).ToList();
 
-        DeckVocabularyListDto dto = new() { DeckId = id, Title = deck.OriginalTitle, Words = new() };
+        DeckVocabularyListDto dto = new() { Deck = deck, Words = new() };
 
         foreach (var word in words)
         {
@@ -286,7 +286,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         {
             case DeckFormat.Anki:
                 // Lapis template from https://github.com/donkuri/lapis/tree/main
-                var template = await AnkiFileReader.ReadFromFileAsync("resources/lapis.apkg");
+                var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "lapis.apkg");
+                var template = await AnkiFileReader.ReadFromFileAsync(templatePath);
                 var noteTypeTemplate = template.NoteTypes.First();
 
                 var collection = new AnkiCollection();

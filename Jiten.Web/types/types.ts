@@ -26,8 +26,7 @@ export interface DeckDetail {
 }
 
 export interface DeckVocabularyList {
-  deckId: number;
-  title: string;
+  deck: Deck;
   words: DeckWord[];
 }
 

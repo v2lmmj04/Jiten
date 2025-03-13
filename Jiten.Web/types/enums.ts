@@ -46,3 +46,9 @@ export enum SortOrder {
   Ascending = 0,
   Descending = 1,
 }
+
+export enum TitleLanguage {
+  Original = 0,
+  Romaji = 1,
+  English = 2,
+}
