@@ -43,6 +43,7 @@ namespace Jiten.Parser
                                                                    { "つく", 1495740 },
                                                                    { "たら", 2029050 },
                                                                    { "彼", 1483070 },
+                                                                   { "いい", 2820690 },
                                                                };
 
         public static async Task Main(string[] args)
@@ -269,16 +270,46 @@ namespace Jiten.Parser
 
             DeckWord? processedWord;
 
-            if (wordData.wordInfo.PartOfSpeech is PartOfSpeech.Verb or PartOfSpeech.IAdjective
-                or PartOfSpeech.NaAdjective || wordData.wordInfo.PartOfSpeechSection1 is PartOfSpeechSection.Adjectival)
+
+            bool isProcessed = false;
+
+            do
             {
-                if (!DeconjugateVerbOrAdjective(wordData, deconjugator, out processedWord))
-                    DeconjugateWord(wordData, out processedWord); // The word might be a noun misparsed as a verb/adjective like お祭り
-            }
-            else
-            {
-                DeconjugateWord(wordData, out processedWord);
-            }
+                if (wordData.wordInfo.PartOfSpeech is PartOfSpeech.Verb or PartOfSpeech.IAdjective
+                        or PartOfSpeech.NaAdjective || wordData.wordInfo.PartOfSpeechSection1 is PartOfSpeechSection.Adjectival)
+                {
+                    if (!DeconjugateVerbOrAdjective(wordData, deconjugator, out processedWord))
+                        DeconjugateWord(wordData, out processedWord); // The word might be a noun misparsed as a verb/adjective like お祭り
+                }
+                else
+                {
+                    DeconjugateWord(wordData, out processedWord);
+                }
+
+                if (processedWord != null) break;
+
+                // We haven't found a match, let's try to remove the last character if it's a っ, a ー or a duplicate
+                if (wordData.wordInfo.Text.Length > 2 &&
+                    (wordData.wordInfo.Text[^1] == 'っ' || wordData.wordInfo.Text[^1] == 'ー' ||
+                     wordData.wordInfo.Text[^2] == wordData.wordInfo.Text[^1]))
+                {
+                    wordData.wordInfo.Text = wordData.wordInfo.Text[..^1];
+                }
+                // Let's try to remove any honorifics in front of the word
+                else if (wordData.wordInfo.Text.StartsWith("お"))
+                {
+                    wordData.wordInfo.Text = wordData.wordInfo.Text[1..];
+                }
+                // Let's try without any long vowel mark
+                else if (wordData.wordInfo.Text.Contains("ー"))
+                {
+                    wordData.wordInfo.Text = wordData.wordInfo.Text.Replace("ー", "");
+                }
+                else
+                {
+                    isProcessed = true;
+                }
+            } while (!isProcessed);
 
             if (processedWord != null)
             {
@@ -342,7 +373,8 @@ namespace Jiten.Parser
                 }
 
                 var normalizedReadings =
-                    bestMatch.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false })).ToList();
+                    bestMatch.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false }))
+                             .ToList();
                 byte readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
 
                 // not found, try with converting the long vowel mark

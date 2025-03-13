@@ -114,7 +114,7 @@
           <div class="md:text-right pt-4">
             Appears in <b>{{ response.data.mainReading.usedInMediaAmount }} medias</b>
           </div>
-          <table>
+          <table v-if="response.data.mainReading.usedInMediaAmount > 0">
             <thead>
               <tr>
                 <th></th>

@@ -23,7 +23,7 @@
       type="text"
       placeholder="Search a word or a sentence"
       class="w-full"
-      maxlength="100"
+      maxlength="200"
       @keyup.enter="onSearch"
     />
     <Button label="Search" icon="pi pi-search" class="ml-2" @click="onSearch">

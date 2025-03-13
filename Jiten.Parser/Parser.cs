@@ -59,8 +59,13 @@ class SudachiInterop
 
 public class Parser
 {
-    private static HashSet<(string, string, string)> SpecialCases3 =
-        [("な", "の", "で"), ("で", "は", "ない"), ("それ", "で", "も")];
+    private static HashSet<(string, string, string, PartOfSpeech?)> SpecialCases3 =
+    [
+        ("な", "の", "で", PartOfSpeech.Expression),
+        ("で", "は", "ない", PartOfSpeech.Expression),
+        ("それ", "で", "も", PartOfSpeech.Conjunction),
+        ("なく", "なっ", "た", PartOfSpeech.Verb)
+    ];
 
     private static HashSet<(string, string, PartOfSpeech?)> SpecialCases2 =
     [
@@ -75,6 +80,7 @@ public class Parser
         ("だ", "から", PartOfSpeech.Conjunction),
         ("これ", "まで", PartOfSpeech.Expression),
         ("それ", "も", PartOfSpeech.Conjunction),
+        ("それ", "だけ", PartOfSpeech.Noun),
         ("くせ", "に", PartOfSpeech.Conjunction),
         ("の", "で", PartOfSpeech.Particle),
         ("誰", "も", PartOfSpeech.Expression),
@@ -163,6 +169,11 @@ public class Parser
                     wordInfos[i].Text = wordInfos[i].Text + wordInfos[i + 1].Text + wordInfos[i + 2].Text;
                     wordInfos.RemoveAt(i + 1);
                     wordInfos.RemoveAt(i + 1);
+
+                    if (sc.Item4 != null)
+                    {
+                        wordInfos[i].PartOfSpeech = sc.Item4.Value;
+                    }
                 }
             }
         }
@@ -261,6 +272,7 @@ public class Parser
         for (int i = 1; i < wordInfos.Count; i++)
         {
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PossibleDependant) &&
+                wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb &&
                 wordInfos[i].DictionaryForm != "ござる" &&
                 wordInfos[i].DictionaryForm != "かける" &&
                 wordInfos[i].DictionaryForm != "あげる" &&
@@ -268,7 +280,11 @@ public class Parser
                 wordInfos[i].DictionaryForm != "終わる" &&
                 wordInfos[i].DictionaryForm != "欲しい" &&
                 wordInfos[i].DictionaryForm != "始める" &&
-                wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
+                wordInfos[i].DictionaryForm != "下さる" &&
+                wordInfos[i].DictionaryForm != "貰う" &&
+                wordInfos[i].DictionaryForm != "貰える" &&
+                wordInfos[i].DictionaryForm != "いい"
+               )
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
@@ -311,7 +327,7 @@ public class Parser
         {
             // i.e　だり, たり
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AdverbialParticle) &&
-                wordInfos[i].DictionaryForm != "くらい" &&
+                (wordInfos[i].DictionaryForm == "だり" || wordInfos[i].DictionaryForm == "たり") &&
                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb)
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -345,14 +361,14 @@ public class Parser
         for (int i = 1; i < wordInfos.Count; i++)
         {
             if (wordInfos[i].PartOfSpeech == PartOfSpeech.Auxiliary
+                && (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
+                    wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective)
                 && wordInfos[i].Text != "な"
-                && wordInfos[i].Text != "です"
+                && wordInfos[i].DictionaryForm != "です"
                 && wordInfos[i].DictionaryForm != "らしい"
-                && wordInfos[i].Text != "なら" &&
-                (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb ||
-                 wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective
-                    // || wordInfos[i-1].HasPartOfSpeechSection(PartOfSpeechSection.PossibleSuru)
-                ))
+                && wordInfos[i].Text != "なら"
+                && wordInfos[i].DictionaryForm != "だ"
+               )
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
                 wordInfos.RemoveAt(i);
@@ -397,7 +413,7 @@ public class Parser
         for (int i = 1; i < wordInfos.Count; i++)
         {
             if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix))
-                && wordInfos[i].DictionaryForm != "っぽい" &&
+                && wordInfos[i].DictionaryForm != "っぽい" && wordInfos[i].DictionaryForm != "にくい" &&
                 (wordInfos[i].DictionaryForm != "たち" || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -446,7 +462,8 @@ public class Parser
     }
 
     /// <summary>
-    /// Separate the honorifics from the proper names
+    /// Tries to separate the honorifics from the proper names
+    /// This still doesn't work for all cases
     /// </summary>
     /// <param name="wordInfos"></param>
     /// <returns></returns>

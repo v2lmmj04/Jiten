@@ -46,7 +46,7 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
                               ReadingIndex = readingIndex,
                               ReadingType = word.ReadingTypes[readingIndex],
                               FrequencyRank = frequency.ReadingsFrequencyRank[readingIndex],
-                              FrequencyPercentage = frequency.ReadingsFrequencyPercentage[readingIndex],
+                              FrequencyPercentage = frequency.ReadingsFrequencyPercentage[readingIndex].ZeroIfNaN(),
                               UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[readingIndex],
                               UsedInMediaAmountByType = usedInMediaByType
                           };
@@ -60,7 +60,7 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
                                                                          FrequencyRank =
                                                                              frequency.ReadingsFrequencyRank[i],
                                                                          FrequencyPercentage =
-                                                                             frequency.ReadingsFrequencyPercentage[i],
+                                                                             frequency.ReadingsFrequencyPercentage[i].ZeroIfNaN(),
                                                                          UsedInMediaAmount = frequency.ReadingsUsedInMediaAmount[i]
                                                                      })
                                                    .ToList();
@@ -78,7 +78,7 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
     [HttpGet("parse")]
     public async Task<IResult> Parse(string text)
     {
-        if (text.Length > 100)
+        if (text.Length > 200)
             return Results.BadRequest("Text is too long");
 
         var parsedWords = await Parser.Program.ParseText(text);

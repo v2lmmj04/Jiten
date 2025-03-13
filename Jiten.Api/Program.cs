@@ -33,8 +33,8 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("fixed", context =>
     {
         return RateLimitPartition.GetFixedWindowLimiter(
-                                                        context.Connection.RemoteIpAddress?.ToString() ?? 
-                                                        context.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? 
+                                                        context.Connection.RemoteIpAddress?.ToString() ??
+                                                        context.Request.Headers["X-Forwarded-For"].FirstOrDefault() ??
                                                         "unknown",
                                                         _ => new FixedWindowRateLimiterOptions
                                                              {
@@ -49,8 +49,8 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("download", context =>
     {
         return RateLimitPartition.GetSlidingWindowLimiter(
-                                                          context.Connection.RemoteIpAddress?.ToString() ?? 
-                                                          context.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? 
+                                                          context.Connection.RemoteIpAddress?.ToString() ??
+                                                          context.Request.Headers["X-Forwarded-For"].FirstOrDefault() ??
                                                           "unknown",
                                                           _ => new SlidingWindowRateLimiterOptions
                                                                {
@@ -68,9 +68,9 @@ builder.Services.AddRateLimiter(options =>
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
         {
             context.HttpContext.Response.Headers.RetryAfter =
-                ((int) retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
         }
-        
+
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", token);
     };
