@@ -15,5 +15,18 @@ export const useJitenStore = defineStore('jiten', () => {
     titleLanguageCookie.value = newValue;
   });
 
-  return { titleLanguage };
+  const displayFuriganaCookie = useCookie<boolean>('jiten-display-furigana', {
+    default: () => true,
+    watch: true,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+    path: '/',
+  });
+
+  const displayFurigana = ref<boolean>(displayFuriganaCookie.value);
+
+  watch(displayFurigana, (newValue) => {
+    displayFuriganaCookie.value = newValue;
+  });
+
+  return { titleLanguage, displayFurigana };
 });

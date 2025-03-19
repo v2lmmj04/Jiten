@@ -14,10 +14,14 @@
     { label: 'English', value: 2 },
   ]);
 
-  const titleLanguage = ref(store.titleLanguage);
+  const titleLanguage = computed({
+    get: () => store.titleLanguage,
+    set: (value) => store.titleLanguage = value
+  });
 
-  watch(titleLanguage, (newValue) => {
-    store.titleLanguage = newValue;
+  const displayFurigana = computed({
+    get: () => store.displayFurigana,
+    set: (value) => store.displayFurigana = value
   });
 
   const isOverSettings = ref(false);
@@ -78,20 +82,27 @@
   </header>
 
   <Popover ref="settings" @mouseenter="onSettingsMouseEnter" @mouseleave="onSettingsMouseLeave">
-    <FloatLabel variant="on" class="">
-      <Select
-        v-model="titleLanguage"
-        :options="titleLanguageOptions"
-        option-label="label"
-        option-value="value"
-        placeholder="Titles Language"
-        input-id="titleLanguage"
-        @show="isSettingsInteracted = true"
-        @hide="isSettingsInteracted = false"
-        class=""
-      />
-      <label for="titleLanguage">Titles Language</label>
-    </FloatLabel>
+    <div class="flex flex-col gap-2">
+      <FloatLabel variant="on" class="">
+        <Select
+          v-model="titleLanguage"
+          :options="titleLanguageOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Titles Language"
+          input-id="titleLanguage"
+          @show="isSettingsInteracted = true"
+          @hide="isSettingsInteracted = false"
+          class=""
+        />
+        <label for="titleLanguage">Titles Language</label>
+      </FloatLabel>
+
+      <div class="flex items-center gap-2">
+        <Checkbox v-model="displayFurigana" input-id="displayFurigana" name="furigana" :binary="true" />
+        <label for="displayFurigana">Display Furigana</label>
+      </div>
+    </div>
   </Popover>
 </template>
 
