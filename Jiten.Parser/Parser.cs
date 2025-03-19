@@ -283,6 +283,7 @@ public class Parser
                 wordInfos[i].DictionaryForm != "下さる" &&
                 wordInfos[i].DictionaryForm != "貰う" &&
                 wordInfos[i].DictionaryForm != "貰える" &&
+                wordInfos[i].DictionaryForm != "なる" &&
                 wordInfos[i].DictionaryForm != "いい"
                )
             {
