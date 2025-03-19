@@ -105,31 +105,51 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
     [HttpGet("{id}/vocabulary")]
     [ResponseCache(Duration = 600)]
-    public PaginatedResponse<DeckVocabularyListDto> GetVocabulary(int id, string? sortOrder = "", int? offset = 0)
+    public PaginatedResponse<DeckVocabularyListDto> GetVocabulary(int id, string? sortBy = "", SortOrder sortOrder = SortOrder.Ascending,
+                                                                  int? offset = 0)
     {
         int pageSize = 100;
 
         var deck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == id);
 
-        int totalCount = context.DeckWords.AsNoTracking().Count(dw => dw.DeckId == id);
 
-        var deckWords = context.DeckWords.AsNoTracking()
-                               .Where(dw => dw.DeckId == id)
-                               .OrderBy(dw => dw.DeckWordId)
-                               .Skip(offset ?? 0)
-                               .Take(pageSize)
-                               .ToList();
+        var query = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
 
-        var wordIds = deckWords.Select(dw => dw.WordId).ToList();
+        query = sortBy switch
+        {
+            "globalFreq" => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => context.JmDictWordFrequencies
+                                            .Where(f => f.WordId == d.WordId)
+                                            .Select(f => f.ReadingsFrequencyRank[d.ReadingIndex])
+                                            .FirstOrDefault())
+                : query.OrderByDescending(d => context.JmDictWordFrequencies
+                                                      .Where(f => f.WordId == d.WordId)
+                                                      .Select(f => f.ReadingsFrequencyRank[d.ReadingIndex])
+                                                      .FirstOrDefault()),
+            "deckFreq" => sortOrder == SortOrder.Ascending
+                ? query.OrderByDescending(d => d.Occurrences)
+                : query.OrderBy(d => d.Occurrences),
+            "chrono" or _ => sortOrder == SortOrder.Ascending
+                ? query.OrderBy(d => d.DeckWordId)
+                : query.OrderByDescending(d => d.DeckWordId),
+        };
+
+        int totalCount = query.Count(dw => dw.DeckId == id);
+
+        var deckWordsList = query.Skip(offset ?? 0)
+                                 .Take(pageSize)
+                                 .ToList();
+
+        var wordIds = deckWordsList.Select(dw => dw.WordId).ToList();
 
         var jmdictWords = context.JMDictWords.AsNoTracking()
                                  .Where(w => wordIds.Contains(w.WordId))
                                  .Include(w => w.Definitions)
                                  .ToList();
 
-        var words = deckWords.Select(dw => new { dw, jmDictWord = jmdictWords.FirstOrDefault(w => w.WordId == dw.WordId) })
-                             .OrderBy(dw => wordIds.IndexOf(dw.dw.WordId))
-                             .ToList();
+        var words = deckWordsList.Select(dw => new { dw, jmDictWord = jmdictWords.FirstOrDefault(w => w.WordId == dw.WordId) })
+                                 .OrderBy(dw => wordIds.IndexOf(dw.dw.WordId))
+                                 .ToList();
 
         var frequencies = context.JmDictWordFrequencies.AsNoTracking().Where(f => wordIds.Contains(f.WordId)).ToList();
 
@@ -179,7 +199,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                               MainReading = mainReading,
                               AlternativeReadings = alternativeReadings,
                               PartsOfSpeech = word.jmDictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
-                              Definitions = word.jmDictWord.Definitions.ToDefinitionDtos()
+                              Definitions = word.jmDictWord.Definitions.ToDefinitionDtos(),
+                              Occurences = word.dw.Occurrences
                           };
 
             dto.Words.Add(wordDto);

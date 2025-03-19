@@ -50,17 +50,17 @@
       currentReadingIndex.value = newReadingIndex;
       await refresh();
     },
-    { immediate: true }
+    { immediate: false }
   );
 
-  watch(
-    () => props.readingIndex,
-    async (newReadingIndex) => {
-      currentReadingIndex.value = newReadingIndex;
-      await refresh();
-    },
-    { immediate: true }
-  );
+  // watch(
+  //   () => props.readingIndex,
+  //   async (newReadingIndex) => {
+  //     currentReadingIndex.value = newReadingIndex;
+  //     await refresh();
+  //   },
+  //   { immediate: true }
+  // );
 
   watch(
     () => response.value?.data?.mainReading.text,

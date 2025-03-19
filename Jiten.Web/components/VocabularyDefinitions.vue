@@ -12,11 +12,11 @@
     if (!Array.isArray(definitions)) {
       return [];
     }
-    const previousPartOfSpeech = ref<string | null>(null);
+    let previousPartOfSpeech = null;
 
     return definitions.map((definition) => {
       const isDifferentPartOfSpeech = JSON.stringify(previousPartOfSpeech) !== JSON.stringify(definition.partsOfSpeech);
-      previousPartOfSpeech.value = [...definition.partsOfSpeech];
+      previousPartOfSpeech = definition.partsOfSpeech;
       return {
         ...definition,
         isDifferentPartOfSpeech,

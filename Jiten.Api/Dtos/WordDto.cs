@@ -11,6 +11,7 @@ public class WordDto
     public List<ReadingDto> AlternativeReadings { get; set; } = new();
     public List<string> PartsOfSpeech { get; set; } = new();
     public List<DefinitionDto> Definitions { get; set; } = new();
+    public int Occurences { get; set; }
 }
 
 public class ReadingDto

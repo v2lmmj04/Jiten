@@ -1,17 +1,53 @@
 <script setup lang="ts">
-  import type { DeckVocabularyList } from '~/types';
+  import { type DeckVocabularyList, SortOrder } from '~/types';
 
   const route = useRoute();
+  const router = useRouter();
+
   const id = route.params.id;
 
   const offset = computed(() => (route.query.offset ? Number(route.query.offset) : 0));
   const url = computed(() => `media-deck/${id}/vocabulary`);
 
+  const sortByOptions = ref([
+    { label: 'Chronological', value: 'chrono' },
+    { label: 'Deck Frequency', value: 'deckFreq' },
+    { label: 'Global Frequency', value: 'globalFreq' },
+  ]);
+
+  const sortOrder = ref(route.query.sortOrder ? route.query.sortOrder : SortOrder.Ascending);
+  const sortBy = ref(route.query.sortBy ? route.query.sortBy : sortByOptions.value[0].value);
+
+  watch(sortOrder, (newValue) => {
+    router.replace({
+      query: {
+        ...route.query,
+        sortOrder: newValue,
+      },
+    });
+  });
+
+  watch(sortBy, (newValue) => {
+    router.replace({
+      query: {
+        ...route.query,
+        sortBy: newValue,
+      },
+    });
+  });
+
   const {
     data: response,
     status,
     error,
-  } = await useApiFetchPaginated<DeckVocabularyList>(url.value, { query: { offset: offset }, watch: [offset] });
+  } = await useApiFetchPaginated<DeckVocabularyList>(url.value, {
+    query: {
+      offset: offset,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+    },
+    watch: [offset],
+  });
 
   const currentPage = computed(() => response.value?.currentPage);
   const pageSize = computed(() => response.value?.pageSize);
@@ -54,12 +90,33 @@
         {{ title }}
       </NuxtLink>
     </div>
-    <div class="flex justify-between">
+    <div class="flex flex-row gap-2">
+      <FloatLabel variant="on">
+        <Select
+          v-model="sortBy"
+          :options="sortByOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Sort by"
+          input-id="sortBy"
+          class="w-full md:w-56"
+        />
+        <label for="sortBy">Sort by</label>
+      </FloatLabel>
+      <Button
+        @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending"
+        class="w-12"
+      >
+        <Icon v-if="sortOrder == SortOrder.Descending" name="mingcute:az-sort-descending-letters-line" size="1.25em" />
+        <Icon v-if="sortOrder == SortOrder.Ascending" name="mingcute:az-sort-ascending-letters-line" size="1.25em" />
+      </Button>
+    </div>
+    <div class="flex justify-between flex-col md:flex-row">
       <div class="flex gap-8">
-        <NuxtLink :to="previousLink" :class="previousLink == null ? 'text-gray-500 pointer-events-none' : ''">
+        <NuxtLink :to="previousLink" :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''">
           Previous
         </NuxtLink>
-        <NuxtLink :to="nextLink" :class="nextLink == null ? 'text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
+        <NuxtLink :to="nextLink" :class="nextLink == null ? '!text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
       </div>
       <div>viewing words {{ start }}-{{ end }} from {{ totalItems }} total</div>
     </div>
@@ -73,6 +130,12 @@
     <div v-else-if="error">Error: {{ error }}</div>
     <div v-else class="flex flex-col gap-2">
       <VocabularyEntry v-for="word in response.data.words" :key="word.wordId" :word="word" :is-compact="true" />
+    </div>
+    <div class="flex gap-8">
+      <NuxtLink :to="previousLink" :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''">
+        Previous
+      </NuxtLink>
+      <NuxtLink :to="nextLink" :class="nextLink == null ? '!text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
     </div>
   </div>
 </template>
