@@ -612,7 +612,7 @@ public class Program
         return "";
     }
 
-    private static async Task<string> AddWordsToUserDictionary(string filePath, string userDicPath)
+    private static async Task AddWordsToUserDictionary(string filePath, string userDicPath)
     {
         var file = filePath;
         var lines = await File.ReadAllLinesAsync(file);
