@@ -44,7 +44,6 @@ namespace Jiten.Parser
                                                                    { "たら", 2029050 },
                                                                    { "彼", 1483070 },
                                                                    { "いい", 2820690 },
-                                                                   { "でした", 1628500 },
                                                                };
 
         public static async Task Main(string[] args)
@@ -138,7 +137,7 @@ namespace Jiten.Parser
             // Only keep kanjis, kanas, digits,full width digits, latin characters, full width latin characters 
             wordInfos.ForEach(x => x.Text =
                                   Regex.Replace(x.Text,
-                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
+                                                "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005．]",
                                                 ""));
             // Remove empty lines
             wordInfos = wordInfos.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
@@ -468,7 +467,7 @@ namespace Jiten.Parser
                             word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
                         readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
                     }
-
+                    
                     DeckWord deckWord = new()
                                         {
                                             WordId = id,

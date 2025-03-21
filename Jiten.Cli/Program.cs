@@ -308,7 +308,7 @@ public class Program
             var metadata = JsonSerializer.Deserialize<Metadata>(await File.ReadAllTextAsync(Path.Combine(directory, "metadata.json")));
             if (metadata == null) return;
 
-            var baseDeck = await ProcessMetadata(metadata, null, options, deckType, 0);
+            var baseDeck = await ProcessMetadata(directory, metadata, null, options, deckType, 0);
             if (baseDeck == null)
             {
                 Console.WriteLine("ERROR: BASE DECK RETURNED NULL");
@@ -336,15 +336,17 @@ public class Program
 
         return;
 
-        async Task<Deck?> ProcessMetadata(Metadata metadata, Deck? parentDeck, Options options, MediaType deckType, int deckOrder)
+        async Task<Deck?> ProcessMetadata(string directory, Metadata metadata, Deck? parentDeck, Options options, MediaType deckType,
+                                          int deckOrder)
         {
             Deck deck = new();
+            string filePath = metadata.FilePath;
+
             if (!string.IsNullOrEmpty(metadata.FilePath))
             {
-                string filePath = metadata.FilePath;
                 if (!File.Exists(metadata.FilePath))
                 {
-                    filePath = Path.Combine(Path.GetFileName(metadata.FilePath));
+                    filePath = Path.Combine(directory, Path.GetFileName(metadata.FilePath));
                     if (!File.Exists(filePath))
                     {
                         Console.WriteLine($"File {filePath} not found.");
@@ -353,7 +355,7 @@ public class Program
                 }
 
                 List<string> lines = [];
-                if (Path.GetExtension(metadata.FilePath)?.ToLower() == ".epub")
+                if (Path.GetExtension(filePath)?.ToLower() == ".epub")
                 {
                     var extractor = new EbookExtractor();
                     var text = await ExtractEpub(metadata.FilePath, extractor, options);
@@ -368,7 +370,7 @@ public class Program
                 }
                 else
                 {
-                    lines = (await File.ReadAllLinesAsync(metadata.FilePath)).ToList();
+                    lines = (await File.ReadAllLinesAsync(filePath)).ToList();
                 }
 
                 if (options.CleanSubtitles)
@@ -399,12 +401,12 @@ public class Program
                 deck.MediaType = deckType;
 
                 if (options.Verbose)
-                    Console.WriteLine($"Parsed {metadata.FilePath} with {deck.DeckWords.Count} words.");
+                    Console.WriteLine($"Parsed {filePath} with {deck.DeckWords.Count} words.");
             }
 
             foreach (var child in metadata.Children)
             {
-                var childDeck = await ProcessMetadata(child, deck, options, deckType, ++deckOrder);
+                var childDeck = await ProcessMetadata(directory, child, deck, options, deckType, ++deckOrder);
                 if (childDeck == null)
                 {
                     Console.WriteLine("ERROR: CHILD DECK RETURNED NULL");
