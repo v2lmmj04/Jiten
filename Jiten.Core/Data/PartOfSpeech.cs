@@ -22,7 +22,9 @@ public enum PartOfSpeech
     CommonNoun = 17,
     SupplementarySymbol = 18,
     BlankSpace = 19,
-    Expression = 20
+    Expression = 20,
+    NominalAdjective = 21,
+    Numeral = 22
 }
 
 public enum PartOfSpeechSection
@@ -113,6 +115,8 @@ public static class PartOfSpeechExtension
             "補助記号" => PartOfSpeech.SupplementarySymbol,
             "空白" => PartOfSpeech.BlankSpace,
             "表現" or "exp" => PartOfSpeech.Expression,
+            "形動" or "adj-no" or "adj-t" or "adj-f" or "adj-pn" => PartOfSpeech.NominalAdjective,
+            "数詞" or "num" => PartOfSpeech.Numeral,
             // _ => throw new ArgumentException($"Invalid part of speech : {pos}")
             _ => PartOfSpeech.Unknown
         };

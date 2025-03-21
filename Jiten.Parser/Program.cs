@@ -44,6 +44,7 @@ namespace Jiten.Parser
                                                                    { "たら", 2029050 },
                                                                    { "彼", 1483070 },
                                                                    { "いい", 2820690 },
+                                                                   { "でした", 1628500 },
                                                                };
 
         public static async Task Main(string[] args)
@@ -87,7 +88,7 @@ namespace Jiten.Parser
             foreach (WordInfo wi in wordInfos)
             {
                 wi.Text = Regex.Replace(wi.Text,
-                                        "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005]",
+                                        "[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19\u3005．]",
                                         "");
             }
 

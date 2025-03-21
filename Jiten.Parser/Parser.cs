@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Jiten.Core.Data;
+using Jiten.Core.Utils;
+using WanaKanaShaapu;
 
 namespace Jiten.Parser;
 
@@ -123,6 +125,7 @@ public class Parser
         wordInfos = ProcessSpecialCases(wordInfos);
         wordInfos = CombineConjunctiveParticle(wordInfos);
         wordInfos = CombinePrefixes(wordInfos);
+
         wordInfos = CombineAmounts(wordInfos);
         wordInfos = CombineTte(wordInfos);
         wordInfos = CombineAuxiliaryVerbStem(wordInfos);
@@ -229,13 +232,18 @@ public class Parser
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Amount) ||
                 wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Numeral))
             {
-                wordInfos[i + 1].Text = wordInfos[i].Text + wordInfos[i + 1].Text;
+                string fullWidthDigits = wordInfos[i].Text.ToFullWidthDigits();
+
+                if (!AmountCombinations.Combinations.Contains((fullWidthDigits, wordInfos[i + 1].Text)))
+                    continue;
+
+                wordInfos[i + 1].Text = fullWidthDigits + wordInfos[i + 1].Text;
                 wordInfos[i + 1].PartOfSpeech = PartOfSpeech.Noun;
                 wordInfos.RemoveAt(i);
                 i--;
             }
         }
-
+        
         return wordInfos;
     }
 
@@ -269,6 +277,7 @@ public class Parser
         }
 
         // Possible dependants, might need special rules?
+        // Switch this out for a whitelist instead?
         for (int i = 1; i < wordInfos.Count; i++)
         {
             if (wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.PossibleDependant) &&
@@ -283,7 +292,10 @@ public class Parser
                 wordInfos[i].DictionaryForm != "下さる" &&
                 wordInfos[i].DictionaryForm != "貰う" &&
                 wordInfos[i].DictionaryForm != "貰える" &&
+                wordInfos[i].DictionaryForm != "まくる" &&
                 wordInfos[i].DictionaryForm != "なる" &&
+                wordInfos[i].DictionaryForm != "行く" &&
+                wordInfos[i].DictionaryForm != "やる" &&
                 wordInfos[i].DictionaryForm != "いい"
                )
             {
@@ -398,6 +410,7 @@ public class Parser
             if ( /*wordInfos[i].AnyPartOfSpeechSection(PartOfSpeechSection.Suffix) &&*/
                 wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.AuxiliaryVerbStem) &&
                 wordInfos[i].Text != "ように" &&
+                wordInfos[i].Text != "よう" &&
                 (wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Verb || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.IAdjective))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;
@@ -415,6 +428,7 @@ public class Parser
         {
             if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix))
                 && wordInfos[i].DictionaryForm != "っぽい" && wordInfos[i].DictionaryForm != "にくい" &&
+                wordInfos[i].DictionaryForm != "事" && wordInfos[i].DictionaryForm != "っぷり" &&
                 (wordInfos[i].DictionaryForm != "たち" || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun))
             {
                 wordInfos[i - 1].Text += wordInfos[i].Text;

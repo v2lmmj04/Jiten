@@ -9,6 +9,7 @@ using Jiten.Cli;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+using WanaKanaShaapu;
 
 // ReSharper disable MethodSupportsCancellation
 
@@ -54,7 +55,7 @@ public class Program
 
         [Option("dic", Required = false, HelpText = "Path to the JMdict dictionary file.")]
         public string DictionaryPath { get; set; }
-        
+
         [Option("furi", Required = false, HelpText = "Path to the JMDict Furigana dictionary file.")]
         public string FuriganaPath { get; set; }
 
@@ -96,9 +97,13 @@ public class Program
 
         [Option(longName: "compute-difficulty", Required = false, HelpText = "Compute difficulty for decks")]
         public bool ComputeDifficulty { get; set; }
-        
-        [Option(longName:"debug-deck", Required = false, HelpText = "Debug a deck by id")]
+
+        [Option(longName: "debug-deck", Required = false, HelpText = "Debug a deck by id")]
         public int? DebugDeck { get; set; }
+
+        [Option(longName: "user-dic-mass-add", Required = false,
+                HelpText = "Add a list of words to the user dictionary from a file if they're not parsed correctly")]
+        public string UserDicMassAdd { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -113,12 +118,12 @@ public class Program
                             Console.WriteLine($"Using {o.Threads} threads.");
                         }
 
-
                         if (o.Import)
                         {
                             //TODO: auto download them from the latest version
 
-                            if (string.IsNullOrEmpty(o.XmlPath) || string.IsNullOrEmpty(o.DictionaryPath) || string.IsNullOrEmpty(o.FuriganaPath))
+                            if (string.IsNullOrEmpty(o.XmlPath) || string.IsNullOrEmpty(o.DictionaryPath) ||
+                                string.IsNullOrEmpty(o.FuriganaPath))
                             {
                                 Console.WriteLine("For import, you need to specify -xml path/to/jmdict_dtd.xml, -dic path/to/jmdict and -furi path/to/JmdictFurigana.json.");
                                 return;
@@ -183,6 +188,18 @@ public class Program
                             await JitenHelper.DebugDeck(o.DebugDeck.Value);
                         }
 
+                        if (o.UserDicMassAdd != null)
+                        {
+                            if (string.IsNullOrEmpty(o.XmlPath))
+                            {
+                                Console.WriteLine("You need to specify -xml path/to/user_dic.xml");
+                                return;
+                            }
+
+                            Console.WriteLine("Importing words...");
+                            await AddWordsToUserDictionary(o.UserDicMassAdd, o.XmlPath);
+                        }
+
                         if (o.Verbose)
                             Console.WriteLine($"Execution time: {watch.ElapsedMilliseconds} ms");
                     });
@@ -221,7 +238,7 @@ public class Program
             var deck = JsonSerializer.Deserialize<Deck>(await File.ReadAllTextAsync(Path.Combine(directory, "deck.json")),
                                                         serializerOptions);
             if (deck == null) return;
-            
+
             using var coverOptimized = new ImageMagick.MagickImage(Path.Combine(directory, "cover.jpg"));
 
             coverOptimized.Resize(400, 400);
@@ -324,6 +341,17 @@ public class Program
             Deck deck = new();
             if (!string.IsNullOrEmpty(metadata.FilePath))
             {
+                string filePath = metadata.FilePath;
+                if (!File.Exists(metadata.FilePath))
+                {
+                    filePath = Path.Combine(Path.GetFileName(metadata.FilePath));
+                    if (!File.Exists(filePath))
+                    {
+                        Console.WriteLine($"File {filePath} not found.");
+                        return null;
+                    }
+                }
+
                 List<string> lines = [];
                 if (Path.GetExtension(metadata.FilePath)?.ToLower() == ".epub")
                 {
@@ -523,7 +551,7 @@ public class Program
                 }
 
                 break;
-            
+
             case "utf":
                 result = await new UtfExtractor().Extract(o.ExtractFilePath, o.Verbose);
                 if (o.Output != null)
@@ -582,5 +610,98 @@ public class Program
         }
 
         return "";
+    }
+
+    private static async Task<string> AddWordsToUserDictionary(string filePath, string userDicPath)
+    {
+        var file = filePath;
+        var lines = await File.ReadAllLinesAsync(file);
+        var parser = new Jiten.Parser.Parser();
+        var startLine = 0;
+        var batchSize = 1000;
+        var xmlLines = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var processedCount = 0;
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+
+        var linesToProcess = lines.Skip(startLine).ToArray();
+        await using var context = new JitenDbContext();
+
+        var lookups = context.Lookups.ToList();
+        var words = context.JMDictWords.ToList();
+        await Parallel.ForEachAsync(linesToProcess, parallelOptions, async (line, ct) =>
+        {
+            var parsed = await parser.Parse(line);
+
+            if (parsed.Count <= 1) return;
+
+            Console.WriteLine("Fail parsing " + line);
+            // Create a new context for each task
+            var lookup = lookups.FirstOrDefault(x => x.LookupKey == line);
+            if (lookup == null)
+            {
+                Console.WriteLine("No lookup found for " + line);
+                return;
+            }
+
+            var word = words.First(x => x.WordId == lookup.WordId);
+            var kanas = word.Readings[word.ReadingTypes.IndexOf(JmDictReadingType.KanaReading)];
+            var pos = word.PartsOfSpeech.Select(p => p.ToPartOfSpeech()).ToList();
+
+            string posKanji = "NULL";
+            if (pos.Contains(PartOfSpeech.Expression))
+                posKanji = "表現";
+            else if (pos.Contains(PartOfSpeech.Adverb))
+                posKanji = "副詞";
+            else if (pos.Contains(PartOfSpeech.Conjunction))
+                posKanji = "接続詞";
+            else if (pos.Contains(PartOfSpeech.Auxiliary))
+                posKanji = "助動詞";
+            else if (pos.Contains(PartOfSpeech.Pronoun))
+                posKanji = "代名詞";
+            else if (pos.Contains(PartOfSpeech.Noun))
+                posKanji = "名詞";
+            else if (pos.Contains(PartOfSpeech.Particle))
+                posKanji = "助詞";
+            else if (pos.Contains(PartOfSpeech.NaAdjective))
+                posKanji = "形状詞";
+            else if (pos.Contains(PartOfSpeech.IAdjective))
+                posKanji = "形容詞";
+            else if (pos.Contains(PartOfSpeech.Verb))
+                posKanji = "動詞";
+            else if (pos.Contains(PartOfSpeech.NominalAdjective))
+                posKanji = "形動";
+            else if (pos.Contains(PartOfSpeech.Interjection))
+                posKanji = "感動詞";
+            else if (pos.Contains(PartOfSpeech.Numeral))
+                posKanji = "数詞";
+
+            var xmlLine = $"{line},5146,5146,5000,{line},{posKanji},普通名詞,一般,*,*,*,{WanaKana.ToKatakana(kanas)},{line},*,*,*,*,*";
+            xmlLines.Add(xmlLine);
+
+            var currentCount = Interlocked.Increment(ref processedCount);
+            if (currentCount % batchSize == 0)
+            {
+                await WriteBatchToFile();
+            }
+
+            Console.WriteLine("fixed");
+        });
+
+        await WriteBatchToFile();
+
+        async Task WriteBatchToFile()
+        {
+            var linesToWrite = new List<string>();
+            while (xmlLines.TryTake(out var line))
+            {
+                linesToWrite.Add(line);
+            }
+
+            if (linesToWrite.Count > 0)
+            {
+                await File.AppendAllLinesAsync(userDicPath, linesToWrite);
+                Console.WriteLine($"Wrote {linesToWrite.Count} lines to file");
+            }
+        }
     }
 }

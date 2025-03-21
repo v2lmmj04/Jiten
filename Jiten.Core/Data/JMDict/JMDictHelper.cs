@@ -442,6 +442,8 @@ public static class JmDictHelper
 
         reader.Close();
 
+        wordInfos.AddRange(GetCustomWords());
+
         var furiganas = await JsonSerializer.DeserializeAsync<List<JMDictFurigana>>(File.OpenRead(furiganaPath));
         Dictionary<string, string> furiganaDict = new();
         foreach (var f in furiganas)
@@ -653,5 +655,23 @@ public static class JmDictHelper
     private static string ElToPos(string el)
     {
         return _entities.First(e => e.Value == el).Key;
+    }
+
+    private static List<JmDictWord> GetCustomWords()
+    {
+        var customWordInfos = new List<JmDictWord>();
+
+        customWordInfos.Add(new JmDictWord
+                            {
+                                WordId = 8000000,
+                                Readings = new List<string> { "でした" },
+                                ReadingTypes = [JmDictReadingType.KanaReading],
+                                Definitions =
+                                [
+                                    new JmDictDefinition { EnglishMeanings = ["was, were"], PartsOfSpeech = ["exp"] }
+                                ]
+                            });
+
+        return customWordInfos;
     }
 }
