@@ -18,6 +18,13 @@ namespace Jiten.Api.Controllers;
 [EnableRateLimiting("fixed")]
 public class MediaDeckController(JitenDbContext context) : ControllerBase
 {
+    [HttpGet("get-media-decks-id")]
+    [ResponseCache(Duration = 60*60*24)]
+    public async Task<List<int>> GetMediaDecksId()
+    {
+        return await context.Decks.AsNoTracking().Select(d => d.DeckId).ToListAsync();
+    }
+    
     [HttpGet("get-media-decks")]
     [ResponseCache(Duration = 300)]
     public async Task<PaginatedResponse<List<Deck>>> GetMediaDecks(int? offset = 0, MediaType? mediaType = null,

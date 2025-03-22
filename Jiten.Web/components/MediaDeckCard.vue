@@ -20,7 +20,13 @@
       <div class="flex-gap-6">
         <div class="flex-1">
           <div class="flex flex-col md:flex-row gap-x-8 gap-y-2">
-            <div v-if="!isCompact"><img :src="deck.coverName == 'nocover.jpg' ? '/img/nocover.jpg' : deck.coverName" :alt="deck.originalTitle" class="h-48 w-34" /></div>
+            <div v-if="!isCompact">
+              <img
+                :src="deck.coverName == 'nocover.jpg' ? '/img/nocover.jpg' : deck.coverName"
+                :alt="deck.originalTitle"
+                class="h-48 w-34"
+              />
+            </div>
             <div>
               <div class="flex flex-col gap-x-8 gap-y-2" :class="isCompact ? '' : 'md:flex-row'">
                 <div class="w-full md:w-64">
@@ -55,7 +61,7 @@
                     <span class="text-gray-600 dark:text-gray-300">Average sentence length</span>
                     <span class="ml-8 tabular-nums">{{ deck.averageSentenceLength.toFixed(1) }}</span>
                   </div>
-                  <div class="flex justify-between mb-2">
+                  <div class="flex justify-between mb-2" v-if="deck.difficulty != 0">
                     <span
                       v-tooltip="
                         'This is a work in progress.\nThe current analysis only takes into account the vocabulary and not the grammar patterns, cultural references or wordplay, which might make some works easier or harder than the score they\'re given.'

@@ -1,7 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
-import Aura from '@primevue/themes/aura';
+import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/styled';
+import tailwindcss from '@tailwindcss/vite';
 
 // Custom theming
 const JitenPreset = definePreset(Aura, {
@@ -41,12 +42,12 @@ export default defineNuxtConfig({
     },
   },
   modules: [
-    '@nuxtjs/tailwindcss',
     '@primevue/nuxt-module',
     '@nuxt/icon',
     '@nuxtjs/google-fonts',
     '@nuxt/eslint',
     '@pinia/nuxt',
+    '@nuxtjs/seo',
   ],
   primevue: {
     options: {
@@ -64,5 +65,11 @@ export default defineNuxtConfig({
     },
     display: 'swap',
   },
+  vite: {
+    plugins: [tailwindcss()],
+  },
   css: ['~/assets/css/main.css'],
+  sitemap: {
+    sources: ['/api/__sitemap__/urls'],
+  },
 });

@@ -110,7 +110,7 @@
           <Slider
             v-model="frequencyRange"
             range
-            min="0"
+            :min="0"
             :max="deck.uniqueWordCount"
             class="flex-grow mx-2 flex-basis-auto"
           />

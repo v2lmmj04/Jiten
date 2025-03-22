@@ -1,3 +1,8 @@
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+
 :root {
     background-color: var(--p-neutral-50);
     font-family: "Noto Sans JP", sans-serif;
@@ -8,7 +13,6 @@
 }
 
 .p-card {
-    background-color: #fff;
     border: 1px solid #e6e6e6;
 }
 
