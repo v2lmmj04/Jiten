@@ -229,7 +229,7 @@ public static class JitenHelper
     /// <summary>
     /// Calculate the difficulty of decks. Still very WIP
     /// </summary>
-    public static async Task ComputeDifficulty(bool verbose)
+    public static async Task ComputeDifficulty(bool verbose, MediaType mediaType)
     {
         int averageWordDifficultyWeight = 25;
         int peakWordDifficultyWeight = 15;
@@ -241,9 +241,14 @@ public static class JitenHelper
         int batchSize = 10;
         await using var context = new JitenDbContext();
 
-        //TODO : compute the difficulty independently for each media type
-
-        var allDecks = await context.Decks.Where(d => d.MediaType == MediaType.VisualNovel && d.ParentDeck == null).ToListAsync();
+        var allDecks = await context.Decks.Where(d => d.MediaType == mediaType && d.ParentDeck == null).ToListAsync();
+        
+        if (allDecks.Count == 0)
+        {
+            Console.WriteLine("No decks found for media type " + mediaType);
+            return;
+        }
+        
         var allFrequencies = await context.JmDictWordFrequencies.AsNoTracking().ToListAsync();
         var wordFrequencies = allFrequencies.ToDictionary(f => f.WordId, f => f);
 

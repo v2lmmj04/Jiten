@@ -112,7 +112,7 @@
       </Button>
     </div>
     <div class="flex justify-between flex-col md:flex-row">
-      <div class="flex gap-8">
+      <div class="flex gap-8 pl-2">
         <NuxtLink :to="previousLink" :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''">
           Previous
         </NuxtLink>
@@ -131,7 +131,7 @@
     <div v-else class="flex flex-col gap-2">
       <VocabularyEntry v-for="word in response.data.words" :key="word.wordId" :word="word" :is-compact="true" />
     </div>
-    <div class="flex gap-8">
+    <div class="flex gap-8 pl-2">
       <NuxtLink :to="previousLink" :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''">
         Previous
       </NuxtLink>

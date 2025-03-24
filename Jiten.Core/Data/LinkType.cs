@@ -8,5 +8,7 @@ public enum LinkType
     Anilist = 4,
     Mal = 5, // Myanimelist
     GoogleBooks = 6,
-    Imdb = 7
+    Imdb = 7,
+    Igdb = 8,
+    Syosetsu = 9
 }

@@ -181,7 +181,7 @@
           <MediaDeckCard v-for="deck in response.data" :key="deck.id" :deck="deck" />
         </div>
       </div>
-      <div class="flex gap-8">
+      <div class="flex gap-8 pl-2">
         <NuxtLink :to="previousLink" :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''">
           Previous
         </NuxtLink>

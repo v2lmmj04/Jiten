@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Jiten.Core.Data;
 using Jiten.Core.Utils;
+using Microsoft.Extensions.Configuration;
 using WanaKanaShaapu;
 
 namespace Jiten.Parser;
@@ -111,13 +112,20 @@ public class Parser
 
     public async Task<List<WordInfo>> Parse(string text)
     {
+        var configuration = new ConfigurationBuilder()
+                            .SetBasePath(Directory.GetCurrentDirectory())
+                            .AddJsonFile(Path.Combine(Environment.CurrentDirectory, "..", "Shared", "sharedsettings.json"), optional: true)
+                            .AddJsonFile("sharedsettings.json", optional: true)
+                            .AddJsonFile("appsettings.json")
+                            .Build();
+
         // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Shared\resources\user_dic.xml -s F:\00_RawJap\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Shared\resources\user_dic.dic"
 
         // Preprocess the text to remove invalid characters
         PreprocessText(ref text);
 
         var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "sudachi.json");
-        var dic = @"F:\00_RawJap\sudachi.rs\resources\system_full.dic";
+        var dic = configuration.GetValue<string>("DictionaryPath");
 
         var output = SudachiInterop.ProcessText(configPath, text, dic).Split("\n");
 

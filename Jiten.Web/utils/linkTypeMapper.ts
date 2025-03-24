@@ -16,6 +16,11 @@ export function getLinkTypeText(linkType: LinkType): string {
       return 'IMDB';
     case LinkType.Vndb:
       return 'VNDB';
+    case LinkType.Igdb:
+      return 'IGDB';
+    case LinkType.Syosetsu:
+      return 'Syosetu';
+
     default:
       return 'Unknown';
   }

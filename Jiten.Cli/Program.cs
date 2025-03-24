@@ -180,7 +180,10 @@ public class Program
 
                         if (o.ComputeDifficulty)
                         {
-                            await JitenHelper.ComputeDifficulty(o.Verbose);
+                            foreach (var mediaType in Enum.GetValues(typeof(MediaType)))
+                            {
+                                await JitenHelper.ComputeDifficulty(o.Verbose, (MediaType)mediaType);
+                            }
                         }
 
                         if (o.DebugDeck != null)

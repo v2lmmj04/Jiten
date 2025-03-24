@@ -55,9 +55,9 @@ public static class MetadataDownloader
         {
             return;
         }
-        
+
         files.Sort();
-        
+
         var orderedFiles = await GetFileOrder(files);
         if (!orderedFiles.Any())
         {
@@ -242,7 +242,7 @@ public static class MetadataDownloader
 
             for (int i = 0; i < results.Count; i++)
             {
-                Console.WriteLine($"{i + 1} - {results[i].OriginalTitle} - {results[i].RomajiTitle} - {results[i].EnglishTitle}");
+                Console.WriteLine($"{i + 1} - {results[i].OriginalTitle} - {results[i].RomajiTitle} - {results[i].EnglishTitle} ({results[i].ReleaseDate})");
             }
 
             Console.WriteLine("Choose a number or 'q' to query with different text:");
@@ -334,6 +334,7 @@ public static class MetadataDownloader
             var result = JsonSerializer.Deserialize<GoogleBooksRequestResult>(contentStream,
                                                                               new JsonSerializerOptions
                                                                               {
+                                                                                  Converters = { new VndbDateTimeConverter() },
                                                                                   PropertyNameCaseInsensitive = true
                                                                               });
 
@@ -342,7 +343,7 @@ public static class MetadataDownloader
                                                       OriginalTitle = i.VolumeInfo.Title,
                                                       RomajiTitle = null,
                                                       EnglishTitle = null,
-                                                      ReleaseDate = DateTime.Parse(i.VolumeInfo.PublishedDate),
+                                                      ReleaseDate = i.VolumeInfo.PublishedDate,
                                                       Links = [new Link { LinkType = LinkType.GoogleBooks, Url = i.SelfLink }],
                                                       Image = i.VolumeInfo.ImageLinks?.Thumbnail
                                                   }).ToList();

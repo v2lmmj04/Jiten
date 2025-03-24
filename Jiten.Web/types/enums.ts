@@ -17,6 +17,8 @@ export enum LinkType {
   Mal = 5, // Myanimelist
   GoogleBooks = 6,
   Imdb = 7,
+  Igdb = 8,
+  Syosetsu = 9,
 }
 
 export enum ReadingType {

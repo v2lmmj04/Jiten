@@ -6,5 +6,6 @@
   "UseBunnyCdn": false,
   "BunnyCdnSecret": "",
   "BunnyCdnStorageZone": "jiten",
-  "CdnBaseUrl": "https://jiten.b-cdn.net"
+  "CdnBaseUrl": "https://jiten.b-cdn.net",
+  "DictionaryPath": "path/to/system_full.dic"
 }
