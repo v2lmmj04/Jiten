@@ -28,5 +28,18 @@ export const useJitenStore = defineStore('jiten', () => {
     displayFuriganaCookie.value = newValue;
   });
 
-  return { titleLanguage, displayFurigana };
+  const darkModeCookie = useCookie<boolean>('jiten-dark-mode', {
+    default: () => false,
+    watch: true,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+    path: '/',
+  });
+
+  const darkMode = ref<boolean>(darkModeCookie.value);
+
+  watch(darkMode, (newValue) => {
+    darkModeCookie.value = newValue;
+  });
+
+  return { titleLanguage, displayFurigana, darkMode };
 });

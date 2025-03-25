@@ -112,7 +112,7 @@
             Rank #{{ response.data.mainReading.frequencyRank }}
           </div>
           <div class="md:text-right pt-4">
-            Appears in <b>{{ response.data.mainReading.usedInMediaAmount }} medias</b>
+            Appears in <b>{{ response.data.mainReading.usedInMediaAmount }} media</b>
           </div>
           <table v-if="response.data.mainReading.usedInMediaAmount > 0">
             <thead>
@@ -136,7 +136,7 @@
         <AccordionPanel value="1">
           <AccordionHeader>
             <div class="cursor-pointer">
-              View the <b>{{ response.data.mainReading.usedInMediaAmount }}</b> medias it appears in
+              View the <b>{{ response.data.mainReading.usedInMediaAmount }}</b> media it appears in
             </div>
           </AccordionHeader>
           <AccordionContent>

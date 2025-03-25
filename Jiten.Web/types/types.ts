@@ -102,3 +102,9 @@ export class PaginatedResponse<T> {
     return this.hasNextPage ? Math.min(this.totalItems, this.currentOffset + this.pageSize) : null;
   }
 }
+
+export interface GlobalStats {
+  mediaByType: Record<MediaType, number>;
+  totalMojis: number;
+  totalMedia: number;
+}

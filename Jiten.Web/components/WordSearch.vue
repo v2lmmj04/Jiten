@@ -19,7 +19,7 @@
 <template>
   <div class="flex flex-row">
     <InputText
-      v-model="searchContent"
+      :v-model="searchContent"
       type="text"
       placeholder="Search a word or a sentence"
       class="w-full"

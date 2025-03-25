@@ -1,12 +1,25 @@
 <script setup lang="ts">
   import Button from 'primevue/button';
 
+  // retrieve dakr mode from the stroe on mounted
+  // and set it to the document element
+
+  import { useJitenStore } from '~/stores/jitenStore';
+  const store = useJitenStore();
+
+  onMounted(() => {
+    if (store.darkMode) {
+      document.documentElement.classList.add('dark-mode');
+    }
+  });
+
+
   function toggleDarkMode() {
     document.documentElement.classList.toggle('dark-mode');
+    store.darkMode = !store.darkMode;
   }
 
   const settings = ref();
-  const store = useJitenStore();
 
   const titleLanguageOptions = ref([
     { label: 'Japanese', value: 0 },
@@ -16,12 +29,12 @@
 
   const titleLanguage = computed({
     get: () => store.titleLanguage,
-    set: (value) => store.titleLanguage = value
+    set: (value) => (store.titleLanguage = value),
   });
 
   const displayFurigana = computed({
     get: () => store.displayFurigana,
-    set: (value) => store.displayFurigana = value
+    set: (value) => (store.displayFurigana = value),
   });
 
   const isOverSettings = ref(false);
@@ -40,11 +53,11 @@
     }, 750);
   };
 
-  const toggleSettings = (event) => {
+  const toggleSettings = (event: boolean) => {
     settings.value.toggle(event);
   };
 
-  const showSettings = (event) => {
+  const showSettings = (event: boolean) => {
     settings.value.show(event);
   };
 </script>
@@ -60,8 +73,9 @@
         </NuxtLink>
         <nav class="space-x-6">
           <nuxt-link to="/" class="!text-white">Home</nuxt-link>
-          <nuxt-link to="/decks/medias" class="!text-white">Medias</nuxt-link>
+          <nuxt-link to="/decks/media" class="!text-white">Media</nuxt-link>
           <nuxt-link to="/other" class="!text-white">Other</nuxt-link>
+          <nuxt-link to="/faq" class="!text-white">FAQ</nuxt-link>
           <Button
             type="button"
             label="Share"

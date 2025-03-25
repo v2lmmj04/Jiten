@@ -1,22 +1,24 @@
 <script setup lang="ts">
   import { useApiFetch } from '~/composables/useApiFetch';
   import Button from 'primevue/button';
+  import { type GlobalStats, MediaType, type Word } from '~/types';
 
-  const url = 'frequency-list/get-global-frequency-list';
+  const frequencyListUrl = 'frequency-list/get-global-frequency-list';
   const { $api } = useNuxtApp();
 
   const downloadFile = async () => {
     try {
-      const response = await $api(url);
+      const response = await $api(frequencyListUrl);
       if (response) {
-        const blobUrl = window.URL.createObjectURL(new Blob([response], { type: response.type }));
+        const data = typeof response === 'string' ? response : JSON.stringify(response);
+        const blob = new Blob([data], { type: 'application/octet-stream' });
+        const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.setAttribute('download', 'frequency_list.csv'); // You can set the desired file name here
+        link.setAttribute('download', 'frequency_list.csv');
         document.body.appendChild(link);
         link.click();
         link.remove();
-        // document.body.removeChild(link);
       } else {
         console.error('Error downloading file:');
       }
@@ -24,14 +26,28 @@
       console.error('Error:', err);
     }
   };
+
+  const globalStatsUrl = 'stats/get-global-stats';
+  const { data: response, status, error } = await useApiFetch<GlobalStats>(globalStatsUrl);
 </script>
 
 <template>
-  Last updated:
+  <div>
+    <div>A global frequency list of all the words</div>
+    <Button @click="downloadFile">Download Frequency List</Button>
+    <div v-if="status === 'success'" class="pt-2">
+      <div class="text-2xl font-bold">Global Stats</div>
+      <b>{{ response.totalMojis?.toLocaleString() }}</b> characters in
+      <b>{{ response.totalMedia?.toLocaleString() }}</b> media
 
-  <Button @click="downloadFile">Download Frequency List</Button>
 
-  Global word frequency list goes here Kanji frequency list goes here
+        <div v-for="[mediaType, amount] in Object.entries(response.mediaByType)" :key="mediaType">
+          <div class="text-sm">
+            {{ getMediaTypeText(MediaType[mediaType]) }}: <b>{{ amount?.toLocaleString() }}</b>
+          </div>
+        </div>
+    </div>
+  </div>
 </template>
 
 <style scoped></style>

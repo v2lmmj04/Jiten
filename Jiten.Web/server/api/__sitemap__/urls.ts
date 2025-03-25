@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
         const decks = await $fetch<{ id: number }[]>(`${config.public.baseURL}media-deck/get-media-decks-id`)
 
         return decks.map((p): SitemapUrl => ({
-            loc: `/decks/medias/${p}/detail`,
+            loc: `/decks/media/${p}/detail`,
             _sitemap: 'pages'
         }))
     } catch (error) {

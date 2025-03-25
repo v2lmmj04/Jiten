@@ -1,7 +1,7 @@
 <script setup lang="ts">
   useSeoMeta({
     title: 'Jiten',
-    description: 'Get vocabulary lists for all your Japanese medias.',
+    description: 'Get vocabulary lists for all your Japanese media.',
   });
 
   useHead({
@@ -18,11 +18,12 @@
 </script>
 
 <template>
-  <div id="app">
+  <div id="app" class="flex flex-col min-h-screen">
     <NuxtLoadingIndicator />
     <AppHeader />
-    <div class="container mx-auto pl-4 pr-4 max-w-6xl">
+    <div class="container mx-auto pl-4 pr-4 max-w-6xl flex-grow pb-2">
       <NuxtPage />
     </div>
+    <AppFooter />
   </div>
 </template>

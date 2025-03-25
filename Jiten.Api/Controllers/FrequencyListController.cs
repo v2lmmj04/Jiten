@@ -15,6 +15,7 @@ namespace Jiten.Api.Controllers;
 public class FrequencyListController(JitenDbContext context) : ControllerBase
 {
     [HttpGet("get-global-frequency-list")]
+    [ResponseCache(Duration = 60 * 60 * 24)]
     [EnableRateLimiting("download")]
     public async Task<IResult> GetGlobalFrequencyList()
     {
