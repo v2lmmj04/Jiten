@@ -36,18 +36,19 @@
 
   const updateDebounced = debounce(async (newValue) => {
     debouncedTitleFilter.value = newValue;
+    await router.replace({
+      query: {
+        ...route.query,
+        title: newValue || undefined,
+        sortBy: 'filter',
+        offset: 0,
+      },
+    });
+    sortBy.value = 'filter';
   }, 300);
 
   watch(titleFilter, (newValue) => {
     updateDebounced(newValue);
-    sortBy.value = "filter";
-    router.replace({
-      query: {
-        ...route.query,
-        title: newValue || undefined,
-        sortBy: "filter"
-      },
-    });
   });
 
   watch(sortOrder, (newValue) => {
