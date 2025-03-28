@@ -78,8 +78,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         query = sortBy switch
         {
             "difficulty" => sortOrder == SortOrder.Ascending
-                ? query.OrderBy(d => d.Difficulty)
-                : query.OrderByDescending(d => d.Difficulty),
+                ? query.OrderBy(d => d.Difficulty).Where(d => d.Difficulty != 0)
+                : query.OrderByDescending(d => d.Difficulty).Where(d => d.Difficulty != 0),
             "charCount" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.CharacterCount)
                 : query.OrderByDescending(d => d.CharacterCount),
