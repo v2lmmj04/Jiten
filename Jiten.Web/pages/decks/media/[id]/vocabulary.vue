@@ -129,7 +129,7 @@
         </NuxtLink>
         <NuxtLink :to="nextLink" :class="nextLink == null ? '!text-gray-500 pointer-events-none' : ''"> Next</NuxtLink>
       </div>
-      <div>viewing words {{ start }}-{{ end }} from {{ totalItems }} total</div>
+      <div class="text-gray-500 dark:text-gray-300">viewing words {{ start }}-{{ end }} from {{ totalItems }} total</div>
     </div>
     <div v-if="status === 'pending'" class="flex flex-col gap-2">
       <Card v-for="i in 10" :key="i" class="p-2">

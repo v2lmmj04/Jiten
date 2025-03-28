@@ -80,7 +80,7 @@
               Next
             </NuxtLink>
           </div>
-          <div class="pr-2">viewing decks {{ start }}-{{ end }} from {{ totalItems }} total</div>
+          <div class="pr-2 text-gray-500 dark:text-gray-300">viewing decks {{ start }}-{{ end }} from {{ totalItems }} total</div>
         </div>
         <div class="flex flex-row flex-wrap gap-2 justify-center pt-4">
           <MediaDeckCard v-for="deck in response.data.subDecks" :key="deck.deckId" :deck="deck" :is-compact="true" />
