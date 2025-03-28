@@ -350,6 +350,7 @@ public class Program
         {
             Deck deck = new();
             string filePath = metadata.FilePath;
+            await using var context = new JitenDbContext(_dbOptions);
 
             if (!string.IsNullOrEmpty(metadata.FilePath))
             {
@@ -403,7 +404,7 @@ public class Program
                     }
                 }
 
-                deck = await Jiten.Parser.Program.ParseTextToDeck(string.Join(Environment.NewLine, lines));
+                deck = await Jiten.Parser.Program.ParseTextToDeck(context, string.Join(Environment.NewLine, lines));
                 deck.ParentDeck = parentDeck;
                 deck.DeckOrder = deckOrder;
                 deck.OriginalTitle = metadata.OriginalTitle;
