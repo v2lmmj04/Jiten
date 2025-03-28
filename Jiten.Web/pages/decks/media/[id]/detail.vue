@@ -36,6 +36,25 @@
   const nextLink = computed(() => {
     return response.value?.hasNextPage ? { query: { ...route.query, offset: response.value.nextOffset } } : null;
   });
+
+  const title = computed(() => {
+    if (!response.value?.data) {
+      return '';
+    }
+
+    return localiseTitle(response.value?.data.mainDeck);
+  });
+
+  useHead(() => {
+    return {
+      title: `${title.value} - Detail`,
+      meta: [
+        {
+          name: 'description',
+          content: `Detail for the deck ${title.value}`
+        }]
+    };
+  });
 </script>
 
 <template>
