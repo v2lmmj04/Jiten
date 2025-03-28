@@ -22,7 +22,7 @@ Before you begin, make sure you have the following installed on your machine:
 - **Docker Compose:** [Download and install Docker Compose](https://docs.docker.com/compose/install/)
 - **Git:** To clone the repository ([Download Git](https://git-scm.com/downloads))
 
-## Installation Steps
+## Installation Steps - Frontend
 
 ### 1. Clone the Repository
 
@@ -60,6 +60,10 @@ With Docker and Docker Compose installed and the environment variables configure
    - Build and run the API and Web services using their respective Dockerfiles.
    - Pull and run the Postgres and Umami containers.
    - Create and attach the required volumes.
+
+## Installation Steps - CLI
+
+_coming soon™_
 
 ## Services Overview
 
