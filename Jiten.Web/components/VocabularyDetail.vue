@@ -81,7 +81,7 @@
               v-html="convertToRuby(response.data.mainReading.text)"
             />
             <div class="text-gray-500 dark:text-gray-300 text-right md:hidden">
-              Rank #{{ response.data.mainReading.frequencyRank }}
+              Rank #{{ response.data.mainReading.frequencyRank.toLocaleString() }}
             </div>
           </div>
 

@@ -446,11 +446,18 @@ namespace Jiten.Parser
             {
                 foreach (var id in candidate.ids)
                 {
-                    if (!_allWords.TryGetValue(id, out var word)) continue;
+                    var currentId = id;
+                    if (!_allWords.TryGetValue(currentId, out var word)) continue;
 
                     List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
                                                  .ToList();
                     if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
+                    
+                    if (_specialCases.TryGetValue(candidate.text, out int specialCaseId))
+                    {
+                        word = _allWords[specialCaseId];
+                        currentId = specialCaseId;
+                    }
 
                     var normalizedReadings =
                         word.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false })).ToList();
@@ -466,7 +473,7 @@ namespace Jiten.Parser
 
                     DeckWord deckWord = new()
                                         {
-                                            WordId = id, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
+                                            WordId = currentId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
                                             Occurrences = wordData.occurrences
                                         };
                     processedWord = deckWord;
