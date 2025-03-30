@@ -92,6 +92,9 @@ public class Program
 
         [Option(longName: "apply-migrations", Required = false, HelpText = "Apply migrations to the database")]
         public bool ApplyMigrations { get; set; }
+        
+        [Option(longName: "import-pitch-accents", Required = false, HelpText = "Import pitch accents from a yomitan dictinoary directory.")]
+        public string ImportPitchAccents { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -209,6 +212,13 @@ public class Program
                             await using var context = new JitenDbContext(_dbOptions);
                             await context.Database.MigrateAsync();
                             Console.WriteLine("Migrations applied.");
+                        }
+
+                        if (!string.IsNullOrEmpty(o.ImportPitchAccents))
+                        {
+                            Console.WriteLine("Importing pitch accents...");
+                            await JmDictHelper.ImportPitchAccents(o.Verbose, _dbOptions, o.ImportPitchAccents);
+                            Console.WriteLine("Pitch accents imported.");
                         }
 
                         if (o.Verbose)
