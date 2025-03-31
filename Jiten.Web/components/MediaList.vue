@@ -178,6 +178,9 @@
           <Icon name="material-symbols:search-rounded" />
         </InputIcon>
         <InputText v-model="titleFilter" type="text" placeholder="Search by name" class="w-full" />
+        <InputIcon v-if="titleFilter" class="cursor-pointer" @click="titleFilter = null">
+          <Icon name="material-symbols:close" />
+        </InputIcon>
       </IconField>
     </div>
     <div>
