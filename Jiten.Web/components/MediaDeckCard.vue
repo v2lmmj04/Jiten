@@ -84,7 +84,7 @@
               </div>
 
               <div class="mt-4 flex flex-col md:flex-row gap-4">
-                <a v-for="link in deck.links" :href="link.url" target="_blank">{{ getLinkTypeText(link.linkType) }}</a>
+                <a v-for="link in deck.links" :key="link.url" :href="link.url" target="_blank">{{ getLinkTypeText(Number(link.linkType)) }}</a>
               </div>
               <div class="mt-4">
                 <div class="flex flex-col md:flex-row gap-4">

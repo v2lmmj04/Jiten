@@ -228,7 +228,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     {
         int pageSize = 25;
 
-        var deck = context.Decks.AsNoTracking().Include(d => d.Children).FirstOrDefault(d => d.DeckId == id);
+        var deck = context.Decks.AsNoTracking().Include(d => d.Children).Include(d => d.Links).FirstOrDefault(d => d.DeckId == id);
 
         if (deck == null)
             return new PaginatedResponse<DeckDetailDto?>(null, 0, pageSize, offset ?? 0);
