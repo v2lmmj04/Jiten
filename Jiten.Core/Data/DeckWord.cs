@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 namespace Jiten.Core.Data;
 
 public class DeckWord
@@ -17,6 +20,8 @@ public class DeckWord
     /// <summary>
     /// Original text before any deconjugation
     /// </summary>
+    [JsonIgnore]
+    [NotMapped]
     public string OriginalText { get; set; } = string.Empty;
     
     /// <summary>
