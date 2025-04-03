@@ -9,6 +9,7 @@ using Jiten.Core.Data.JMDict;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using WanaKanaShaapu;
 
 namespace Jiten.Api.Controllers;
@@ -37,24 +38,21 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var query = context.Decks.Include(d => d.Children).AsNoTracking();
 
-        query = query.Where(d => d.ParentDeckId == null);
-        if (mediaType != null)
-            query = query.Where(d => d.MediaType == mediaType);
-
         if (!string.IsNullOrEmpty(titleFilter))
         {
-            query = query.Where(d =>
-                                    // Fuzzy matching
-                                    // EF.Functions.FuzzyStringMatchLevenshtein(d.OriginalTitle, titleFilter) <= 2 ||
-                                    // EF.Functions.FuzzyStringMatchLevenshtein(d.RomajiTitle!, titleFilter) <= 2 ||
-                                    // EF.Functions.FuzzyStringMatchLevenshtein(d.EnglishTitle!, titleFilter) <= 2 ||
+            FormattableString sql = $"""
+                                     SELECT *
+                                     FROM jiten."Decks"
+                                     WHERE "ParentDeckId" IS NULL AND
+                                     ("OriginalTitle" &@~ {titleFilter} OR "RomajiTitle" &@~ {titleFilter} OR "EnglishTitle" &@~ {titleFilter})
+                                     ORDER BY pgroonga_score(tableoid, ctid) DESC
+                                     """;
 
-                                    // Substring matching
-                                    EF.Functions.ILike(d.OriginalTitle, $"%{titleFilter}%") ||
-                                    EF.Functions.ILike(d.RomajiTitle!, $"%{titleFilter}%") ||
-                                    EF.Functions.ILike(d.EnglishTitle!, $"%{titleFilter}%")
-                               );
+            query = context.Set<Deck>().FromSqlInterpolated(sql);
         }
+        
+        if (mediaType != null)
+            query = query.Where(d => d.MediaType == mediaType);
 
         if (wordId != 0)
         {
