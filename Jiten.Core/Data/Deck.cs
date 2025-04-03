@@ -114,6 +114,11 @@ public class Deck
     /// List of links to external websites
     /// </summary>
     public List<Link> Links { get; set; } = new List<Link>();
+    
+    /// <summary>
+    /// Raw text from which the deck was parsed with
+    /// </summary>
+    public DeckRawText? RawText { get; set; }
 
     public async Task AddChildDeckWords(JitenDbContext context)
     {

@@ -26,9 +26,8 @@ namespace Jiten.Parser
 
         public static async Task Main(string[] args)
         {
-            // var text = "「あそこ美味しいよねー。早くお祭り終わって欲しいなー。ノンビリ遊びに行きたーい」";
-            var text =
-                await File.ReadAllTextAsync("Y:\\00_JapaneseStudy\\JL\\Backlogs\\Default_2024.12.28_10.52.47-2024.12.28_19.58.40.txt");
+            var text = "「あそこ美味しいよねー。早くお祭り終わって欲しいなー。ノンビリ遊びに行きたーい」";
+            // var text = await File.ReadAllTextAsync("Y:\\00_JapaneseStudy\\JL\\Backlogs\\Default_2024.12.28_10.52.47-2024.12.28_19.58.40.txt");
 
             var configuration = new ConfigurationBuilder()
                                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -101,7 +100,7 @@ namespace Jiten.Parser
                    .ToList();
         }
 
-        public static async Task<Deck> ParseTextToDeck(JitenDbContext context, string text)
+        public static async Task<Deck> ParseTextToDeck(JitenDbContext context, string text, bool storeRawText = false)
         {
             _dbContext = context;
             if (!_initialized)
@@ -236,7 +235,7 @@ namespace Jiten.Parser
                        UniqueKanjiCount = wordInfos.SelectMany(w => w.Text).Distinct().Count(c => WanaKana.IsKanji(c.ToString())),
                        UniqueKanjiUsedOnceCount = wordInfos.SelectMany(w => w.Text).GroupBy(c => c)
                                                            .Count(g => g.Count() == 1 && WanaKana.IsKanji(g.Key.ToString())),
-                       SentenceCount = sentences.Length, DeckWords = processedWords
+                       SentenceCount = sentences.Length, DeckWords = processedWords, RawText = storeRawText ? new DeckRawText(text) : null,
                    };
         }
 

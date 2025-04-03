@@ -177,10 +177,10 @@ public class Parser
         wordInfos = CombineAmounts(wordInfos);
         wordInfos = CombineTte(wordInfos);
         wordInfos = CombineAuxiliaryVerbStem(wordInfos);
-        wordInfos = CombineAuxiliary(wordInfos);
         wordInfos = CombineVerbDependant(wordInfos);
         wordInfos = CombineAdverbialParticle(wordInfos);
         wordInfos = CombineSuffix(wordInfos);
+        wordInfos = CombineAuxiliary(wordInfos);
         wordInfos = CombineParticles(wordInfos);
 
         wordInfos = CombineFinal(wordInfos);

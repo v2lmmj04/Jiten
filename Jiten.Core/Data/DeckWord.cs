@@ -38,5 +38,6 @@ public class DeckWord
     [NotMapped]
     public List<string> Conjugations { get; set; } = new();
 
+    [JsonIgnore]
     public Deck Deck { get; set; } = new();
 }
