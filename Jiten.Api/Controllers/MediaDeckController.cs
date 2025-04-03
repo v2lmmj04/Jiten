@@ -210,7 +210,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                           {
                               WordId = word.jmDictWord.WordId, MainReading = mainReading, AlternativeReadings = alternativeReadings,
                               PartsOfSpeech = word.jmDictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
-                              Definitions = word.jmDictWord.Definitions.ToDefinitionDtos(), Occurences = word.dw.Occurrences,
+                              Definitions = word.jmDictWord.Definitions.ToDefinitionDtos(), Occurrences = word.dw.Occurrences,
                               PitchAccents = word.jmDictWord.PitchAccents
                           };
 

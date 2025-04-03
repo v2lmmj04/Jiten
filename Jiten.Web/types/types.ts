@@ -53,7 +53,7 @@ export interface Word {
   alternativeReadings: Reading[];
   partsOfSpeech: string[];
   definitions: Definition[];
-  occurences: number;
+  occurrences: number;
   pitchAccents: number[];
 }
 
