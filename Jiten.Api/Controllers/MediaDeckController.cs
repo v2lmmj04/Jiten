@@ -425,11 +425,18 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 }
 
                 return Results.File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"{deck.OriginalTitle}.csv");
+            case DeckFormat.Txt:
+                StringBuilder txtSb = new StringBuilder();
+                foreach (var word in deckWords)
+                {
+                    txtSb.AppendLine(jmdictWords[word.WordId].Readings[word.ReadingIndex]);
+                }
+
+                return Results.File(Encoding.UTF8.GetBytes(txtSb.ToString()), "text/plain", $"{deck.OriginalTitle}.txt");
+
             default:
                 return Results.BadRequest();
         }
-
-        return Results.BadRequest();
     }
 
     [HttpGet("decks-count")]
