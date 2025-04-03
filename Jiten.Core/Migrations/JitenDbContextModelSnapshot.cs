@@ -224,6 +224,9 @@ namespace Jiten.Core.Migrations
                     b.PrimitiveCollection<List<int>>("PitchAccents")
                         .HasColumnType("int[]");
 
+                    b.PrimitiveCollection<List<string>>("Priorities")
+                        .HasColumnType("text[]");
+
                     b.PrimitiveCollection<int[]>("ReadingTypes")
                         .IsRequired()
                         .HasColumnType("int[]");

@@ -21,30 +21,15 @@ namespace Jiten.Parser
 
         private static readonly bool UseCache = true;
         private static readonly ConcurrentDictionary<DeckWordCacheKey, DeckWord> DeckWordCache = new();
-
-        // Those cases are hardcoded, a better solution would be preferable but they don't work well with the current rules
-        private static Dictionary<string, int> _specialCases = new()
-                                                               {
-                                                                   { "この", 1582920 }, { "こと", 1313580 }, { "もの", 1502390 },
-                                                                   { "もん", 2780660 }, { "くせ", 1509350 }, { "いくら", 1219980 },
-                                                                   { "とき", 1315840 }, { "な", 2029110 }, { "どん", 2142690 },
-                                                                   { "いる", 1577980 }, { "そう", 1006610 }, { "ない", 1529520 },
-                                                                   { "なんだ", 2119750 }, { "わけ", 1538330 }, { "いう", 1587040 },
-                                                                   { "まま", 1585410 }, { "いく", 1219950 }, { "つく", 1495740 },
-                                                                   { "たら", 2029050 }, { "彼", 1483070 }, { "いい", 2820690 },
-                                                               };
         
-        private static Dictionary<string, int> _specialCasesVerbs = new()
-                                                               {
-                                                                   { "かす", 1411160 }
-                                                               };
-
         private static JitenDbContext _dbContext = null;
 
         public static async Task Main(string[] args)
         {
-            var text = "「あそこ美味しいよねー。早くお祭り終わって欲しいなー。ノンビリ遊びに行きたーい」";
-            
+            // var text = "「あそこ美味しいよねー。早くお祭り終わって欲しいなー。ノンビリ遊びに行きたーい」";
+            var text =
+                await File.ReadAllTextAsync("Y:\\00_JapaneseStudy\\JL\\Backlogs\\Default_2024.12.28_10.52.47-2024.12.28_19.58.40.txt");
+
             var configuration = new ConfigurationBuilder()
                                 .SetBasePath(Directory.GetCurrentDirectory())
                                 .AddJsonFile("sharedsettings.json", optional: true, reloadOnChange: true)
@@ -55,7 +40,7 @@ namespace Jiten.Parser
             var connectionString = configuration.GetConnectionString("JitenDatabase");
             var optionsBuilder = new DbContextOptionsBuilder<JitenDbContext>();
             optionsBuilder.UseNpgsql(connectionString, o => { o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery); });
-            
+
             await using var context = new JitenDbContext(optionsBuilder.Options);
 
             await ParseTextToDeck(context, text);
@@ -343,25 +328,21 @@ namespace Jiten.Parser
             {
                 candidates = candidates.OrderBy(c => c).ToList();
 
+                List<JmDictWord> matches = new();
                 JmDictWord? bestMatch = null;
 
                 foreach (var id in candidates)
                 {
                     if (!_allWords.TryGetValue(id, out var word)) continue;
 
-                    // Initialize to the first word in case it fails
-                    if (bestMatch == null)
-                        bestMatch = word;
-
                     List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
                                                  .ToList();
                     if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
 
-                    bestMatch = word;
-                    break;
+                    matches.Add(word);
                 }
 
-                if (bestMatch == null)
+                if (matches.Count == 0)
                 {
                     if (!_allWords.TryGetValue(candidates[0], out bestMatch))
                     {
@@ -369,11 +350,10 @@ namespace Jiten.Parser
                         return true;
                     }
                 }
-
-                if (_specialCases.TryGetValue(textInHiragana, out int specialCaseId))
-                {
-                    bestMatch = _allWords[specialCaseId];
-                }
+                else if (matches.Count > 1)
+                    bestMatch = matches.OrderByDescending(m => m.GetPriorityScore(WanaKana.IsKana(wordData.wordInfo.Text))).First();
+                else
+                    bestMatch = matches[0];
 
                 var normalizedReadings =
                     bestMatch.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false }))
@@ -447,6 +427,9 @@ namespace Jiten.Parser
                 candidates.Insert(0, baseWordCandidate);
             }
 
+            List<(JmDictWord word, string text)> matches = new();
+            (JmDictWord word, string text) bestMatch;
+
             foreach (var candidate in candidates)
             {
                 foreach (var id in candidate.ids)
@@ -457,43 +440,55 @@ namespace Jiten.Parser
                     List<PartOfSpeech> pos = word.PartsOfSpeech.Select(x => x.ToPartOfSpeech())
                                                  .ToList();
                     if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
-                    
-                    if (_specialCases.TryGetValue(candidate.text, out int specialCaseId))
-                    {
-                        word = _allWords[specialCaseId];
-                        currentId = specialCaseId;
-                    }
-                    
-                    if (_specialCasesVerbs.TryGetValue(candidate.text, out int specialCaseVerbId))
-                    {
-                        word = _allWords[specialCaseVerbId];
-                        currentId = specialCaseVerbId;
-                    }
 
-                    var normalizedReadings =
-                        word.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false })).ToList();
-                    byte readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
-
-                    // not found, try with converting the long vowel mark
-                    if (readingIndex == 255)
-                    {
-                        normalizedReadings =
-                            word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                        readingIndex = (byte)normalizedReadings.IndexOf(candidate.text);
-                    }
-
-                    DeckWord deckWord = new()
-                                        {
-                                            WordId = currentId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
-                                            Occurrences = wordData.occurrences
-                                        };
-                    processedWord = deckWord;
-                    return true;
+                    matches.Add((word, candidate.text));
                 }
             }
 
-            processedWord = null;
-            return false;
+            if (matches.Count == 0)
+            {
+                processedWord = null;
+                return false;
+            }
+
+            if (matches.Count > 1)
+            {
+                bestMatch = matches.OrderByDescending(m => m.Item1.GetPriorityScore(WanaKana.IsKana(wordData.wordInfo.Text))).First();
+
+                if (!WanaKana.IsKana(wordData.wordInfo.NormalizedForm))
+                {
+                    foreach (var match in matches)
+                    {
+                        if (match.word.Readings.Any(r => r == wordData.wordInfo.NormalizedForm))
+                        {
+                            bestMatch = match;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+                bestMatch = matches[0];
+
+            var normalizedReadings =
+                bestMatch.word.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false })).ToList();
+            byte readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.text);
+
+            // not found, try with converting the long vowel mark
+            if (readingIndex == 255)
+            {
+                normalizedReadings =
+                    bestMatch.word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
+                readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.text);
+            }
+
+            DeckWord deckWord = new()
+                                {
+                                    WordId = bestMatch.word.WordId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
+                                    Occurrences = wordData.occurrences
+                                };
+            processedWord = deckWord;
+            return true;
         }
     }
 }
