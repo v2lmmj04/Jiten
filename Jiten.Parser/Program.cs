@@ -21,7 +21,7 @@ namespace Jiten.Parser
 
         private static readonly bool UseCache = true;
         private static readonly ConcurrentDictionary<DeckWordCacheKey, DeckWord> DeckWordCache = new();
-        
+
         private static JitenDbContext _dbContext = null;
 
         public static async Task Main(string[] args)
@@ -253,7 +253,7 @@ namespace Jiten.Parser
                 return new DeckWord
                        {
                            WordId = cachedWord.WordId, OriginalText = cachedWord.OriginalText, ReadingIndex = cachedWord.ReadingIndex,
-                           Occurrences = wordData.occurrences
+                           Occurrences = wordData.occurrences, Conjugations = cachedWord.Conjugations
                        };
             }
 
@@ -310,7 +310,7 @@ namespace Jiten.Parser
                                          new DeckWord
                                          {
                                              WordId = processedWord.WordId, OriginalText = processedWord.OriginalText,
-                                             ReadingIndex = processedWord.ReadingIndex
+                                             ReadingIndex = processedWord.ReadingIndex, Conjugations = processedWord.Conjugations
                                          });
                 }
             }
@@ -385,17 +385,14 @@ namespace Jiten.Parser
                                                        out DeckWord? processedWord)
         {
             var deconjugated = deconjugator.Deconjugate(WanaKana.ToHiragana(wordData.wordInfo.Text))
-                                           .Select(d => d.Text).ToList();
-            deconjugated = deconjugated.OrderByDescending(d => d.Length).ToList();
+                                           .OrderByDescending(d => d.Text.Length).ToList();
 
-            List<(string text, List<int> ids)> candidates = new();
+            List<(DeconjugationForm form, List<int> ids)> candidates = new();
             foreach (var form in deconjugated)
             {
-                if (_lookups.TryGetValue(form, out List<int> lookup))
+                if (_lookups.TryGetValue(form.Text, out List<int> lookup))
                 {
-                    // Reorder to have the most common words first. Might need a frequency list if it's not enough
-                    var orderedLookup = lookup.OrderBy(l => l).ToList();
-                    candidates.Add((form, orderedLookup));
+                    candidates.Add((form, lookup));
                 }
             }
 
@@ -405,11 +402,9 @@ namespace Jiten.Parser
                 return true;
             }
 
-            candidates = candidates.OrderByDescending(c => c.text.Length).ToList();
-
             // if there's a candidate that's the same as the base word, put it first in the list
             var baseDictionaryWord = WanaKana.ToHiragana(wordData.wordInfo.DictionaryForm);
-            var baseDictionaryWordIndex = candidates.FindIndex(c => c.text == baseDictionaryWord);
+            var baseDictionaryWordIndex = candidates.FindIndex(c => c.form.Text == baseDictionaryWord);
             if (baseDictionaryWordIndex != -1)
             {
                 var baseDictionaryWordCandidate = candidates[baseDictionaryWordIndex];
@@ -419,7 +414,7 @@ namespace Jiten.Parser
 
             // if there's a candidate that's the same as the base word, put it first in the list
             var baseWord = WanaKana.ToHiragana(wordData.wordInfo.Text);
-            var baseWordIndex = candidates.FindIndex(c => c.text == baseWord);
+            var baseWordIndex = candidates.FindIndex(c => c.form.Text == baseWord);
             if (baseWordIndex != -1)
             {
                 var baseWordCandidate = candidates[baseWordIndex];
@@ -427,8 +422,8 @@ namespace Jiten.Parser
                 candidates.Insert(0, baseWordCandidate);
             }
 
-            List<(JmDictWord word, string text)> matches = new();
-            (JmDictWord word, string text) bestMatch;
+            List<(JmDictWord word, DeconjugationForm form)> matches = new();
+            (JmDictWord word, DeconjugationForm form) bestMatch;
 
             foreach (var candidate in candidates)
             {
@@ -441,7 +436,7 @@ namespace Jiten.Parser
                                                  .ToList();
                     if (!pos.Contains(wordData.wordInfo.PartOfSpeech)) continue;
 
-                    matches.Add((word, candidate.text));
+                    matches.Add((word, candidate.form));
                 }
             }
 
@@ -472,20 +467,20 @@ namespace Jiten.Parser
 
             var normalizedReadings =
                 bestMatch.word.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false })).ToList();
-            byte readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.text);
+            byte readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.form.Text);
 
             // not found, try with converting the long vowel mark
             if (readingIndex == 255)
             {
                 normalizedReadings =
                     bestMatch.word.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.text);
+                readingIndex = (byte)normalizedReadings.IndexOf(bestMatch.form.Text);
             }
 
             DeckWord deckWord = new()
                                 {
                                     WordId = bestMatch.word.WordId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
-                                    Occurrences = wordData.occurrences
+                                    Occurrences = wordData.occurrences, Conjugations = bestMatch.form.Process
                                 };
             processedWord = deckWord;
             return true;

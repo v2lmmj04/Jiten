@@ -11,6 +11,7 @@ public class DeckWordDto
     public byte ReadingIndex { get; set; }
     public int Occurrences { get; set; }
     public Deck Deck { get; set; } = new();
+    public List<string> Conjugations { get; set; } = new();
 
     public DeckWordDto(string originalText)
     {
@@ -26,5 +27,6 @@ public class DeckWordDto
         ReadingIndex = deckWord.ReadingIndex;
         Occurrences = deckWord.Occurrences;
         Deck = deckWord.Deck;
+        Conjugations = deckWord.Conjugations;
     }
 }

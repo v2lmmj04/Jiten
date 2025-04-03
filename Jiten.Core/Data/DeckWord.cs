@@ -33,6 +33,10 @@ public class DeckWord
     /// Number of times the exact word & reading appears in the deck
     /// </summary>
     public int Occurrences { get; set; }
+    
+    [JsonIgnore]
+    [NotMapped]
+    public List<string> Conjugations { get; set; } = new();
 
     public Deck Deck { get; set; } = new();
 }

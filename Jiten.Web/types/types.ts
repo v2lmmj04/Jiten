@@ -37,6 +37,7 @@ export interface DeckWord {
   wordId: number;
   readingType: string;
   readingIndex: number;
+  conjugations: string[];
 }
 
 export interface Link {
