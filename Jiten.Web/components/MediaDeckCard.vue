@@ -83,7 +83,7 @@
                   </div>
                 </div>
 
-                <div class="w-full md:w-64">
+                <div class="w-full md:w-50">
                   <div v-if="deck.childrenDeckCount != 0" class="flex justify-between mb-2">
                     <span class="text-gray-600 dark:text-gray-300">{{ getChildrenCountText(deck.mediaType) }}</span>
                     <span class="ml-8 tabular-nums">{{ deck.childrenDeckCount.toLocaleString() }}</span>

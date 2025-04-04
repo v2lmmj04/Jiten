@@ -76,7 +76,6 @@ public static class JitenHelper
         existingDeck.UniqueWordUsedOnceCount = deck.UniqueWordUsedOnceCount;
         existingDeck.UniqueKanjiCount = deck.UniqueKanjiCount;
         existingDeck.UniqueKanjiUsedOnceCount = deck.UniqueKanjiUsedOnceCount;
-        existingDeck.Difficulty = deck.Difficulty;
         existingDeck.SentenceCount = deck.SentenceCount;
         existingDeck.RawText = deck.RawText;
 
