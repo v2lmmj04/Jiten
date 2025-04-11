@@ -357,8 +357,12 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                     if (excludeFullWidthDigits && expression.All(char.IsDigit))
                         continue;
 
-                    // Need a space before the kanji for lapis
-                    string expressionFurigana = Regex.Replace(jmdictWords[word.WordId].ReadingsFurigana[word.ReadingIndex], @"(.)(\[.*?\])", " $1$2");
+                    // Need a space before the kanjis for lapis
+                    string kanjiPatternPart = @"\p{IsCJKUnifiedIdeographs}";
+                    string lookaheadPattern = $@"(?=(?:{kanjiPatternPart})*\[.*?\])";
+                    string precedingKanjiLookbehind = $@"\p{{IsCJKUnifiedIdeographs}}{lookaheadPattern}";
+                    string pattern = $"(?<!\\])(?<!{precedingKanjiLookbehind})({kanjiPatternPart}){lookaheadPattern}";
+                    string expressionFurigana = Regex.Replace(jmdictWords[word.WordId].ReadingsFurigana[word.ReadingIndex], pattern, " $1");
                     // Very unoptimized, might have to rework
                     string expressionReading = string.Join("", jmdictWords[word.WordId].ReadingsFurigana[word.ReadingIndex]
                                                                                        .Where(c => WanaKana.IsKana(c.ToString()))
