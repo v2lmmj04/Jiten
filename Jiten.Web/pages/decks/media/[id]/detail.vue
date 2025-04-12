@@ -57,7 +57,7 @@
       meta: [
         {
           name: 'description',
-          content: `Detail for the deck ${title.value}`,
+          content: `Detail for the deck ${title.value}. Get statistics and download the anki deck.`,
         },
       ],
     };
