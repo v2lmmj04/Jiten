@@ -135,6 +135,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         if (deck == null)
             return new PaginatedResponse<DeckVocabularyListDto?>(null, 0, pageSize, offset ?? 0);
 
+        var parentDeck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == deck.ParentDeckId);
+        var parentDeckDto = parentDeck != null ? new DeckDto(parentDeck) : null;
 
         var query = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
 
@@ -176,7 +178,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         var frequencies = context.JmDictWordFrequencies.AsNoTracking().Where(f => wordIds.Contains(f.WordId)).ToList();
 
-        DeckVocabularyListDto dto = new() { Deck = deck, Words = new() };
+        DeckVocabularyListDto dto = new() { ParentDeck = parentDeckDto, Deck = deck, Words = new() };
 
         foreach (var word in words)
         {
@@ -238,6 +240,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         if (deck == null)
             return new PaginatedResponse<DeckDetailDto?>(null, 0, pageSize, offset ?? 0);
 
+        var parentDeck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == deck.ParentDeckId);
+
         var subDecks = context.Decks.AsNoTracking()
                               .Where(d => d.ParentDeckId == id);
         int totalCount = subDecks.Count();
@@ -253,7 +257,9 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         foreach (var subDeck in subDecks)
             subDeckDtos.Add(new DeckDto(subDeck));
 
-        var dto = new DeckDetailDto { MainDeck = mainDeckDto, SubDecks = subDeckDtos };
+        var parentDeckDto = parentDeck != null ? new DeckDto(parentDeck) : null;
+
+        var dto = new DeckDetailDto { ParentDeck = parentDeckDto, MainDeck = mainDeckDto, SubDecks = subDeckDtos };
 
         return new PaginatedResponse<DeckDetailDto?>(dto, totalCount, pageSize, offset ?? 0);
     }
