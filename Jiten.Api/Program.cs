@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Jiten.Core;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -65,12 +67,12 @@ builder.Services.AddRateLimiter(options =>
     {
         var origin = context.HttpContext.Request.Headers.Origin.FirstOrDefault();
         var allowedOrigins = new[] { "https://localhost:3000", "https://jiten.moe" };
-        
+
         if (!string.IsNullOrEmpty(origin) && allowedOrigins.Contains(origin))
         {
             context.HttpContext.Response.Headers.Append("Access-Control-Allow-Origin", origin);
         }
-        
+
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
         {
             context.HttpContext.Response.Headers.RetryAfter =
@@ -96,6 +98,17 @@ builder.Services.AddCors(options =>
                                 .AllowAnyMethod();
                       });
 });
+
+builder.Services.AddHangfire(configuration =>
+                                 configuration.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                                              .UseSimpleAssemblyNameTypeSerializer()
+                                              .UseRecommendedSerializerSettings()
+                                              .UsePostgreSqlStorage((options) =>
+                                                                        options.UseNpgsqlConnection(() => builder.Configuration
+                                                                            .GetConnectionString("JitenDatabase"))));
+
+builder.Services.AddHangfireServer();
+
 
 var app = builder.Build();
 
@@ -142,8 +155,11 @@ else
                        });
 }
 
+app.UseHangfireDashboard();
+
 
 app.MapSwagger();
 app.MapControllers();
+app.MapHangfireDashboard();
 
 app.Run();
