@@ -113,3 +113,12 @@ export interface GlobalStats {
   totalMojis: number;
   totalMedia: number;
 }
+
+export interface Metadata {
+  originalTitle: string;
+  romajiTitle: string;
+  englishTitle: string;
+  image: string;
+  releaseDate: string;
+  links: Link[];
+}

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Jiten.Api.Jobs;
 using Jiten.Core;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -24,6 +25,8 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHttpClient();
 
 builder.Services.AddDbContext<JitenDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("JitenDatabase"),
                                                                            o =>
@@ -99,6 +102,11 @@ builder.Services.AddCors(options =>
                       });
 });
 
+// Hangfire jobs
+builder.Services.AddScoped<ParseJob>();
+builder.Services.AddScoped<ReparseJob>();
+builder.Services.AddScoped<ComputationJob>();
+
 builder.Services.AddHangfire(configuration =>
                                  configuration.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                                               .UseSimpleAssemblyNameTypeSerializer()
@@ -156,7 +164,6 @@ else
 }
 
 app.UseHangfireDashboard();
-
 
 app.MapSwagger();
 app.MapControllers();

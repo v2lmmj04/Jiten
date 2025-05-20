@@ -3,6 +3,7 @@
   import Card from 'primevue/card';
   import { getChildrenCountText, getMediaTypeText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
+  import { useJitenStore } from '~/stores/jitenStore';
 
   const props = defineProps<{
     deck: Deck;
@@ -10,6 +11,10 @@
   }>();
 
   const showDownloadDialog = ref(false);
+
+  const store = useJitenStore();
+
+  const displayAdminFunctions = computed(() => store.displayAdminFunctions);
 
   const sortedLinks = computed(() => {
     return [...props.deck.links].sort((a, b) => {
@@ -106,6 +111,13 @@
                     class=""
                   />
                   <Button @click="showDownloadDialog = true" label="Download deck" class="" />
+                  <Button 
+                    v-if="displayAdminFunctions"
+                    as="router-link" 
+                    :to="`/dashboard/media/${deck.deckId}`" 
+                    label="Edit" 
+                    class="" 
+                  />
                 </div>
               </div>
             </div>

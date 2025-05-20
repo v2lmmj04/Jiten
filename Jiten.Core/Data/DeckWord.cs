@@ -34,7 +34,7 @@ public class DeckWord
     /// </summary>
     public int Occurrences { get; set; }
     
-    [JsonIgnore]
+    // [JsonIgnore]
     [NotMapped]
     public List<string> Conjugations { get; set; } = new();
 

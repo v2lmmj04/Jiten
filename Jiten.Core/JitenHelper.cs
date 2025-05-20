@@ -19,7 +19,7 @@ public static class JitenHelper
             var existingDeck =
                 await context.Decks
                              .Include(d => d.DeckWords)
-                             .Include(d => d.Children)
+                             .Include(d => d.Children).ThenInclude(d => d.DeckWords)
                              .Include(d => d.RawText)
                              .FirstOrDefaultAsync(d => d.OriginalTitle == deck.OriginalTitle && d.MediaType == deck.MediaType);
 

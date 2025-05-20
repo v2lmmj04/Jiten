@@ -37,6 +37,11 @@
     set: (value) => (store.displayFurigana = value),
   });
 
+  const displayAdminFunctions = computed({
+    get: () => store.displayAdminFunctions,
+    set: (value) => (store.displayAdminFunctions = value),
+  });
+
   const isOverSettings = ref(false);
   const isSettingsInteracted = ref(false);
 
@@ -115,6 +120,11 @@
       <div class="flex items-center gap-2">
         <Checkbox v-model="displayFurigana" input-id="displayFurigana" name="furigana" :binary="true" />
         <label for="displayFurigana">Display Furigana</label>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <Checkbox v-model="displayAdminFunctions" input-id="displayAdminFunctions" name="adminFunctions" :binary="true" />
+        <label for="displayAdminFunctions">Display admin functions</label>
       </div>
     </div>
   </Popover>

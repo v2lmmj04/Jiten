@@ -1,10 +1,13 @@
 <script setup lang="ts">
   import { useApiFetchPaginated } from '~/composables/useApiFetch';
-  import { type Deck, MediaType, SortOrder, type Word } from '~/types';
+  import { type Deck, MediaType, SortOrder, type Word, DisplayStyle } from '~/types';
   import Skeleton from 'primevue/skeleton';
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
   import { debounce } from 'perfect-debounce';
+  import { useDisplayStyleStore } from '~/stores/displayStyleStore';
+  import MediaDeckCompactView from '~/components/MediaDeckCompactView.vue';
+  import MediaDeckTableView from '~/components/MediaDeckTableView.vue';
 
   const props = defineProps<{
     word?: Word;
@@ -110,6 +113,9 @@
     });
   };
 
+  const displayStyleStore = useDisplayStyleStore();
+  const displayStyle = computed(() => displayStyleStore.displayStyle);
+
   const mediaTypeOptions = [
     { type: null, label: 'All' },
     { type: MediaType.Anime, label: 'Anime' },
@@ -183,6 +189,10 @@
           <Icon name="material-symbols:close" />
         </InputIcon>
       </IconField>
+
+      <div class="flex flex-row gap-2 items-center">
+        <DisplayStyleSelector />
+      </div>
     </div>
     <div>
       <div class="flex flex-col gap-1">
@@ -215,8 +225,19 @@
 
         <div v-else-if="error">Error: {{ error }}</div>
 
-        <div v-else class="flex flex-col gap-2">
+        <!-- Card View -->
+        <div v-else-if="displayStyle === DisplayStyle.Card" class="flex flex-col gap-2">
           <MediaDeckCard v-for="deck in response.data" :key="deck.id" :deck="deck" />
+        </div>
+
+        <!-- Compact View -->
+        <div v-else-if="displayStyle === DisplayStyle.Compact" class="flex flex-wrap gap-4 justify-center">
+          <MediaDeckCompactView v-for="deck in response.data" :key="deck.id" :deck="deck" />
+        </div>
+
+        <!-- Table View -->
+        <div v-else-if="displayStyle === DisplayStyle.Table" class="flex flex-col gap-0.5">
+          <MediaDeckTableView v-for="deck in response.data" :key="deck.id" :deck="deck" />
         </div>
       </div>
       <div class="flex gap-8 pl-2">

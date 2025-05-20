@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev --https --ssl-cert localhost.pem --ssl-key localhost-key.pem\n",
+    "dev": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https --ssl-cert localhost.pem --ssl-key localhost-key.pem\n",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -31,6 +31,7 @@
     "eslint-plugin-prettier": "^5.2.6",
     "hatsuon": "^2.0.0",
     "nuxt": "^3.16.2",
+    "nuxt-umami": "3.2.0",
     "perfect-debounce": "^1.0.0",
     "pinia": "^3.0.1",
     "prettier": "^3.5.3",
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@css-inline/css-inline-wasm": "^0.14.3",
     "@primevue/nuxt-module": "^4.3.3",
+    "cross-env": "^7.0.3",
     "typescript": "^5.8.2"
   }
 }
