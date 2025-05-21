@@ -19,8 +19,7 @@ useHead({
           <div class="flex justify-center">
             <Button 
               label="Add Media" 
-              icon="pi pi-plus" 
-              class="p-button-primary" 
+              class="p-button-primary"
               @click="navigateTo('/dashboard/add-media')" 
             />
           </div>
@@ -34,8 +33,7 @@ useHead({
           <div class="flex justify-center">
             <Button 
               label="View Issues" 
-              icon="pi pi-exclamation-triangle" 
-              class="p-button-primary" 
+              class="p-button-primary"
               @click="navigateTo('/dashboard/issues')" 
             />
           </div>
@@ -48,9 +46,8 @@ useHead({
           <p class="mb-4">Reparse media, recompute frequencies & difficulty</p>
           <div class="flex justify-center">
             <Button 
-              label="Meta Admin" 
-              icon="pi pi-cog" 
-              class="p-button-primary" 
+              label="Manage"
+              class="p-button-primary"
               @click="navigateTo('/dashboard/manage')"
             />
           </div>

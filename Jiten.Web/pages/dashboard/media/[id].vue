@@ -10,7 +10,7 @@
   import Column from 'primevue/column';
   import { useToast } from 'primevue/usetoast';
   import { LinkType } from '~/types';
-  import type { DeckDetail, Link , MediaType} from '~/types';
+  import type { DeckDetail, Link, MediaType } from '~/types';
   import { getMediaTypeText, getChildrenCountText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
 
@@ -22,7 +22,6 @@
   });
 
   const selectedMediaType = ref<MediaType | null>(null);
-  const isLoading = ref(true);
   const toast = useToast();
   const { $api } = useNuxtApp();
 
@@ -38,8 +37,6 @@
   const coverImage = ref<File | null>(null);
   const coverImageUrl = ref<string | null>(null);
   const coverImageObjectUrl = ref<string | null>(null);
-
-  const deckDetail = ref<DeckDetail | null>(null);
 
   const links = ref<Link[]>([]);
   const showAddLinkDialog = ref(false);
@@ -94,16 +91,17 @@
     }
   });
 
-  try {
-    const { data, error } = await useApiFetch<DeckDetail>(`admin/deck/${mediaId}`);
+  const { data : response, status, error } = await useApiFetch<DeckDetail>(`admin/deck/${mediaId}`);
+
+  watchEffect(() => {
 
     if (error.value) {
       throw new Error(error.value.message || 'Failed to fetch deck data');
     }
 
-    if (data.value) {
-      deckDetail.value = data.value;
-      const mainDeck = deckDetail.value.mainDeck;
+    if (response.value) {
+      const mainDeck = response.value.mainDeck;
+      console.log(mainDeck);
 
       selectedMediaType.value = mainDeck.mediaType;
       originalTitle.value = mainDeck.originalTitle || '';
@@ -116,8 +114,8 @@
 
       links.value = mainDeck.links || [];
 
-      if (deckDetail.value.subDecks && deckDetail.value.subDecks.length > 0) {
-        subdecks.value = deckDetail.value.subDecks.map((subdeck, index) => ({
+      if (response.value.subDecks && response.value.subDecks.length > 0) {
+        subdecks.value = response.value.subDecks.map((subdeck, index) => ({
           id: nextSubdeckId++,
           originalTitle: subdeck.originalTitle || `${subdeckDefaultName.value} ${index + 1}`,
           file: null,
@@ -127,12 +125,7 @@
 
       selectedFile.value = new File([], 'dummy.file');
     }
-  } catch (error) {
-    console.error('Error fetching deck data:', error);
-    showToast('error', 'Error', 'Failed to load deck data. Please try again.');
-  } finally {
-    isLoading.value = false;
-  }
+  });
 
   function handleCoverImageUpload(event: { files: File[] }) {
     if (event.files && event.files.length > 0) {
@@ -290,7 +283,7 @@
             formData.append(`subdecks[${i}].deckId`, subdeck.mediaSubdeckId.toString());
           }
 
-          formData.append(`subdecks[${i}].deckOrder`, (i+1).toString());
+          formData.append(`subdecks[${i}].deckOrder`, (i + 1).toString());
 
           // Include the file if available
           if (subdeck.file) {
@@ -317,9 +310,7 @@
     <Toast />
     <div class="container mx-auto p-4">
       <div class="flex items-center mb-6">
-        <Button text @click="navigateTo('/dashboard')">
-          <Icon name="material-symbols-light:arrow-circle-left-outline" size="2.5em" />
-        </Button>
+        <Button icon="pi pi-arrow-left" class="p-button-text mr-2" @click="navigateTo('/dashboard')" />
         <h1 class="text-3xl font-bold">Edit Media</h1>
         <div class="ml-auto">
           <Button @click="navigateTo(`/decks/media/${mediaId}/detail`)">
@@ -330,7 +321,7 @@
       </div>
 
       <!-- Loading indicator -->
-      <div v-if="isLoading" class="flex justify-center items-center h-64">
+      <div v-if="status == 'pending'" class="flex justify-center items-center h-64">
         <div class="text-center">
           <div class="spinner-border text-primary" role="status">
             <span class="sr-only">Loading...</span>
@@ -393,22 +384,22 @@
             </div>
 
             <!-- Deck Information Table -->
-            <div v-if="deckDetail && deckDetail.mainDeck" class="mt-6">
+            <div v-if="response && response.mainDeck" class="mt-6">
               <h3 class="text-lg font-medium mb-2">Deck Information</h3>
               <div class="p-4 border rounded mb-4">
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <p><strong>Media Type:</strong> {{ getMediaTypeText(deckDetail.mainDeck.mediaType) }}</p>
-                    <p><strong>Deck ID:</strong> {{ deckDetail.mainDeck.deckId }}</p>
-                    <p><strong>Word Count:</strong> {{ deckDetail.mainDeck.wordCount }}</p>
-                    <p><strong>Unique Words:</strong> {{ deckDetail.mainDeck.uniqueWordCount }}</p>
+                    <p><strong>Media Type:</strong> {{ getMediaTypeText(response.mainDeck.mediaType) }}</p>
+                    <p><strong>Deck ID:</strong> {{ response.mainDeck.deckId }}</p>
+                    <p><strong>Word Count:</strong> {{ response.mainDeck.wordCount }}</p>
+                    <p><strong>Unique Words:</strong> {{ response.mainDeck.uniqueWordCount }}</p>
                   </div>
                   <div>
-                    <p><strong>Character Count:</strong> {{ deckDetail.mainDeck.characterCount }}</p>
-                    <p><strong>Unique Kanji:</strong> {{ deckDetail.mainDeck.uniqueKanjiCount }}</p>
-                    <p><strong>Difficulty:</strong> {{ deckDetail.mainDeck.difficulty.toFixed(2) }}</p>
+                    <p><strong>Character Count:</strong> {{ response.mainDeck.characterCount }}</p>
+                    <p><strong>Unique Kanji:</strong> {{ response.mainDeck.uniqueKanjiCount }}</p>
+                    <p><strong>Difficulty:</strong> {{ response.mainDeck.difficulty.toFixed(2) }}</p>
                     <p>
-                      <strong>Avg. Sentence Length:</strong> {{ deckDetail.mainDeck.averageSentenceLength.toFixed(2) }}
+                      <strong>Avg. Sentence Length:</strong> {{ response.mainDeck.averageSentenceLength.toFixed(2) }}
                     </p>
                   </div>
                 </div>
@@ -515,8 +506,8 @@
             </Button>
           </div>
 
-          <div v-if="deckDetail && deckDetail.subDecks && deckDetail.subDecks.length > 0" class="mb-4">
-            <DataTable :value="deckDetail.subDecks" class="p-datatable-sm">
+          <div v-if="response && response.subDecks && response.subDecks.length > 0" class="mb-4">
+            <DataTable :value="response.subDecks" class="p-datatable-sm">
               <Column field="deckId" header="ID" :sortable="true" />
               <Column field="originalTitle" header="Title" :sortable="true" />
               <Column field="wordCount" header="Words" :sortable="true" />

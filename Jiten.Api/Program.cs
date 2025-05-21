@@ -115,7 +115,7 @@ builder.Services.AddHangfire(configuration =>
                                                                         options.UseNpgsqlConnection(() => builder.Configuration
                                                                             .GetConnectionString("JitenDatabase"))));
 
-builder.Services.AddHangfireServer();
+builder.Services.AddHangfireServer((options) => { options.WorkerCount = Environment.ProcessorCount / 4; });
 
 
 var app = builder.Build();

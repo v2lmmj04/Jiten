@@ -46,8 +46,7 @@ public class AdminController(IConfiguration config, HttpClient httpClient, IBack
             Metadata metadata = new()
                                 {
                                     OriginalTitle = model.OriginalTitle.Trim(), RomajiTitle = model.RomajiTitle?.Trim(),
-                                    EnglishTitle = model.EnglishTitle?.Trim(), Image = coverImagePathOrUrl,
-                                    Links = new List<Link>()
+                                    EnglishTitle = model.EnglishTitle?.Trim(), Image = coverImagePathOrUrl, Links = new List<Link>()
                                 };
 
             // Parse links from form data
@@ -325,22 +324,19 @@ public class AdminController(IConfiguration config, HttpClient httpClient, IBack
         }
     }
 
-    [HttpPost("reparse-media-by-type")]
-    public async Task<IActionResult> ReparseMediaByType([FromBody] MediaType mediaType)
+    [HttpPost("reparse-media-by-type/{mediaType}")]
+    public async Task<IActionResult> ReparseMediaByType(MediaType mediaType)
     {
         var mediaToReparse = await dbContext.Decks.AsNoTracking()
                                             .Where(d => d.MediaType == mediaType)
                                             .ToListAsync();
 
         if (!mediaToReparse.Any())
-        {
             return NotFound(new { Message = $"No media found of type {mediaType}" });
-        }
 
         int count = 0;
         foreach (var deck in mediaToReparse)
         {
-            // Enqueue a job to reparse each media
             backgroundJobs.Enqueue<ReparseJob>(job => job.Reparse(deck.DeckId));
             count++;
         }
@@ -362,5 +358,19 @@ public class AdminController(IConfiguration config, HttpClient httpClient, IBack
         backgroundJobs.Enqueue<ComputationJob>(job => job.RecomputeDifficulties());
 
         return Ok(new { Message = "Recomputing difficulties job has been queued" });
+    }
+
+    [HttpGet("issues")]
+    public async Task<IActionResult> GetIssues()
+    {
+        var decks = await dbContext.Decks.AsNoTracking().Include(d => d.Links).ToListAsync();
+        var issues = new IssuesDto();
+        
+        // If the original title is equal to the english title, then it probably means the original title is an english name too, so we don't need a romaji title
+        issues.MissingRomajiTitles = decks.Where(d => d.ParentDeckId == null).Where(d => string.IsNullOrEmpty(d.RomajiTitle) && d.OriginalTitle != d.EnglishTitle).Select(d => d.DeckId).ToList();
+        issues.ZeroCharacters = decks.Where(d => d.CharacterCount == 0).Select(d => d.DeckId).ToList();
+        issues.MissingLinks = decks.Where(d => d.ParentDeckId == null).Where(d => d.Links.Count == 0).Select(d => d.DeckId).ToList();
+
+        return Ok(issues);
     }
 }

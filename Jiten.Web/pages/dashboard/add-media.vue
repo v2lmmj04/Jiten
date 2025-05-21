@@ -275,9 +275,11 @@
     <Toast />
     <div class="container mx-auto p-4">
       <div class="flex items-center mb-6">
-        <Button text @click="navigateTo('/dashboard')">
-          <Icon name="material-symbols-light:arrow-circle-left-outline" class="w-full" size="2em" />
-        </Button>
+        <Button
+          icon="pi pi-arrow-left"
+          class="p-button-text mr-2"
+          @click="navigateTo('/dashboard')"
+        />
         <h1 class="text-3xl font-bold">Add Media</h1>
       </div>
 

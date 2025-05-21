@@ -122,3 +122,9 @@ export interface Metadata {
   releaseDate: string;
   links: Link[];
 }
+
+export interface Issues {
+  missingRomajiTitles: number[];
+  missingLinks: number[];
+  zeroCharacters: number[];
+}

@@ -112,7 +112,6 @@
           input-id="titleLanguage"
           @show="isSettingsInteracted = true"
           @hide="isSettingsInteracted = false"
-          class=""
         />
         <label for="titleLanguage">Titles Language</label>
       </FloatLabel>
