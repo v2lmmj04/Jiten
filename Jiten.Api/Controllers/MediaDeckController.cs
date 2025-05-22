@@ -45,9 +45,12 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                                      SELECT *
                                      FROM jiten."Decks"
                                      WHERE "ParentDeckId" IS NULL AND
-                                     ("OriginalTitle" &@~ {titleFilter} OR "RomajiTitle" &@~ {titleFilter} OR "EnglishTitle" &@~ {titleFilter})
+                                     ("OriginalTitle" &@~ {titleFilter} OR 
+                                      "RomajiTitle" &@~ {titleFilter} OR REPLACE("RomajiTitle", ' ', '') &@~ {titleFilter} OR 
+                                      "EnglishTitle" &@~ {titleFilter})
                                      ORDER BY pgroonga_score(tableoid, ctid) DESC
                                      """;
+
 
             query = context.Set<Deck>().FromSqlInterpolated(sql);
         }
@@ -102,7 +105,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             "uKanjiOnce" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.UniqueKanjiUsedOnceCount)
                 : query.OrderByDescending(d => d.UniqueKanjiUsedOnceCount),
-            "filter" => query,
+            "filter" => query.OrderBy(_ => 1), // Dummy ordering to avoid efcore warning
             _ => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.RomajiTitle)
                 : query.OrderByDescending(d => d.RomajiTitle),

@@ -101,7 +101,6 @@
 
     if (response.value) {
       const mainDeck = response.value.mainDeck;
-      console.log(mainDeck);
 
       selectedMediaType.value = mainDeck.mediaType;
       originalTitle.value = mainDeck.originalTitle || '';
