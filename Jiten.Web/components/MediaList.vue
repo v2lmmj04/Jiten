@@ -19,7 +19,9 @@
   const offset = computed(() => (route.query.offset ? Number(route.query.offset) : 0));
   const mediaType = computed(() => (route.query.mediaType ? route.query.mediaType : null));
 
-  const titleFilter = ref(route.query.title ? route.query.title : null);
+  const titleFilter = ref(
+    route.query.title ? (Array.isArray(route.query.title) ? route.query.title[0] : route.query.title) : null
+  );
   const debouncedTitleFilter = ref(titleFilter.value);
 
   const sortByOptions = ref([
@@ -37,7 +39,13 @@
 
   const sortBy = ref(route.query.sortBy ? route.query.sortBy : sortByOptions.value[0].value);
 
-  const updateDebounced = debounce(async (newValue) => {
+  if (props.word != null) {
+    sortByOptions.value.unshift({ label: 'Occurrences', value: 'occurrences' });
+    sortBy.value = 'occurrences';
+    sortOrder.value = SortOrder.Descending;
+  }
+
+  const updateDebounced = debounce(async (newValue: string | null) => {
     debouncedTitleFilter.value = newValue;
     await router.replace({
       query: {
@@ -168,8 +176,8 @@
           <label for="sortBy">Sort by</label>
         </FloatLabel>
         <Button
-          @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending"
           class="w-12"
+          @click="sortOrder = sortOrder === SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending"
         >
           <Icon
             v-if="sortOrder == SortOrder.Descending"
@@ -244,16 +252,16 @@
         <NuxtLink
           :to="previousLink"
           :class="previousLink == null ? '!text-gray-500 pointer-events-none' : ''"
-          @click="scrollToTop"
           no-rel
+          @click="scrollToTop"
         >
           Previous
         </NuxtLink>
         <NuxtLink
           :to="nextLink"
           :class="nextLink == null ? '!text-gray-500 pointer-events-none' : ''"
-          @click="scrollToTop"
           no-rel
+          @click="scrollToTop"
         >
           Next
         </NuxtLink>

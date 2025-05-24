@@ -28,7 +28,9 @@
 <template>
   <Card class="p-2">
     <template #title>{{ localiseTitle(deck) }}</template>
-    <template #subtitle v-if="!isCompact">{{ getMediaTypeText(deck.mediaType) }}</template>
+    <template #subtitle v-if="!isCompact">{{ getMediaTypeText(deck.mediaType) }}
+
+    </template>
     <template #content>
       <div class="flex-gap-6">
         <div class="flex-1">
@@ -92,6 +94,11 @@
                   <div v-if="deck.childrenDeckCount != 0" class="flex justify-between mb-2">
                     <span class="text-gray-600 dark:text-gray-300">{{ getChildrenCountText(deck.mediaType) }}</span>
                     <span class="ml-8 tabular-nums">{{ deck.childrenDeckCount.toLocaleString() }}</span>
+                  </div>
+
+                  <div v-if="deck.selectedWordOccurrences != 0" class="flex justify-between mb-2">
+                    <span class="text-gray-600 dark:text-gray-300">Appears (times)</span>
+                    <span class="ml-8 tabular-nums font-bold">{{ deck.selectedWordOccurrences.toLocaleString() }}</span>
                   </div>
                 </div>
               </div>

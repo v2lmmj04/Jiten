@@ -47,7 +47,14 @@ public static class JitenHelper
 
                 await context.SaveChangesAsync();
 
-                var coverUrl = await BunnyCdnHelper.UploadFile(cover, $"{deck.DeckId}/cover.jpg");
+                using var coverOptimized = new ImageMagick.MagickImage(cover);
+
+                coverOptimized.Resize(400, 400);
+                coverOptimized.Strip();
+                coverOptimized.Quality = 85;
+                coverOptimized.Format = ImageMagick.MagickFormat.Jpeg;
+                
+                var coverUrl = await BunnyCdnHelper.UploadFile(coverOptimized.ToByteArray(), $"{deck.DeckId}/cover.jpg");
                 deck.CoverName = coverUrl;
                 context.Entry(deck).State = EntityState.Modified;
             }

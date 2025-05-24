@@ -76,17 +76,15 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             // Then use the in-memory collection for filtering
             query = query.Where(d => deckIds.Contains(d.DeckId));
         }
-
-        var totalCount = query.Count();
-
+        
         if (string.IsNullOrEmpty(sortBy))
             sortBy = "title";
 
         query = sortBy switch
         {
             "difficulty" => sortOrder == SortOrder.Ascending
-                ? query.OrderBy(d => d.Difficulty).Where(d => d.Difficulty != 0)
-                : query.OrderByDescending(d => d.Difficulty).Where(d => d.Difficulty != 0),
+                ? query.Where(d => d.Difficulty != 0).OrderBy(d => d.Difficulty)
+                : query.Where(d => d.Difficulty != 0).OrderByDescending(d => d.Difficulty),
             "charCount" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.CharacterCount)
                 : query.OrderByDescending(d => d.CharacterCount),
@@ -105,24 +103,61 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             "uKanjiOnce" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.UniqueKanjiUsedOnceCount)
                 : query.OrderByDescending(d => d.UniqueKanjiUsedOnceCount),
-            "filter" => query.OrderBy(_ => 1), // Dummy ordering to avoid efcore warning
+            "filter" => query.OrderBy(_ => 1), // Dummy ordering to avoid efcore warning, pgroonga_score handles the actual sort
             _ => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.RomajiTitle)
                 : query.OrderByDescending(d => d.RomajiTitle),
         };
 
-        var decks = query
-                    .Include(d => d.Links)
-                    .Skip(offset ?? 0)
-                    .Take(pageSize)
-                    .ToList();
+        query = query.Include(d => d.Links);
 
-        List<DeckDto> dtos = new();
-        foreach (var deck in decks)
+        var totalCount = query.Count();
+
+        List<DeckDto> dtos;
+
+        if (wordId != 0)
         {
-            dtos.Add(new DeckDto(deck));
-        }
+            var projectedQuery = query.Select(d => new
+                                                   {
+                                                       Deck = d, Occurrences = d.DeckWords
+                                                                                .Where(dw => dw.WordId == wordId &&
+                                                                                           dw.ReadingIndex == readingIndex)
+                                                                                .Select(dw => (int?)dw.Occurrences)
+                                                                                .FirstOrDefault() ?? 0
+                                                   });
 
+            if (sortBy == "occurrences")
+            {
+                projectedQuery = sortOrder == SortOrder.Ascending
+                    ? projectedQuery.OrderBy(p => p.Occurrences)
+                    : projectedQuery.OrderByDescending(p => p.Occurrences);
+            }
+
+            var paginatedResults = await projectedQuery
+                                         .Skip(offset ?? 0)
+                                         .Take(pageSize)
+                                         .AsSplitQuery()
+                                         .ToListAsync();
+
+            dtos = paginatedResults
+                   .Select(r => new DeckDto(r.Deck, r.Occurrences))
+                   .ToList();
+        }
+        else
+        {
+            var paginatedDecks = await query
+                                 .Skip(offset ?? 0)
+                                 .Take(pageSize)
+                                 .AsSplitQuery()
+                                 .ToListAsync(); // Execute the query against the database
+
+            dtos = new List<DeckDto>();
+            foreach (var deck in paginatedDecks)
+            {
+                dtos.Add(new DeckDto(deck));
+            }
+        }
+        
         return new PaginatedResponse<List<DeckDto>>(dtos, totalCount, pageSize, offset ?? 0);
     }
 

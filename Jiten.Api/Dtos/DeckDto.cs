@@ -22,9 +22,33 @@ public class DeckDto
     public int? ParentDeckId { get; set; }
     public List<Link> Links { get; set; } = new List<Link>();
     public int ChildrenDeckCount { get; set; }
+    public int SelectedWordOccurrences { get; set; }
 
     public DeckDto(){}
-    
+
+    public DeckDto(Deck deck, int occurrences)
+    {
+        DeckId = deck.DeckId;
+        CoverName = deck.CoverName;
+        MediaType = deck.MediaType;
+        OriginalTitle = deck.OriginalTitle;
+        RomajiTitle = deck.RomajiTitle!;
+        EnglishTitle = deck.EnglishTitle!;
+        CharacterCount = deck.CharacterCount;
+        WordCount = deck.WordCount;
+        UniqueWordCount = deck.UniqueWordCount;
+        UniqueWordUsedOnceCount = deck.UniqueWordUsedOnceCount;
+        UniqueKanjiCount = deck.UniqueKanjiCount;
+        UniqueKanjiUsedOnceCount = deck.UniqueKanjiUsedOnceCount;
+        Difficulty = deck.Difficulty;
+        SentenceCount = deck.SentenceCount;
+        AverageSentenceLength = deck.AverageSentenceLength;
+        ParentDeckId = deck.ParentDeckId;
+        Links = deck.Links;
+        ChildrenDeckCount = deck.Children.Count;
+        SelectedWordOccurrences = occurrences;
+    }
+
     public DeckDto(Deck deck)
     {
         DeckId = deck.DeckId;

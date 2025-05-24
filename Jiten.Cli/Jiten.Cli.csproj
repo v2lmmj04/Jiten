@@ -14,7 +14,6 @@
 
     <ItemGroup>
       <PackageReference Include="CommandLineParser" Version="2.9.1" />
-      <PackageReference Include="Magick.NET-Q16-x64" Version="14.6.0" />
       <PackageReference Include="SharpCompress" Version="0.39.0" />
       <PackageReference Include="SubtitlesParser" Version="1.5.1" />
     </ItemGroup>

@@ -15,6 +15,7 @@ builder.Configuration.AddJsonFile(Path.Combine(Environment.CurrentDirectory, "..
                                   reloadOnChange: true);
 builder.Configuration.AddJsonFile("sharedsettings.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddEnvironmentVariables();
 
 builder.Services.AddControllers().AddJsonOptions(options =>

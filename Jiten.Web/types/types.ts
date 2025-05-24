@@ -1,4 +1,4 @@
-import type {MediaType, ReadingType} from '~/types';
+import type { MediaType, ReadingType } from '~/types';
 
 export interface Deck {
   deckId: number;
@@ -19,6 +19,7 @@ export interface Deck {
   deckWords: DeckWord[];
   links: Link[];
   childrenDeckCount: number;
+  selectedWordOccurrences: number;
 }
 
 export interface DeckDetail {
