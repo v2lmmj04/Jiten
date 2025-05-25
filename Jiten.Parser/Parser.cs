@@ -134,7 +134,7 @@ public class Parser
         ("よう", "に", PartOfSpeech.Expression),
         ("ん", "です", PartOfSpeech.Expression),
         ("ん", "だ", PartOfSpeech.Expression),
-        ("です", "か", PartOfSpeech.Expression)
+        ("です", "か", PartOfSpeech.Expression),
     ];
 
     private static readonly List<string> HonorificsSuffixes = ["さん", "ちゃん", "くん"];
@@ -149,7 +149,7 @@ public class Parser
                             .AddEnvironmentVariables()
                             .Build();
 
-        // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Shared\resources\user_dic.xml -s F:\00_RawJap\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Shared\resources\user_dic.dic"
+        // Build dictionary  sudachi ubuild Y:\CODE\Jiten\Shared\resources\user_dic.xml -s S:\Jiten\sudachi.rs\resources\system_full.dic -o "Y:\CODE\Jiten\Shared\resources\user_dic.dic"
 
         // Preprocess the text to remove invalid characters
         PreprocessText(ref text);
@@ -293,8 +293,27 @@ public class Parser
                 i++;
                 continue;
             }
+            
+            if (w1.Text == "絶対無理")
+            {
+                var zettai = new WordInfo
+                             {
+                                 Text = "絶対", DictionaryForm = "絶対", PartOfSpeech = PartOfSpeech.Adverb,
+                                 PartOfSpeechSection1 = PartOfSpeechSection.None, Reading = "ぜったい"
+                             };
+                var muri = new WordInfo
+                           {
+                               Text = "無理", DictionaryForm = "無理", PartOfSpeech = PartOfSpeech.NaAdjective,
+                               PartOfSpeechSection1 = PartOfSpeechSection.None, Reading = "むり"
+                           };
+            
+                newList.Add(zettai);
+                newList.Add(muri);
+                i++;
+                continue;
+            }
+            
             // I'm not sure why this happens, but sudachi thinks those words are proper nouns
-
             if (w1.Text == "俺の")
             {
                 var ore = new WordInfo
@@ -675,7 +694,7 @@ public class Parser
             }
 
             if (currentWord.Text == "な" &&
-                (previousWord.HasPartOfSpeechSection(PartOfSpeechSection.PossibleNaAdjective) ||
+                (previousWord.HasPartOfSpeechSection(PartOfSpeechSection.PossibleNaAdjective) || previousWord.HasPartOfSpeechSection(PartOfSpeechSection.NaAdjectiveLike) ||
                  previousWord.PartOfSpeech == PartOfSpeech.NaAdjective))
             {
                 previousWord.Text += currentWord.Text;
@@ -736,10 +755,9 @@ public class Parser
             var nextWord = wordInfos[i];
 
             if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix))
-                && wordInfos[i].DictionaryForm != "っぽい" && wordInfos[i].DictionaryForm != "にくい" &&
-                wordInfos[i].DictionaryForm != "事" && wordInfos[i].DictionaryForm != "っぷり" &&
-                wordInfos[i].DictionaryForm != "ごと" &&
-                (wordInfos[i].DictionaryForm != "たち" || wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun))
+                && (wordInfos[i].DictionaryForm == "っこ" 
+                || wordInfos[i].DictionaryForm == "さ" 
+                || ((wordInfos[i].DictionaryForm == "たち" || wordInfos[i].DictionaryForm == "ら") && wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun)))
             {
                 currentWord.Text += nextWord.Text;
             }
