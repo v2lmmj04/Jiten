@@ -369,12 +369,17 @@ public static class JmDictHelper
         wordInfos.AddRange(GetCustomWords());
 
         var furiganas = await JsonSerializer.DeserializeAsync<List<JMDictFurigana>>(File.OpenRead(furiganaPath));
-        Dictionary<string, string> furiganaDict = new();
+        Dictionary<string, List<JMDictFurigana>> furiganaDict = new();
         foreach (var f in furiganas!)
         {
-            // We only take the first one
-            if (!furiganaDict.ContainsKey(f.Text))
-                furiganaDict.Add(f.Text, f.Parse());
+            // Store all furiganas with the same key
+            if (!furiganaDict.TryGetValue(f.Text, out var list))
+            {
+                list = new List<JMDictFurigana>();
+                furiganaDict.Add(f.Text, list);
+            }
+
+            list.Add(f);
         }
 
         await using var context = new JitenDbContext(options);
@@ -408,8 +413,29 @@ public static class JmDictHelper
                 }
                 else
                 {
-                    furiganaDict.TryGetValue(r, out var furiReading);
-                    reading.ReadingsFurigana.Add(furiReading ?? reading.Readings[i]);
+                    string? furiReading = null;
+
+                    // Try to find a matching furigana
+                    if (furiganaDict.TryGetValue(r, out var furiList) && furiList.Count > 0)
+                    {
+                        // Try to match one of the furiganas with the readings
+                        foreach (var furi in furiList)
+                        {
+                            // Check if the reading matches with any of the readings in the word
+                            if (reading.Readings.Contains(furi.Reading))
+                            {
+                                furiReading = furi.Parse();
+                                reading.ReadingsFurigana.Add(furiReading ?? reading.Readings[i]);
+                                break;
+                            }
+                        }
+
+                        // If no match found, error instead
+                        if (furiReading == null)
+                        {
+                            Console.WriteLine($"No furigana found for reading {r}");
+                        }
+                    }
                 }
             }
 
@@ -417,8 +443,15 @@ public static class JmDictHelper
             reading.Lookups = lookups;
         }
 
+        // custom priorities
+        wordInfos.First(w => w.WordId == 1332650).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 2848543).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1160790).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1203260).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1397260).Priorities?.Add("jiten");
+        
         context.JMDictWords.AddRange(wordInfos);
-
+        
         await context.SaveChangesAsync();
 
         return true;
