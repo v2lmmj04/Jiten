@@ -442,8 +442,9 @@ public class Parser
                  currentWord.HasPartOfSpeechSection(PartOfSpeechSection.Numeral)) &&
                 AmountCombinations.Combinations.Contains((currentWord.Text, nextWord.Text)))
             {
+                var text = currentWord.Text + nextWord.Text;
                 currentWord = new WordInfo(nextWord);
-                currentWord.Text += nextWord.Text;
+                currentWord.Text = text;
                 currentWord.PartOfSpeech = PartOfSpeech.Noun;
             }
             else

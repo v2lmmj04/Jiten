@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+using Jiten.Core.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using WanaKanaShaapu;
@@ -335,6 +336,14 @@ namespace Jiten.Parser
         private static bool DeconjugateWord((WordInfo wordInfo, int occurrences) wordData, out DeckWord? processedWord)
         {
             string text = wordData.wordInfo.Text;
+            
+            // Exclude full digits or single latin character
+            if (text.All(char.IsDigit) || (text.Length == 1 && text.IsAsciiOrFullWidthLetter()))
+            {
+                processedWord = null;
+                return false;
+            }
+
             if (!_lookups.TryGetValue(text, out List<int>? candidates))
             {
                 text =
