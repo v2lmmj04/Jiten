@@ -293,7 +293,7 @@ public class Parser
                 i++;
                 continue;
             }
-            
+
             if (w1.Text == "絶対無理")
             {
                 var zettai = new WordInfo
@@ -306,13 +306,13 @@ public class Parser
                                Text = "無理", DictionaryForm = "無理", PartOfSpeech = PartOfSpeech.NaAdjective,
                                PartOfSpeechSection1 = PartOfSpeechSection.None, Reading = "むり"
                            };
-            
+
                 newList.Add(zettai);
                 newList.Add(muri);
                 i++;
                 continue;
             }
-            
+
             // I'm not sure why this happens, but sudachi thinks those words are proper nouns
             if (w1.Text == "俺の")
             {
@@ -332,6 +332,45 @@ public class Parser
                 i += 1;
                 continue;
             }
+
+            if (w1.Text == "風使い")
+            {
+                var kaze = new WordInfo
+                           {
+                               Text = "風", DictionaryForm = "風", PartOfSpeech = PartOfSpeech.Noun,
+                               PartOfSpeechSection1 = PartOfSpeechSection.CommonNoun, Reading = "かぜ"
+                           };
+                var tsukai = new WordInfo
+                             {
+                                 Text = "使い", PartOfSpeech = PartOfSpeech.Noun, PartOfSpeechSection1 = PartOfSpeechSection.CommonNoun,
+                                 Reading = "つかい", DictionaryForm = "使い"
+                             };
+
+                newList.Add(kaze);
+                newList.Add(tsukai);
+                i += 1;
+                continue;
+            }
+
+            if (w1.Text == "能力者")
+            {
+                var nouryoku = new WordInfo
+                               {
+                                   Text = "能力", DictionaryForm = "能力", PartOfSpeech = PartOfSpeech.Noun,
+                                   PartOfSpeechSection1 = PartOfSpeechSection.CommonNoun, Reading = "のうりょく"
+                               };
+                var sha = new WordInfo
+                          {
+                              Text = "者", PartOfSpeech = PartOfSpeech.Suffix, PartOfSpeechSection1 = PartOfSpeechSection.CommonNoun,
+                              Reading = "しゃ", DictionaryForm = "者"
+                          };
+
+                newList.Add(nouryoku);
+                newList.Add(sha);
+                i += 1;
+                continue;
+            }
+
 
             if (w1.Text == "泣きながら")
             {
@@ -694,7 +733,8 @@ public class Parser
             }
 
             if (currentWord.Text == "な" &&
-                (previousWord.HasPartOfSpeechSection(PartOfSpeechSection.PossibleNaAdjective) || previousWord.HasPartOfSpeechSection(PartOfSpeechSection.NaAdjectiveLike) ||
+                (previousWord.HasPartOfSpeechSection(PartOfSpeechSection.PossibleNaAdjective) ||
+                 previousWord.HasPartOfSpeechSection(PartOfSpeechSection.NaAdjectiveLike) ||
                  previousWord.PartOfSpeech == PartOfSpeech.NaAdjective))
             {
                 previousWord.Text += currentWord.Text;
@@ -755,9 +795,10 @@ public class Parser
             var nextWord = wordInfos[i];
 
             if ((wordInfos[i].PartOfSpeech == PartOfSpeech.Suffix || wordInfos[i].HasPartOfSpeechSection(PartOfSpeechSection.Suffix))
-                && (wordInfos[i].DictionaryForm == "っこ" 
-                || wordInfos[i].DictionaryForm == "さ" 
-                || ((wordInfos[i].DictionaryForm == "たち" || wordInfos[i].DictionaryForm == "ら") && wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun)))
+                && (wordInfos[i].DictionaryForm == "っこ"
+                    || wordInfos[i].DictionaryForm == "さ"
+                    || ((wordInfos[i].DictionaryForm == "たち" || wordInfos[i].DictionaryForm == "ら") &&
+                        wordInfos[i - 1].PartOfSpeech == PartOfSpeech.Pronoun)))
             {
                 currentWord.Text += nextWord.Text;
             }

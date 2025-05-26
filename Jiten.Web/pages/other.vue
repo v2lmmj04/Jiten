@@ -33,8 +33,6 @@
 
 <template>
   <div>
-    {{status}}
-    {{error}}
     <div>A global frequency list of all the words</div>
     <Button @click="downloadFile">Download Frequency List</Button>
     <div v-if="status === 'success'" class="pt-2">

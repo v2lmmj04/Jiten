@@ -458,6 +458,12 @@ public static class JmDictHelper
         wordInfos.First(w => w.WordId == 1160790).Priorities?.Add("jiten");
         wordInfos.First(w => w.WordId == 1203260).Priorities?.Add("jiten");
         wordInfos.First(w => w.WordId == 1397260).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1499720).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1315130).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1315130).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1191730).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 2844190).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 2207630).Priorities?.Add("jiten");
         
         context.JMDictWords.AddRange(wordInfos);
         
