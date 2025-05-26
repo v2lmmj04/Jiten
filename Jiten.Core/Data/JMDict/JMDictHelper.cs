@@ -405,6 +405,9 @@ public static class JmDictHelper
                 {
                     lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = lookupKeyWithoutLongVowelMark });
                 }
+                
+                if (WanaKana.IsKatakana(r) && !lookups.Any(l => l.WordId == reading.WordId && l.LookupKey == r))
+                    lookups.Add(new JmDictLookup { WordId = reading.WordId, LookupKey = r });
 
                 // For single kanjis only words, the furigana deck will probably be wrong, so we need an alternative
                 if (r.Length == 1 && WanaKana.IsKanji(r))
@@ -430,11 +433,17 @@ public static class JmDictHelper
                             }
                         }
 
-                        // If no match found, error instead
+                        // If no match found, show error and add the current reading instead
                         if (furiReading == null)
                         {
                             Console.WriteLine($"No furigana found for reading {r}");
+                            reading.ReadingsFurigana.Add(reading.Readings[i]);
                         }
+                    }
+                    // Probably kana reading
+                    else
+                    {
+                        reading.ReadingsFurigana.Add(reading.Readings[i]);
                     }
                 }
             }

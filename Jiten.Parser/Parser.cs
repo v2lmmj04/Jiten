@@ -329,7 +329,7 @@ public class Parser
 
                 newList.Add(ore);
                 newList.Add(no);
-                i += 2;
+                i += 1;
                 continue;
             }
 
@@ -348,7 +348,7 @@ public class Parser
 
                 newList.Add(naki);
                 newList.Add(nagara);
-                i += 2;
+                i += 1;
                 continue;
             }
 

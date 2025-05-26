@@ -334,11 +334,17 @@ namespace Jiten.Parser
 
         private static bool DeconjugateWord((WordInfo wordInfo, int occurrences) wordData, out DeckWord? processedWord)
         {
-            var textInHiragana =
-                WanaKana.ToHiragana(wordData.wordInfo.Text,
-                                    new DefaultOptions { ConvertLongVowelMark = false });
+            string text = wordData.wordInfo.Text;
+            if (!_lookups.TryGetValue(text, out List<int>? candidates))
+            {
+                text =
+                    WanaKana.ToHiragana(wordData.wordInfo.Text,
+                                        new DefaultOptions { ConvertLongVowelMark = false });
+                _lookups.TryGetValue(text, out candidates);
+            }
 
-            if (_lookups.TryGetValue(textInHiragana, out List<int> candidates))
+
+            if (candidates is { Count: not 0 })
             {
                 candidates = candidates.OrderBy(c => c).ToList();
 
@@ -370,16 +376,15 @@ namespace Jiten.Parser
                     bestMatch = matches[0];
 
                 var normalizedReadings =
-                    bestMatch.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false }))
-                             .ToList();
-                byte readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
+                    bestMatch.Readings.ToList();
+                byte readingIndex = (byte)normalizedReadings.IndexOf(text);
 
                 // not found, try with converting the long vowel mark
                 if (readingIndex == 255)
                 {
                     normalizedReadings =
                         bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                    readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
+                    readingIndex = (byte)normalizedReadings.IndexOf(text);
                 }
 
                 DeckWord deckWord = new()
