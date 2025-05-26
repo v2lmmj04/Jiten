@@ -305,8 +305,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     [HttpGet("{id}/download")]
     [EnableRateLimiting("download")]
     public async Task<IResult> DownloadDeck(int id, DeckFormat format, DeckDownloadType downloadType, DeckOrder order,
-                                            int minFrequency = 0, int maxFrequency = 0, bool excludeKana = false,
-                                            bool excludeFullWidthDigits = false)
+                                            int minFrequency = 0, int maxFrequency = 0, bool excludeKana = false)
     {
         var deck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == id);
 
@@ -398,8 +397,6 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                     if (excludeKana && WanaKana.IsKana(expression))
                         continue;
 
-                    if (excludeFullWidthDigits && expression.All(char.IsDigit))
-                        continue;
 
                     // Need a space before the kanjis for lapis
                     string kanjiPatternPart = @"\p{IsCJKUnifiedIdeographs}";
@@ -472,8 +469,6 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                     if (excludeKana && WanaKana.IsKana(reading))
                         continue;
 
-                    if (excludeFullWidthDigits && reading.All(char.IsDigit))
-                        continue;
 
                     string readingFurigana = jmdictWords[word.WordId].ReadingsFurigana[word.ReadingIndex];
                     string pitchPositions = "";
@@ -502,10 +497,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                     string reading = jmdictWords[word.WordId].Readings[word.ReadingIndex];
                     if (excludeKana && WanaKana.IsKana(reading))
                         continue;
-
-                    if (excludeFullWidthDigits && reading.All(char.IsDigit))
-                        continue;
-
+                    
                     txtSb.AppendLine(reading);
                 }
 
@@ -517,9 +509,6 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 {
                     string reading = jmdictWords[word.WordId].Readings[word.ReadingIndex];
                     if (excludeKana && WanaKana.IsKana(reading))
-                        continue;
-
-                    if (excludeFullWidthDigits && reading.All(char.IsDigit))
                         continue;
 
                     for (int i = 0; i < word.Occurrences; i++)

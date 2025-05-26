@@ -43,6 +43,9 @@ public class Program
 
         [Option("dic", Required = false, HelpText = "Path to the JMdict dictionary file.")]
         public string DictionaryPath { get; set; }
+        
+        [Option("namedic", Required = false, HelpText = "Path to the JMNedict dictionary file.")]
+        public string NameDictionaryPath { get; set; }
 
         [Option("furi", Required = false, HelpText = "Path to the JMDict Furigana dictionary file.")]
         public string FuriganaPath { get; set; }
@@ -142,6 +145,7 @@ public class Program
 
                             Console.WriteLine("Importing JMdict...");
                             await JmDictHelper.Import(_dbOptions, o.XmlPath, o.DictionaryPath, o.FuriganaPath);
+                            await JmDictHelper.ImportJMNedict(_dbOptions, o.NameDictionaryPath);
                         }
 
                         if (o.ExtractFilePath != null)

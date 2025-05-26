@@ -328,7 +328,7 @@ public class AdminController(IConfiguration config, HttpClient httpClient, IBack
     public async Task<IActionResult> ReparseMediaByType(MediaType mediaType)
     {
         var mediaToReparse = await dbContext.Decks.AsNoTracking()
-                                            .Where(d => d.MediaType == mediaType)
+                                            .Where(d => d.MediaType == mediaType && d.ParentDeck == null)
                                             .ToListAsync();
 
         if (!mediaToReparse.Any())

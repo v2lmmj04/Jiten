@@ -44,10 +44,10 @@ namespace Jiten.Parser
             optionsBuilder.UseNpgsql(connectionString, o => { o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery); });
 
             await using var context = new JitenDbContext(optionsBuilder.Options);
-            
+
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
-            
+
             while (true)
             {
                 var text = Console.ReadLine();
@@ -336,7 +336,7 @@ namespace Jiten.Parser
         private static bool DeconjugateWord((WordInfo wordInfo, int occurrences) wordData, out DeckWord? processedWord)
         {
             string text = wordData.wordInfo.Text;
-            
+
             // Exclude full digits or single latin character
             if (text.All(char.IsDigit) || (text.Length == 1 && text.IsAsciiOrFullWidthLetter()))
             {
@@ -344,15 +344,18 @@ namespace Jiten.Parser
                 return false;
             }
 
-            if (!_lookups.TryGetValue(text, out List<int>? candidates))
+            _lookups.TryGetValue(text, out List<int>? candidates);
+            var textInHiragana = WanaKana.ToHiragana(wordData.wordInfo.Text, new DefaultOptions { ConvertLongVowelMark = false });
+            _lookups.TryGetValue(textInHiragana, out var candidatesHiragana);
+
+            // Add candidatesInHiragana to candidates, deduplicate 
+            if (candidatesHiragana is { Count: not 0 })
             {
-                text =
-                    WanaKana.ToHiragana(wordData.wordInfo.Text,
-                                        new DefaultOptions { ConvertLongVowelMark = false });
-                _lookups.TryGetValue(text, out candidates);
+                candidates ??= new List<int>();
+                candidates.AddRange(candidatesHiragana);
+                candidates = candidates.Distinct().ToList();
             }
-
-
+            
             if (candidates is { Count: not 0 })
             {
                 candidates = candidates.OrderBy(c => c).ToList();
@@ -388,12 +391,28 @@ namespace Jiten.Parser
                     bestMatch.Readings.ToList();
                 byte readingIndex = (byte)normalizedReadings.IndexOf(text);
 
+                // not found, try with hiragana form
+                if (readingIndex == 255)
+                {
+                    var normalizedHiraganaReadings =
+                        bestMatch.Readings.Select(r => WanaKana.ToHiragana(r, new DefaultOptions() { ConvertLongVowelMark = false }))
+                                 .ToList();
+                    readingIndex = (byte)normalizedHiraganaReadings.IndexOf(textInHiragana);
+                }
+
                 // not found, try with converting the long vowel mark
                 if (readingIndex == 255)
                 {
                     normalizedReadings =
                         bestMatch.Readings.Select(r => WanaKana.ToHiragana(r)).ToList();
-                    readingIndex = (byte)normalizedReadings.IndexOf(text);
+                    readingIndex = (byte)normalizedReadings.IndexOf(textInHiragana);
+                }
+
+                // Still not found, skip the word completely
+                if (readingIndex == 255)
+                {
+                    processedWord = null;
+                    return false;
                 }
 
                 DeckWord deckWord = new()
