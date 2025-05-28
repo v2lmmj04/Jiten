@@ -34,9 +34,8 @@ public class ParseJob(JitenDbContext context)
             {
                 text = await File.ReadAllTextAsync(filePath);
             }
-            
-            deck = await Parser.Program.ParseTextToDeck(context, text, storeRawText);
 
+            deck = await Parser.Program.ParseTextToDeck(context, text, storeRawText, true, deckType);
         }
 
         // Process children recursively
@@ -54,7 +53,7 @@ public class ParseJob(JitenDbContext context)
 
         if (deckType is MediaType.Manga or MediaType.Anime or MediaType.Movie or MediaType.Drama)
             deck.SentenceCount = 0;
-        
+
         deck.RomajiTitle = metadata.RomajiTitle;
         deck.EnglishTitle = metadata.EnglishTitle;
         deck.Links = metadata.Links;
@@ -67,7 +66,8 @@ public class ParseJob(JitenDbContext context)
             link.Deck = deck;
         }
 
-        var coverImage = await File.ReadAllBytesAsync(metadata.Image ?? throw new Exception("No cover image found."));;
+        var coverImage = await File.ReadAllBytesAsync(metadata.Image ?? throw new Exception("No cover image found."));
+        ;
 
         // Insert the deck into the database
         await JitenHelper.InsertDeck(context.DbOptions, deck, coverImage ?? [], false);
@@ -101,7 +101,7 @@ public class ParseJob(JitenDbContext context)
                 text = await File.ReadAllTextAsync(filePath);
             }
 
-            deck = await Parser.Program.ParseTextToDeck(context, text, storeRawText);
+            deck = await Parser.Program.ParseTextToDeck(context, text, storeRawText, true, deckType);
             deck.ParentDeck = parentDeck;
             deck.DeckOrder = deckOrder;
             deck.OriginalTitle = metadata.OriginalTitle;

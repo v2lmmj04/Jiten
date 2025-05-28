@@ -20,7 +20,7 @@ public class ReparseJob(JitenDbContext context)
 
         if (deck.Children.Count == 0)
         {
-            Deck newDeck = await Parser.Program.ParseTextToDeck(context, deck.RawText.RawText, true);
+            Deck newDeck = await Parser.Program.ParseTextToDeck(context, deck.RawText.RawText, true, true, deck.MediaType);
             deck.CharacterCount = newDeck.CharacterCount;
             deck.WordCount = newDeck.WordCount;
             deck.UniqueWordCount = newDeck.UniqueWordCount;
@@ -29,7 +29,9 @@ public class ReparseJob(JitenDbContext context)
             deck.UniqueKanjiUsedOnceCount = newDeck.UniqueKanjiUsedOnceCount;
             deck.SentenceCount = newDeck.SentenceCount;
             deck.DeckWords = newDeck.DeckWords;
-            
+            deck.Difficulty = newDeck.Difficulty;
+            deck.DialoguePercentage = newDeck.DialoguePercentage;
+
             if (deck.MediaType is MediaType.Manga or MediaType.Anime or MediaType.Movie or MediaType.Drama)
                 deck.SentenceCount = 0;
         }
@@ -41,8 +43,8 @@ public class ReparseJob(JitenDbContext context)
                 if (child.RawText == null)
                     throw new Exception($"Child deck with ID {child.DeckId} has no raw text to reparse.");
 
-                Deck newDeck =  await Parser.Program.ParseTextToDeck(context, child.RawText.RawText, true);
-                
+                Deck newDeck = await Parser.Program.ParseTextToDeck(context, child.RawText.RawText, true, true, child.MediaType);
+
                 children[i].CharacterCount = newDeck.CharacterCount;
                 children[i].WordCount = newDeck.WordCount;
                 children[i].UniqueWordCount = newDeck.UniqueWordCount;
@@ -51,7 +53,9 @@ public class ReparseJob(JitenDbContext context)
                 children[i].UniqueKanjiUsedOnceCount = newDeck.UniqueKanjiUsedOnceCount;
                 children[i].SentenceCount = newDeck.SentenceCount;
                 children[i].DeckWords = newDeck.DeckWords;
-                
+                children[i].Difficulty = newDeck.Difficulty;
+                children[i].DialoguePercentage = newDeck.DialoguePercentage;
+
                 if (children[i].MediaType is MediaType.Manga or MediaType.Anime or MediaType.Movie or MediaType.Drama)
                     children[i].SentenceCount = 0;
             }
@@ -59,9 +63,9 @@ public class ReparseJob(JitenDbContext context)
             deck.Children = children;
             await deck.AddChildDeckWords(context);
         }
-        
+
         deck.LastUpdate = DateTime.UtcNow;
-        
+
         await JitenHelper.InsertDeck(context.DbOptions, deck, [], true);
     }
 }

@@ -23,6 +23,7 @@ public class DeckDto
     public List<Link> Links { get; set; } = new List<Link>();
     public int ChildrenDeckCount { get; set; }
     public int SelectedWordOccurrences { get; set; }
+    public float DialoguePercentage { get; set; }
 
     public DeckDto(){}
 
@@ -47,6 +48,7 @@ public class DeckDto
         Links = deck.Links;
         ChildrenDeckCount = deck.Children.Count;
         SelectedWordOccurrences = occurrences;
+        DialoguePercentage = deck.DialoguePercentage;
     }
 
     public DeckDto(Deck deck)
@@ -69,5 +71,6 @@ public class DeckDto
         ParentDeckId = deck.ParentDeckId;
         Links = deck.Links;
         ChildrenDeckCount = deck.Children.Count;
+        DialoguePercentage = deck.DialoguePercentage;
     }
 }

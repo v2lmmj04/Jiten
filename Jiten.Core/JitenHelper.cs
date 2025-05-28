@@ -85,6 +85,8 @@ public static class JitenHelper
         existingDeck.UniqueKanjiCount = deck.UniqueKanjiCount;
         existingDeck.UniqueKanjiUsedOnceCount = deck.UniqueKanjiUsedOnceCount;
         existingDeck.SentenceCount = deck.SentenceCount;
+        existingDeck.Difficulty = deck.Difficulty;
+        existingDeck.DialoguePercentage = deck.DialoguePercentage;
         existingDeck.RawText = deck.RawText;
 
         context.DeckWords.RemoveRange(existingDeck.DeckWords);
@@ -149,6 +151,8 @@ public static class JitenHelper
                 newChildDeck.UniqueKanjiCount = child.UniqueKanjiCount;
                 newChildDeck.SentenceCount = child.SentenceCount;
                 newChildDeck.WordCount = child.WordCount;
+                newChildDeck.Difficulty = child.Difficulty;
+                newChildDeck.DialoguePercentage = child.DialoguePercentage;
                 newChildDeck.RawText = child.RawText;
 
                 foreach (var dw in child.DeckWords)
@@ -418,6 +422,9 @@ public static class JitenHelper
     /// </summary>
     public static async Task ComputeDifficulty(DbContextOptions<JitenDbContext> options, bool verbose, MediaType mediaType)
     {
+        Console.WriteLine("Legacy method, difficulty is done during parsing now");
+        return;
+        
         int averageWordDifficultyWeight = 25;
         int peakWordDifficultyWeight = 15;
         int characterCountWeight = 0;

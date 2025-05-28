@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Text.Unicode;
 using CommandLine;
 using Jiten.Cli;
+using Jiten.Cli.ML;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
@@ -43,7 +44,7 @@ public class Program
 
         [Option("dic", Required = false, HelpText = "Path to the JMdict dictionary file.")]
         public string DictionaryPath { get; set; }
-        
+
         [Option("namedic", Required = false, HelpText = "Path to the JMNedict dictionary file.")]
         public string NameDictionaryPath { get; set; }
 
@@ -105,6 +106,9 @@ public class Program
 
         [Option(longName: "import-pitch-accents", Required = false, HelpText = "Import pitch accents from a yomitan dictinoary directory.")]
         public string ImportPitchAccents { get; set; }
+
+        [Option(longName: "extract-features", Required = false, HelpText = "Extract features from directory for ML.")]
+        public string ExtractFeatures { get; set; }
     }
 
     static async Task Main(string[] args)
@@ -234,6 +238,14 @@ public class Program
                             Console.WriteLine("Importing pitch accents...");
                             await JmDictHelper.ImportPitchAccents(o.Verbose, _dbOptions, o.ImportPitchAccents);
                             Console.WriteLine("Pitch accents imported.");
+                        }
+
+                        if (!string.IsNullOrEmpty(o.ExtractFeatures))
+                        {
+                            Console.WriteLine("Extracting features...");
+                            var featureExtractor = new FeatureExtractor(_dbOptions);
+                            await featureExtractor.ExtractFeatures(Jiten.Parser.Program.ParseTextToDeck, o.ExtractFeatures);
+                            Console.WriteLine("All features extracted.");
                         }
 
                         if (o.Verbose)
@@ -430,7 +442,8 @@ public class Program
                     }
                 }
 
-                deck = await Jiten.Parser.Program.ParseTextToDeck(context, string.Join(Environment.NewLine, lines), _storeRawText);
+                deck = await Jiten.Parser.Program.ParseTextToDeck(context, string.Join(Environment.NewLine, lines), _storeRawText, true,
+                                                                  deckType);
                 deck.ParentDeck = parentDeck;
                 deck.DeckOrder = deckOrder;
                 deck.OriginalTitle = metadata.OriginalTitle;

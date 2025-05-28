@@ -79,7 +79,7 @@
                   <div v-if="deck.difficulty != 0" class="flex justify-between mb-2">
                     <span
                       v-tooltip="
-                        'This is a work in progress.\nThe current analysis only takes into account the vocabulary and not the grammar patterns, cultural references or wordplay, which might make some works easier or harder than the score they\'re given.'
+                        'This is a work in progress.\nIf you find scores that are way higher or lower than they should be, please report them so the algorithm can be refined further.'
                       "
                       class="text-gray-600 dark:text-gray-300"
                     >
@@ -91,6 +91,11 @@
                 </div>
 
                 <div class="w-full md:w-50">
+                  <div v-if="deck.dialoguePercentage != 0 && deck.dialoguePercentage != 100" class="flex justify-between mb-2">
+                    <span class="text-gray-600 dark:text-gray-300">Dialogue (%)</span>
+                    <span class="ml-8 tabular-nums">{{ deck.dialoguePercentage.toFixed(1) }}</span>
+                  </div>
+
                   <div v-if="deck.childrenDeckCount != 0" class="flex justify-between mb-2">
                     <span class="text-gray-600 dark:text-gray-300">{{ getChildrenCountText(deck.mediaType) }}</span>
                     <span class="ml-8 tabular-nums">{{ deck.childrenDeckCount.toLocaleString() }}</span>

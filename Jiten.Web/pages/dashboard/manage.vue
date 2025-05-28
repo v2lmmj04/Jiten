@@ -222,25 +222,25 @@
         </template>
       </Card>
 
-      <Card class="shadow-md">
-        <template #title>Recompute Difficulties</template>
-        <template #content>
-          <p class="mb-4">
-            Recompute all media difficulties.
-          </p>
+<!--      <Card class="shadow-md">-->
+<!--        <template #title>Recompute Difficulties</template>-->
+<!--        <template #content>-->
+<!--          <p class="mb-4">-->
+<!--            Recompute all media difficulties.-->
+<!--          </p>-->
 
-          <div class="flex justify-center">
-            <Button
-              label="Recompute Difficulties"
-              icon="pi pi-chart-line"
-              class="p-button-warning"
-              :disabled="isLoading.difficulties"
-              :loading="isLoading.difficulties"
-              @click="confirmRecomputeDifficulties"
-            />
-          </div>
-        </template>
-      </Card>
+<!--          <div class="flex justify-center">-->
+<!--            <Button-->
+<!--              label="Recompute Difficulties"-->
+<!--              icon="pi pi-chart-line"-->
+<!--              class="p-button-warning"-->
+<!--              :disabled="isLoading.difficulties"-->
+<!--              :loading="isLoading.difficulties"-->
+<!--              @click="confirmRecomputeDifficulties"-->
+<!--            />-->
+<!--          </div>-->
+<!--        </template>-->
+<!--      </Card>-->
     </div>
   </div>
 </template>

@@ -20,6 +20,7 @@ export interface Deck {
   links: Link[];
   childrenDeckCount: number;
   selectedWordOccurrences: number;
+  dialoguePercentage: number;
 }
 
 export interface DeckDetail {
