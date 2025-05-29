@@ -9,9 +9,27 @@ export function useApiFetch<T>(
   status: Ref<AsyncDataRequestStatus>;
   error: Ref<Error | null>;
 }> {
-  const config = useRuntimeConfig();
+  const { $api } = useNuxtApp();
+  const tokenCookie = useCookie('token');
 
-  const { data, status, error } = useFetch<T>(request, { baseURL: config.public.baseURL, ...opts });
+  // Set default headers
+  const headers = new Headers(opts?.headers || {});
+
+  // Add authorization header if token exists
+  if (tokenCookie.value) {
+    headers.set('Authorization', `Bearer ${tokenCookie.value}`);
+  }
+
+  // Merge options with headers
+  const options = {
+    ...opts,
+    headers
+  };
+
+  const { data, status, error } = useFetch<T>(request, { 
+    baseURL: useRuntimeConfig().public.baseURL,
+    ...options
+  });
 
   return { data, status, error };
 }
@@ -25,11 +43,26 @@ export function useApiFetchPaginated<T>(
   error: Ref<Error | null>;
 }> {
   const config = useRuntimeConfig();
+  const tokenCookie = useCookie('token');
+
+  // Set default headers
+  const headers = new Headers(opts?.headers || {});
+
+  // Add authorization header if token exists
+  if (tokenCookie.value) {
+    headers.set('Authorization', `Bearer ${tokenCookie.value}`);
+  }
+
+  // Merge options with headers
+  const options = {
+    ...opts,
+    headers
+  };
 
   // Use useFetch without await, keeping the data reactive
   const { data, status, error } = useFetch<PaginatedResponse<T>>(request, {
     baseURL: config.public.baseURL,
-    ...opts,
+    ...options,
   });
 
   const paginatedData = computed(() => {

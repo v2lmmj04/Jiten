@@ -5,6 +5,7 @@ using Jiten.Api.Jobs;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.Providers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,7 @@ namespace Jiten.Api.Controllers;
 
 [ApiController]
 [Route("api/admin")]
+[Authorize("RequiresAdmin")]
 public class AdminController(IConfiguration config, HttpClient httpClient, IBackgroundJobClient backgroundJobs, JitenDbContext dbContext)
     : ControllerBase
 {

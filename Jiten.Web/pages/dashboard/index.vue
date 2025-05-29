@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import Card from 'primevue/card';
-import Button from 'primevue/button';
+  import Card from 'primevue/card';
+  import Button from 'primevue/button';
 
-useHead({
-  title: 'Dashboard - Jiten',
-});
+  useHead({
+    title: 'Dashboard - Jiten',
+  });
+
+  definePageMeta({
+    middleware: ['auth'],
+  });
 </script>
 
 <template>
@@ -17,11 +21,7 @@ useHead({
         <template #content>
           <p class="mb-4">Upload new media</p>
           <div class="flex justify-center">
-            <Button 
-              label="Add Media" 
-              class="p-button-primary"
-              @click="navigateTo('/dashboard/add-media')" 
-            />
+            <Button label="Add Media" class="p-button-primary" @click="navigateTo('/dashboard/add-media')" />
           </div>
         </template>
       </Card>
@@ -31,11 +31,7 @@ useHead({
         <template #content>
           <p class="mb-4">Missing titles, missing links, etc</p>
           <div class="flex justify-center">
-            <Button 
-              label="View Issues" 
-              class="p-button-primary"
-              @click="navigateTo('/dashboard/issues')" 
-            />
+            <Button label="View Issues" class="p-button-primary" @click="navigateTo('/dashboard/issues')" />
           </div>
         </template>
       </Card>
@@ -45,11 +41,7 @@ useHead({
         <template #content>
           <p class="mb-4">Reparse media, recompute frequencies & difficulty</p>
           <div class="flex justify-center">
-            <Button 
-              label="Manage"
-              class="p-button-primary"
-              @click="navigateTo('/dashboard/manage')"
-            />
+            <Button label="Manage" class="p-button-primary" @click="navigateTo('/dashboard/manage')" />
           </div>
         </template>
       </Card>
@@ -57,5 +49,4 @@ useHead({
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

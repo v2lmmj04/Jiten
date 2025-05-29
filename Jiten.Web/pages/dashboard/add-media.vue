@@ -15,6 +15,10 @@
     title: 'Add Media - Admin Dashboard - Jiten',
   });
 
+  definePageMeta({
+    middleware: ['auth'],
+  });
+
   const SCREEN_MEDIA_TYPE = 'media-type';
   const SCREEN_FILE_UPLOAD = 'file-upload';
   const currentScreen = ref(SCREEN_MEDIA_TYPE);

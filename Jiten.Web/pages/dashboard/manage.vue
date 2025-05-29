@@ -14,6 +14,10 @@
     title: 'Meta Administration - Jiten',
   });
 
+  definePageMeta({
+    middleware: ['auth'],
+  });
+
   const { $api } = useNuxtApp();
   const toast = useToast();
 

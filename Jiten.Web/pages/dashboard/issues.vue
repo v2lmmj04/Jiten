@@ -12,6 +12,10 @@
     title: 'Content Issues Dashboard - Jiten Admin',
   });
 
+  definePageMeta({
+    middleware: ['auth'],
+  });
+
   const { data: issuesData, status, error } = await useApiFetch<Issues>('admin/issues');
 
   const showIssuesDialog = ref(false);

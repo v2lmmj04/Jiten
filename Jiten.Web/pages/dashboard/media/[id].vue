@@ -21,6 +21,10 @@
     title: 'Edit Media - Admin Dashboard - Jiten',
   });
 
+  definePageMeta({
+    middleware: ['auth'],
+  });
+
   const selectedMediaType = ref<MediaType | null>(null);
   const toast = useToast();
   const { $api } = useNuxtApp();
@@ -509,8 +513,10 @@
             <DataTable :value="response.subDecks" class="p-datatable-sm">
               <Column field="deckId" header="ID" :sortable="true" />
               <Column field="originalTitle" header="Title" :sortable="true" />
+              <Column field="characterCount" header="Chars" :sortable="true" />
               <Column field="wordCount" header="Words" :sortable="true" />
               <Column field="uniqueWordCount" header="Unique Words" :sortable="true" />
+              <Column field="difficulty" header="Difficulty" :sortable="true" />
               <Column header="Actions">
                 <template #body="slotProps">
                   <Button

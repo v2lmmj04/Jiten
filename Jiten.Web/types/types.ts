@@ -130,3 +130,14 @@ export interface Issues {
   missingLinks: number[];
   zeroCharacters: number[];
 }
+
+export interface LoginRequest {
+  usernameOrEmail: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  accessToken: string;
+  accessTokenExpiration: Date;
+  refreshToken: string;
+}
