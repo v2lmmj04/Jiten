@@ -5,6 +5,6 @@ namespace Jiten.Cli.ML;
 public class PredictorInput
 {
     [ColumnName("float_input")]
-    [VectorType(39)]
+    [VectorType(38)]
     public float[] Features { get; set; }
 }

@@ -137,6 +137,10 @@ public class FeatureExtractor
         features.UniqueWordOnceCount = deck.UniqueWordUsedOnceCount;
         features.UniqueKanjiCount = deck.UniqueKanjiCount;
         features.UniqueKanjiOnceCount = deck.UniqueKanjiUsedOnceCount;
+        
+        if (deck.MediaType is MediaType.Manga or MediaType.Anime or MediaType.Movie or MediaType.Drama)
+            deck.SentenceCount = 0;
+        
         features.SentenceCount = deck.SentenceCount;
         features.AverageSentenceLength = deck.AverageSentenceLength;
         features.DialoguePercentage = deck.DialoguePercentage;
@@ -152,10 +156,7 @@ public class FeatureExtractor
 
         return features;
     }
-
-   
-
-
+  
     private static List<MLInputData> LoadInputData(string inputDirectory)
     {
         var data = new List<MLInputData>();

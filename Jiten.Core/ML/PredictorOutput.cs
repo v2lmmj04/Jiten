@@ -4,10 +4,11 @@ namespace Jiten.Cli.ML;
 
 public class PredictorOutput
 {
-    [ColumnName("variable")]
-    public float[] PredictedDifficultyArray { get; set; }
+    [ColumnName("label")]
+    public long[] PredictedLabel { get; set; }
 
-    public float PredictedDifficulty => PredictedDifficultyArray is { Length: > 0 }
-        ? PredictedDifficultyArray[0]
-        : float.NaN;
+
+  
+    public int PredictedDifficultyClass => (int)PredictedLabel[0];
+
 }

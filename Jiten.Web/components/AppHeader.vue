@@ -6,13 +6,13 @@
 
   import { useJitenStore } from '~/stores/jitenStore';
   const store = useJitenStore();
+  const tokenCookie = useCookie('token');
 
   onMounted(() => {
     if (store.darkMode) {
       document.documentElement.classList.add('dark-mode');
     }
   });
-
 
   function toggleDarkMode() {
     document.documentElement.classList.toggle('dark-mode');
@@ -35,6 +35,10 @@
   const displayFurigana = computed({
     get: () => store.displayFurigana,
     set: (value) => (store.displayFurigana = value),
+  });
+
+  const isAdmin = computed(() => {
+    return tokenCookie.value !== null && tokenCookie.value !== undefined && tokenCookie.value !== '';
   });
 
   const displayAdminFunctions = computed({
@@ -81,6 +85,7 @@
           <nuxt-link to="/decks/media" class="!text-white">Media</nuxt-link>
           <nuxt-link to="/other" class="!text-white">Other</nuxt-link>
           <nuxt-link to="/faq" class="!text-white">FAQ</nuxt-link>
+          <nuxt-link v-if="store.displayAdminFunctions" to="/Dashboard" class="!text-white">Dashboard</nuxt-link>
           <Button
             type="button"
             label="Share"
@@ -121,7 +126,7 @@
         <label for="displayFurigana">Display Furigana</label>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div v-if="isAdmin" class="flex items-center gap-2">
         <Checkbox v-model="displayAdminFunctions" input-id="displayAdminFunctions" name="adminFunctions" :binary="true" />
         <label for="displayAdminFunctions">Display admin functions</label>
       </div>
