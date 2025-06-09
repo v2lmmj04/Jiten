@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import type { Deck } from '~/types';
+  import { type Deck, MediaType } from '~/types';
   import Card from 'primevue/card';
   import { getChildrenCountText, getMediaTypeText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
@@ -15,6 +15,8 @@
   const store = useJitenStore();
 
   const displayAdminFunctions = computed(() => store.displayAdminFunctions);
+  const readingSpeed = computed(() => store.readingSpeed);
+  const readingDuration = computed(() => Math.round(props.deck.characterCount / readingSpeed.value));
 
   const sortedLinks = computed(() => {
     return [...props.deck.links].sort((a, b) => {
@@ -80,24 +82,34 @@
                       Difficulty
                       <span class="text-purple-500 text-xs align-super"> beta </span>
                     </span>
-                    <span v-if="deck.difficulty == 0" class="ml-8 tabular-nums text-green-700 dark:text-green-300"> Beginner </span>
-                    <span v-else-if="deck.difficulty == 1" class="ml-8 tabular-nums text-green-500 dark:text-green-200"> Easy </span>
-                    <span v-else-if="deck.difficulty == 2" class="ml-8 tabular-nums text-yellow-600 dark:text-yellow-300"> Moderate </span>
-                    <span v-else-if="deck.difficulty == 3" class="ml-8 tabular-nums text-amber-600 dark:text-amber-300"> Hard </span>
-                    <span v-else-if="deck.difficulty == 4" class="ml-8 tabular-nums text-orange-600 dark:text-orange-300"> Very hard </span>
-                    <span v-else-if="deck.difficulty == 5" class="ml-8 tabular-nums text-red-600 dark:text-red-300"> Expert </span>
+                    <span v-tooltip="'1/6'" v-if="deck.difficulty == 0" class="ml-8 tabular-nums text-green-700 dark:text-green-300"> Beginner </span>
+                    <span v-tooltip="'2/6'" v-else-if="deck.difficulty == 1" class="ml-8 tabular-nums text-green-500 dark:text-green-200"> Easy </span>
+                    <span v-tooltip="'3/6'" v-else-if="deck.difficulty == 2" class="ml-8 tabular-nums text-yellow-600 dark:text-yellow-300"> Moderate </span>
+                    <span v-tooltip="'4/6'" v-else-if="deck.difficulty == 3" class="ml-8 tabular-nums text-amber-600 dark:text-amber-300"> Hard </span>
+                    <span v-tooltip="'5/6'" v-else-if="deck.difficulty == 4" class="ml-8 tabular-nums text-orange-600 dark:text-orange-300"> Very hard </span>
+                    <span v-tooltip="'6/6'" v-else-if="deck.difficulty == 5" class="ml-8 tabular-nums text-red-600 dark:text-red-300"> Expert </span>
                   </div>
                 </div>
 
                 <div class="w-full md:w-50">
                   <div v-if="deck.dialoguePercentage != 0 && deck.dialoguePercentage != 100" class="flex justify-between mb-2">
-                    <span class="text-gray-600 dark:text-gray-300">Dialogue (%)</span>
-                    <span class="ml-8 tabular-nums">{{ deck.dialoguePercentage.toFixed(1) }}</span>
+                    <span class="text-gray-600 dark:text-gray-300">Dialogue</span>
+                    <span class="ml-8 tabular-nums">{{ deck.dialoguePercentage.toFixed(1) }}%</span>
                   </div>
 
                   <div v-if="deck.childrenDeckCount != 0" class="flex justify-between mb-2">
                     <span class="text-gray-600 dark:text-gray-300">{{ getChildrenCountText(deck.mediaType) }}</span>
                     <span class="ml-8 tabular-nums">{{ deck.childrenDeckCount.toLocaleString() }}</span>
+                  </div>
+
+                  <div
+                    v-if="deck.mediaType == MediaType.Novel || deck.mediaType == MediaType.NonFiction || deck.mediaType == MediaType.VisualNovel || deck.mediaType == MediaType.WebNovel"
+                    v-tooltip="'Based on your reading speed in the settings:\n ' + readingSpeed + ' characters per hour.'"
+                    class="flex justify-between mb-2"
+                  >
+                    <span class="text-gray-600 dark:text-gray-300">Duration <i class="pi pi-info-circle cursor-pointer text-primary-500"></i></span>
+                    <span class="ml-8 tabular-nums">{{ (readingDuration > 0 ? readingDuration : "<1") }} h</span>
+
                   </div>
 
                   <div v-if="deck.selectedWordOccurrences != 0" class="flex justify-between mb-2">

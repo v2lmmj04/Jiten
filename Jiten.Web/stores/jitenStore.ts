@@ -54,5 +54,18 @@ export const useJitenStore = defineStore('jiten', () => {
     displayAdminFunctionsCookie.value = newValue;
   });
 
-  return { titleLanguage, displayFurigana, darkMode, displayAdminFunctions };
+  const readingSpeedCookie = useCookie<number>('jiten-reading-speed', {
+    default: () => 14000,
+    watch: true,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+    path: '/',
+  });
+
+  const readingSpeed = ref<number>(readingSpeedCookie.value);
+
+  watch(readingSpeed, (newValue) => {
+    readingSpeedCookie.value = newValue;
+  });
+
+  return { titleLanguage, displayFurigana, darkMode, displayAdminFunctions, readingSpeed };
 });
