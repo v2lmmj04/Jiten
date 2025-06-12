@@ -297,40 +297,66 @@ public static class JitenHelper
             }
         }
 
+        // Apply logarithmic scaling + document frequency formula
+        foreach (var word in wordFrequencies.Values)
+        {
+            // Store the raw count in ObservedFrequency temporarily
+            word.ObservedFrequency = word.FrequencyRank;
+            
+            // Apply the formula: Score = log(1 + TotalOccurrences) * UsedInMediaAmount
+            double score = Math.Log(1 + word.FrequencyRank) * word.UsedInMediaAmount;
+            word.FrequencyRank = (int)Math.Round(score * 100); // Scale up for better ranking precision
+            
+            // Apply the same formula to readings
+            for (int j = 0; j < word.ReadingsFrequencyRank.Count; j++)
+            {
+                // Store the raw count in ReadingsObservedFrequency temporarily
+                word.ReadingsObservedFrequency[j] = word.ReadingsFrequencyRank[j];
+                
+                // Apply the formula: Score = log(1 + TotalOccurrences) * UsedInMediaAmount
+                double readingScore = Math.Log(1 + word.ReadingsFrequencyRank[j]) * word.ReadingsUsedInMediaAmount[j];
+                word.ReadingsFrequencyRank[j] = (int)Math.Round(readingScore * 100); // Scale up for better ranking precision
+            }
+        }
+        
+        // Sort by the new scores (descending)
         var sortedWordFrequencies = wordFrequencies.Values
-                                                   .OrderByDescending(w => w
-                                                                          .FrequencyRank)
+                                                   .OrderByDescending(w => w.FrequencyRank)
                                                    .ToList();
-
-
-        long totalOccurrences = sortedWordFrequencies.Sum(w => (long)w.FrequencyRank);
-
+        
+        // Calculate total occurrences based on raw counts (stored temporarily in ObservedFrequency)
+        long totalOccurrences = sortedWordFrequencies.Sum(w => (long)w.ObservedFrequency);
+        
         int currentRank = 0;
-        int previousRawFrequency = -1;
+        int previousScore = -1;
         int rankStep = 0;
-
+        
         for (int i = 0; i < sortedWordFrequencies.Count; i++)
         {
             var word = sortedWordFrequencies[i];
-
-            int wordRawFrequencyCount = word.FrequencyRank;
-
+            
+            int wordRawFrequencyCount = (int)word.ObservedFrequency;
+            int wordScore = word.FrequencyRank;
+        
             for (int j = 0; j < word.ReadingsObservedFrequency.Count; j++)
             {
+                // Calculate reading frequency percentage based on raw counts
+                double readingRawCount = word.ReadingsObservedFrequency[j];
+                
                 // Prevent division by zero
                 if (totalOccurrences > 0)
-                    word.ReadingsObservedFrequency[j] = word.ReadingsFrequencyRank[j] / (double)totalOccurrences;
+                    word.ReadingsObservedFrequency[j] = readingRawCount / (double)totalOccurrences;
                 else
                     word.ReadingsObservedFrequency[j] = 0;
-
+        
                 // Prevent division by zero
                 if (wordRawFrequencyCount > 0)
-                    word.ReadingsFrequencyPercentage[j] = (word.ReadingsFrequencyRank[j] / (double)wordRawFrequencyCount) * 100.0;
+                    word.ReadingsFrequencyPercentage[j] = (readingRawCount / (double)wordRawFrequencyCount) * 100.0;
                 else
                     word.ReadingsFrequencyPercentage[j] = 0;
             }
-
-            // Prevent division by zero
+        
+            // Calculate observed frequency based on raw counts
             if (totalOccurrences > 0)
             {
                 word.ObservedFrequency = wordRawFrequencyCount / (double)totalOccurrences;
@@ -339,18 +365,20 @@ public static class JitenHelper
             {
                 word.ObservedFrequency = 0;
             }
-
-            if (wordRawFrequencyCount != previousRawFrequency)
+        
+            // Assign ranks based on the new scores
+            if (wordScore != previousScore)
             {
                 currentRank += rankStep;
                 rankStep = 1;
-                previousRawFrequency = wordRawFrequencyCount;
+                previousScore = wordScore;
             }
             else
             {
                 rankStep++;
             }
-
+        
+            // Store the final rank
             word.FrequencyRank = currentRank + 1;
         }
 
@@ -358,16 +386,15 @@ public static class JitenHelper
 
         foreach (var wordFreq in sortedWordFrequencies)
         {
-            foreach (int readingRawFreq in wordFreq.ReadingsFrequencyRank)
+            foreach (int readingScore in wordFreq.ReadingsFrequencyRank)
             {
-                if (readingRawFreq <= 0) continue;
-
-                readingFrequencyCounts.TryGetValue(readingRawFreq, out int currentCount);
-                readingFrequencyCounts[readingRawFreq] = currentCount + 1;
+                if (readingScore <= 0) continue;
+        
+                readingFrequencyCounts.TryGetValue(readingScore, out int currentCount);
+                readingFrequencyCounts[readingScore] = currentCount + 1;
             }
         }
-
-
+        
         // Sort frequencies descending and calculate ranks
         var sortedReadingFrequencies = readingFrequencyCounts.OrderByDescending(kvp => kvp.Key).ToList();
         var readingFrequencyFinalRanks = new Dictionary<int, int>();
@@ -377,20 +404,20 @@ public static class JitenHelper
             readingFrequencyFinalRanks.Add(kvp.Key, currentRank);
             currentRank += kvp.Value; // Increment rank by the number of readings sharing this frequency
         }
-
+        
         int zeroReadingRank = currentRank;
-
+        
         // Assign the calculated ranks back to the readings
         foreach (var wordFreq in sortedWordFrequencies)
         {
             for (int i = 0; i < wordFreq.ReadingsFrequencyRank.Count; i++)
             {
-                int readingRawFreq = wordFreq.ReadingsFrequencyRank[i];
-
-                // Check if this reading had a non-zero frequency and find its rank
-                if (readingRawFreq > 0 && readingFrequencyFinalRanks.TryGetValue(readingRawFreq, out int finalRank))
+                int readingScore = wordFreq.ReadingsFrequencyRank[i];
+        
+                // Check if this reading had a non-zero score and find its rank
+                if (readingScore > 0 && readingFrequencyFinalRanks.TryGetValue(readingScore, out int finalRank))
                 {
-                    // Overwrite raw count with final rank
+                    // Overwrite score with final rank
                     wordFreq.ReadingsFrequencyRank[i] = finalRank;
                 }
                 else
