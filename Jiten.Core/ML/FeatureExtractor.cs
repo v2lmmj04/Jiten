@@ -77,7 +77,7 @@ public class FeatureExtractor
 
 
                     if (currentCompleted % MLConfig.SaveInterval == 0 || currentCompleted == itemsToProcess.Count)
-                        await SaveResultsAsync(MLConfig.OutputCsvPath, currentCompleted == itemsToProcess.Count);
+                        await SaveResults(Path.Combine(inputDirectory, MLConfig.OutputCsvPath), currentCompleted == itemsToProcess.Count);
                 }
             });
         }
@@ -96,7 +96,7 @@ public class FeatureExtractor
             if (_allFeaturesList.Count > _lastSaveCount)
             {
                 Console.WriteLine("Performing final save...");
-                await SaveResultsAsync(MLConfig.OutputCsvPath, true);
+                await SaveResults(Path.Combine(inputDirectory, MLConfig.OutputCsvPath), true);
             }
 
             mainStopwatch.Stop();
@@ -109,7 +109,8 @@ public class FeatureExtractor
     }
 
 
-    public async Task<ExtractedFeatures> ProcessFileAsync(MLInputData mlInput, Func<JitenDbContext, string, bool, bool, MediaType, Task<Deck>> parseFunction)
+    public async Task<ExtractedFeatures> ProcessFileAsync(MLInputData mlInput,
+                                                          Func<JitenDbContext, string, bool, bool, MediaType, Task<Deck>> parseFunction)
     {
         var features = new ExtractedFeatures { Filename = mlInput.OriginalFileName, DifficultyRating = mlInput.DifficultyScore };
 
@@ -137,10 +138,10 @@ public class FeatureExtractor
         features.UniqueWordOnceCount = deck.UniqueWordUsedOnceCount;
         features.UniqueKanjiCount = deck.UniqueKanjiCount;
         features.UniqueKanjiOnceCount = deck.UniqueKanjiUsedOnceCount;
-        
+
         if (deck.MediaType is MediaType.Manga or MediaType.Anime or MediaType.Movie or MediaType.Drama)
             deck.SentenceCount = 0;
-        
+
         features.SentenceCount = deck.SentenceCount;
         features.AverageSentenceLength = deck.AverageSentenceLength;
         features.DialoguePercentage = deck.DialoguePercentage;
@@ -150,13 +151,13 @@ public class FeatureExtractor
 
         MLHelper.ExtractCharacterCounts(content, features);
 
-        await MLHelper.ExtractFrequencyStats(_context,deckWords, features);
+        await MLHelper.ExtractFrequencyStats(_context, deckWords, features);
 
         MLHelper.ExtractConjugationStats(deckWords, features);
 
         return features;
     }
-  
+
     private static List<MLInputData> LoadInputData(string inputDirectory)
     {
         var data = new List<MLInputData>();
@@ -208,7 +209,7 @@ public class FeatureExtractor
         return data;
     }
 
-    private static async Task SaveResultsAsync(string outputPath, bool isFinalSave)
+    private static async Task SaveResults(string outputPath, bool isFinalSave)
     {
         Console.WriteLine($"Attempting to save {(_allFeaturesList.Count - _lastSaveCount)} new results (total {_allFeaturesList.Count})...");
         if (!_allFeaturesList.Any()) return;

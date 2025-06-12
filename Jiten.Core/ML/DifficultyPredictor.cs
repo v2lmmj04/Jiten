@@ -14,20 +14,17 @@ using System.Threading.Tasks;
 
 public class DifficultyPredictor
 {
-    private readonly FeatureExtractor _featureExtractor;
     private readonly MLContext _mlContext;
     private readonly PredictionEngine<PredictorInput, PredictorOutput> _predictionEngine;
     private readonly DbContextOptions<JitenDbContext> _dbOptions;
 
     private readonly List<string> _featureOrder;
-    private readonly string[] _classNames = { "Beginner", "Upper Beginner", "Lower Intermediate", "Upper Intermediate", "Advanced", "Expert" };
 
     public DifficultyPredictor(
         DbContextOptions<JitenDbContext> dbOptions,
         string modelPath)
     {
         _dbOptions = dbOptions;
-        _featureExtractor = new FeatureExtractor(dbOptions);
 
         _mlContext = new MLContext(seed: 0);
 
@@ -120,7 +117,6 @@ public class DifficultyPredictor
             MLHelper.ExtractConjugationStats(deckWords, extractedFeatures);
         }
 
-
         // 3. Convert ExtractedFeatures to float[] in the correct order
         var featureVector = new float[_featureOrder.Count];
         var featureMap = GetFeatureMap(extractedFeatures);
@@ -159,12 +155,12 @@ public class DifficultyPredictor
         // 4. Predict
         var prediction = _predictionEngine.Predict(predictorInput);
         var predictedDifficulty = prediction.PredictedDifficulty[0];
-        
+
         Console.WriteLine("Predicted difficulty (not rounded): " + predictedDifficulty + "");
-        
+
         var rounded = (float)Math.Clamp(Math.Round(predictedDifficulty), 0, 5);
 
-        
+
         return rounded;
     }
 
@@ -187,7 +183,7 @@ public class DifficultyPredictor
                       { "MaxFreqRank", features.MaxFreqRank }, { "AvgLogObsFreq", features.AvgLogObsFreq },
                       { "MedianLogObsFreq", features.MedianLogObsFreq }, { "StdLogObsFreq", features.StdLogObsFreq },
                       { "MinObsFreq", features.MinObsFreq }, { "MaxObsFreq", features.MaxObsFreq },
-                      { "LowFreqRankPerc", features.LowFreqRankPerc },/* { "LowFreqObsPerc", features.LowFreqObsPerc },*/
+                      { "LowFreqRankPerc", features.LowFreqRankPerc }, /* { "LowFreqObsPerc", features.LowFreqObsPerc },*/
                       { "AvgReadingFreqRank", features.AvgReadingFreqRank }, { "MedianReadingFreqRank", features.MedianReadingFreqRank },
                       { "AvgReadingObsFreq", features.AvgReadingObsFreq }, { "MedianReadingObsFreq", features.MedianReadingObsFreq },
                       { "AvgReadingFreqPerc", features.AvgReadingFreqPerc }, { "MedianReadingFreqPerc", features.MedianReadingFreqPerc },
