@@ -67,5 +67,82 @@ export const useJitenStore = defineStore('jiten', () => {
     readingSpeedCookie.value = newValue;
   });
 
-  return { titleLanguage, displayFurigana, darkMode, displayAdminFunctions, readingSpeed };
+  const getKnownWordIds = (): number[] => {
+    if (import.meta.client) {
+      try {
+        const stored = localStorage.getItem('jiten-known-word-ids');
+        return stored ? JSON.parse(stored) : [];
+      } catch (error) {
+        console.error('Error reading known word IDs from localStorage:', error);
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const setKnownWordIds = (wordIds: number[]) => {
+    if (import.meta.client) {
+      try {
+        localStorage.setItem('jiten-known-word-ids', JSON.stringify(wordIds));
+      } catch (error) {
+        console.error('Error saving known word IDs to localStorage:', error);
+      }
+    }
+  };
+
+  const knownWordIds = ref<number[]>([]);
+  let isInitialized = false;
+
+  const ensureInitialized = () => {
+    if (!isInitialized && import.meta.client) {
+      knownWordIds.value = getKnownWordIds();
+      isInitialized = true;
+    }
+  };
+
+  onMounted(() => {
+    ensureInitialized();
+  });
+
+  watch(
+    knownWordIds,
+    (newValue) => {
+      if (isInitialized) {
+        setKnownWordIds(newValue);
+      }
+    },
+    { deep: true }
+  );
+
+  function addKnownWordIds(wordIds: number[]) {
+    const uniqueWordIds = [...new Set([...knownWordIds.value, ...wordIds])];
+    knownWordIds.value = uniqueWordIds;
+    console.log(`Added ${wordIds.length} word IDs. Total: ${uniqueWordIds.length}`);
+  }
+  
+  function removeKnownWordId(wordId: number) {
+    knownWordIds.value = knownWordIds.value.filter((id) => id !== wordId);
+  }
+
+  function isWordKnown(wordId: number): boolean {
+    ensureInitialized();
+    return knownWordIds.value.includes(wordId);
+  }
+
+  return {
+    // actions
+    getKnownWordIds,
+    addKnownWordIds,
+    removeKnownWordId,
+    setKnownWordIds,
+    isWordKnown,
+
+    // state
+    titleLanguage,
+    displayFurigana,
+    darkMode,
+    displayAdminFunctions,
+    readingSpeed,
+    knownWordIds,
+  };
 });

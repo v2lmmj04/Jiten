@@ -142,3 +142,13 @@ export interface TokenResponse {
   accessTokenExpiration: Date;
   refreshToken: string;
 }
+
+export interface DeckCoverage {
+  deckId: number;
+  totalWordCount: number;
+  knownWordsOccurrences: number;
+  knownUniqueWordCount: number;
+  uniqueWordCount: number;
+  knownWordPercentage: number;
+  knownUniqueWordPercentage: number;
+}

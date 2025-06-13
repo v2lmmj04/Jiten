@@ -117,4 +117,55 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
 
         return Results.Ok(allWords);
     }
+
+
+    [HttpGet("vocabulary-list-frequency/{minFrequency}/{maxFrequency}")]
+    public IResult GetVocabularyByMediaFrequencyRange(int minFrequency, int maxFrequency)
+    {
+        var query = context.JmDictWordFrequencies.Where(f => f.FrequencyRank >= minFrequency && f.FrequencyRank <= maxFrequency);
+
+        return Results.Ok(query.Select(f => f.WordId).ToList());
+    }
+
+    [HttpPost("vocabulary-from-anki-txt")]
+    public async Task<IResult> ParseAnkiTxt(IFormFile? file)
+    {
+        if (file == null || file.Length == 0)
+            return Results.BadRequest("File is empty or not provided");
+
+        using var reader = new StreamReader(file.OpenReadStream());
+        var lineCount = 0;
+        var validWords = new List<string>();
+
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            lineCount++;
+
+            if (lineCount > 50000)
+                return Results.BadRequest("File has more than 50,000 lines");
+
+            // Skip comments
+            if (line.StartsWith("#"))
+                continue;
+
+            // Find the first word that ends with a tab
+            var tabIndex = line.IndexOf('\t');
+
+            if (tabIndex <= 0) continue;
+
+            var word = line.Substring(0, tabIndex);
+
+            // Skip words longer than 25 characters
+            if (word.Length <= 25)
+            {
+                validWords.Add(word);
+            }
+        }
+
+        var combinedText = string.Join(Environment.NewLine, validWords);
+        var parsedWords = await Parser.Program.ParseText(context, combinedText);
+        var wordIds = parsedWords.Select(w => w.WordId).ToList();
+
+        return Results.Ok(wordIds);
+    }
 }

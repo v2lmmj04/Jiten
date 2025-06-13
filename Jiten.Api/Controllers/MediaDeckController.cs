@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using AnkiNet;
 using Jiten.Api.Dtos;
+using Jiten.Api.Dtos.Requests;
 using Jiten.Api.Enums;
 using Jiten.Api.Helpers;
 using Jiten.Core;
@@ -164,6 +165,8 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         return new PaginatedResponse<List<DeckDto>>(dtos, totalCount, pageSize, offset ?? 0);
     }
 
+   
+    
     [HttpGet("{id}/vocabulary")]
     [ResponseCache(Duration = 600, VaryByQueryKeys = ["id", "sortBy", "sortOrder", "offset"])]
     public PaginatedResponse<DeckVocabularyListDto?> GetVocabulary(int id, string? sortBy = "", SortOrder sortOrder = SortOrder.Ascending,
@@ -305,10 +308,9 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         return new PaginatedResponse<DeckDetailDto?>(dto, totalCount, pageSize, offset ?? 0);
     }
 
-    [HttpGet("{id}/download")]
+    [HttpPost("{id}/download")]
     [EnableRateLimiting("download")]
-    public async Task<IResult> DownloadDeck(int id, DeckFormat format, DeckDownloadType downloadType, DeckOrder order,
-                                            int minFrequency = 0, int maxFrequency = 0, bool excludeKana = false)
+    public async Task<IResult> DownloadDeck(int id, [FromBody] DeckDownloadRequest request)
     {
         var deck = context.Decks.AsNoTracking().FirstOrDefault(d => d.DeckId == id);
 
@@ -318,8 +320,11 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         }
 
         IQueryable<DeckWord> deckWordsQuery = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
+        
+        if (request.ExcludeKnownWords && request.KnownWordIds != null)
+            deckWordsQuery = deckWordsQuery.Where(dw => !request.KnownWordIds.Contains(dw.WordId));
 
-        switch (downloadType)
+        switch (request.DownloadType)
         {
             case DeckDownloadType.Full:
                 break;
@@ -328,28 +333,28 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 // Get the words between frequency rank minFrequency and maxFrequency
                 deckWordsQuery = deckWordsQuery.Where(dw => context.JmDictWordFrequencies
                                                                    .Any(f => f.WordId == dw.WordId &&
-                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] >= minFrequency &&
-                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] <= maxFrequency));
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] >= request.MinFrequency &&
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] <= request.MaxFrequency));
                 break;
 
             case DeckDownloadType.TopDeckFrequency:
                 deckWordsQuery = deckWordsQuery
                                  .OrderByDescending(dw => dw.Occurrences)
-                                 .Skip(minFrequency)
-                                 .Take(maxFrequency - minFrequency);
+                                 .Skip(request.MinFrequency)
+                                 .Take(request.MaxFrequency - request.MinFrequency);
                 break;
 
             case DeckDownloadType.TopChronological:
                 deckWordsQuery = deckWordsQuery
                                  .OrderBy(dw => dw.DeckWordId)
-                                 .Skip(minFrequency)
-                                 .Take(maxFrequency - minFrequency);
+                                 .Skip(request.MinFrequency)
+                                 .Take(request.MaxFrequency - request.MinFrequency);
                 break;
             default:
                 return Results.BadRequest();
         }
 
-        switch (order)
+        switch (request.Order)
         {
             case DeckOrder.Chronological:
                 deckWordsQuery = deckWordsQuery.OrderBy(dw => dw.DeckWordId);
@@ -380,7 +385,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         var frequencies = context.JmDictWordFrequencies.Where(f => wordIds.Contains(f.WordId))
                                  .ToDictionary(f => f.WordId, f => f);
 
-        switch (format)
+        switch (request.Format)
         {
             case DeckFormat.Anki:
 
@@ -397,7 +402,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 {
                     string expression = jmdictWords[word.WordId].Readings[word.ReadingIndex];
 
-                    if (excludeKana && WanaKana.IsKana(expression))
+                    if (request.ExcludeKana && WanaKana.IsKana(expression))
                         continue;
 
 
@@ -469,7 +474,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 {
                     string reading = jmdictWords[word.WordId].Readings[word.ReadingIndex];
 
-                    if (excludeKana && WanaKana.IsKana(reading))
+                    if (request.ExcludeKana && WanaKana.IsKana(reading))
                         continue;
 
 
@@ -498,7 +503,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 foreach (var word in deckWords)
                 {
                     string reading = jmdictWords[word.WordId].Readings[word.ReadingIndex];
-                    if (excludeKana && WanaKana.IsKana(reading))
+                    if (request.ExcludeKana && WanaKana.IsKana(reading))
                         continue;
 
                     txtSb.AppendLine(reading);
@@ -511,7 +516,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 foreach (var word in deckWords)
                 {
                     string reading = jmdictWords[word.WordId].Readings[word.ReadingIndex];
-                    if (excludeKana && WanaKana.IsKana(reading))
+                    if (request.ExcludeKana && WanaKana.IsKana(reading))
                         continue;
 
                     for (int i = 0; i < word.Occurrences; i++)
@@ -523,6 +528,50 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
             default:
                 return Results.BadRequest();
         }
+    }
+    
+    [HttpPost("{id}/coverage")]
+    public async Task<ActionResult<DeckCoverageResponse>> GetCoverage(int id, [FromBody] List<int>? wordIds)
+    {
+        if (wordIds == null || !wordIds.Any())
+        {
+            return BadRequest("Please provide a valid list of words");
+        }
+        
+        var deck = await context.Decks.AsNoTracking()
+                                .FirstOrDefaultAsync(d => d.DeckId == id);
+            
+        if (deck == null)
+        {
+            return NotFound($"Deck with ID {id} not found");
+        }
+        
+        var deckWords = await context.DeckWords.AsNoTracking()
+                                     .Where(dw => dw.DeckId == id)
+                                     .ToListAsync();
+
+        var knownUniqueWords = deckWords
+            .Where(dw => wordIds.Contains(dw.WordId)).ToList();
+        
+        int knownWordsOccurrences = knownUniqueWords
+                                    .Sum(dw => dw.Occurrences);
+
+        double knownWordPercentage = Math.Round((double)knownWordsOccurrences / deck.WordCount * 100, 2);
+        
+        double knownUniqueWordPercentage = Math.Round((double)knownUniqueWords.Count() / deck.UniqueWordCount * 100, 2);
+            
+        var response = new DeckCoverageResponse
+                       {
+                           DeckId = id,
+                           TotalWordCount = deck.WordCount,
+                           KnownUniqueWordCount = knownUniqueWords.Count(),
+                           UniqueWordCount = deck.UniqueWordCount,
+                           KnownWordsOccurrences = knownWordsOccurrences,
+                           KnownWordPercentage = knownWordPercentage,
+                           KnownUniqueWordPercentage = knownUniqueWordPercentage
+                       };
+        
+        return Ok(response);
     }
 
     [HttpGet("decks-count")]

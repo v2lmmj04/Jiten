@@ -1,9 +1,10 @@
 <script setup lang="ts">
-  import { type Deck, MediaType } from '~/types';
+  import { type Deck, MediaType, type DeckCoverage } from '~/types';
   import Card from 'primevue/card';
   import { getChildrenCountText, getMediaTypeText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
   import { useJitenStore } from '~/stores/jitenStore';
+  import CoverageDialog from '~/components/CoverageDialog.vue';
 
   const props = defineProps<{
     deck: Deck;
@@ -11,8 +12,12 @@
   }>();
 
   const showDownloadDialog = ref(false);
+  const showCoverageDialog = ref(false);
+  const isLoadingCoverage = ref(false);
+  const coverageData = ref<DeckCoverage | null>(null);
 
   const store = useJitenStore();
+  const { $api } = useNuxtApp();
 
   const displayAdminFunctions = computed(() => store.displayAdminFunctions);
   const readingSpeed = computed(() => store.readingSpeed);
@@ -25,6 +30,29 @@
       return textA.localeCompare(textB);
     });
   });
+
+  const fetchCoverage = async () => {
+    isLoadingCoverage.value = true;
+    try {
+      const wordIds = store.getKnownWordIds();
+
+      const bodyPayload = wordIds || [];
+
+      const data = await $api<DeckCoverage>(`media-deck/${props.deck.deckId}/coverage`, {
+        method: 'POST',
+        body: JSON.stringify(bodyPayload),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      coverageData.value = data;
+      showCoverageDialog.value = true;
+    } catch (error) {
+      console.error('Error fetching coverage data:', error);
+    } finally {
+      isLoadingCoverage.value = false;
+    }
+  };
 </script>
 
 <template>
@@ -103,13 +131,17 @@
                   </div>
 
                   <div
-                    v-if="deck.mediaType == MediaType.Novel || deck.mediaType == MediaType.NonFiction || deck.mediaType == MediaType.VisualNovel || deck.mediaType == MediaType.WebNovel"
+                    v-if="
+                      deck.mediaType == MediaType.Novel ||
+                      deck.mediaType == MediaType.NonFiction ||
+                      deck.mediaType == MediaType.VisualNovel ||
+                      deck.mediaType == MediaType.WebNovel
+                    "
                     v-tooltip="'Based on your reading speed in the settings:\n ' + readingSpeed + ' characters per hour.'"
                     class="flex justify-between mb-2"
                   >
                     <span class="text-gray-600 dark:text-gray-300">Duration <i class="pi pi-info-circle cursor-pointer text-primary-500"></i></span>
-                    <span class="ml-8 tabular-nums">{{ (readingDuration > 0 ? readingDuration : "<1") }} h</span>
-
+                    <span class="ml-8 tabular-nums">{{ readingDuration > 0 ? readingDuration : '<1' }} h</span>
                   </div>
 
                   <div v-if="deck.selectedWordOccurrences != 0" class="flex justify-between mb-2">
@@ -127,7 +159,8 @@
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/detail`" label="View details" class="" />
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/vocabulary`" label="View vocabulary" class="" />
                   <Button @click="showDownloadDialog = true" label="Download deck" class="" />
-                  <Button v-if="displayAdminFunctions" as="router-link" :to="`/dashboard/media/${deck.deckId}`" label="Edit" class="" />
+                  <Button v-if="!isCompact" @click="fetchCoverage" label="Coverage" class="" />
+                  <Button v-if="!isCompact && displayAdminFunctions" as="router-link" :to="`/dashboard/media/${deck.deckId}`" label="Edit" class="" />
                 </div>
               </div>
             </div>
@@ -138,6 +171,15 @@
   </Card>
 
   <MediaDeckDownloadDialog :deck="deck" :visible="showDownloadDialog" @update:visible="showDownloadDialog = $event" />
+  <CoverageDialog :visible="showCoverageDialog" :coverage="coverageData" :deck="deck" @update:visible="showCoverageDialog = $event" />
+
+  <!-- Loading overlay -->
+  <div v-if="isLoadingCoverage" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div class="text-center">
+      <i class="pi pi-spin pi-spinner text-white text-5xl"></i>
+      <div class="text-white mt-4 text-xl">Getting your coverage, this could take a few seconds...</div>
+    </div>
+  </div>
 </template>
 
 <style scoped></style>
