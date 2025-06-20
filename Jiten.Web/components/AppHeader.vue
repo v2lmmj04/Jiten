@@ -1,9 +1,6 @@
 <script setup lang="ts">
   import Button from 'primevue/button';
 
-  // retrieve dakr mode from the stroe on mounted
-  // and set it to the document element
-
   import { useJitenStore } from '~/stores/jitenStore';
 
   const store = useJitenStore();
@@ -36,6 +33,11 @@
   const displayFurigana = computed({
     get: () => store.displayFurigana,
     set: (value) => (store.displayFurigana = value),
+  });
+
+  const displayAllNsfw = computed({
+    get: () => store.displayAllNsfw,
+    set: (value) => (store.displayAllNsfw = value),
   });
 
   const isAdmin = computed(() => {
@@ -142,6 +144,11 @@
       <div class="flex items-center gap-2">
         <Checkbox v-model="displayFurigana" input-id="displayFurigana" name="furigana" :binary="true" />
         <label for="displayFurigana">Display Furigana</label>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <Checkbox v-model="displayAllNsfw" input-id="displayAllNsfw" name="nsfw" :binary="true" />
+        <label for="displayAllNsfw">Unblur all NSFW sentences</label>
       </div>
 
       <div v-if="isAdmin" class="flex items-center gap-2">

@@ -15,7 +15,7 @@ public class DeckDto
     public int WordCount { get; set; }
     public int UniqueWordCount { get; set; }
     public int UniqueWordUsedOnceCount { get; set; }
-    public int UniqueKanjiCount { get; set; } // Unique Kanji count
+    public int UniqueKanjiCount { get; set; }
     public int UniqueKanjiUsedOnceCount { get; set; }
     public int Difficulty { get; set; }
     public int SentenceCount { get; set; }
@@ -26,7 +26,9 @@ public class DeckDto
     public int SelectedWordOccurrences { get; set; }
     public float DialoguePercentage { get; set; }
 
-    public DeckDto(){}
+    public DeckDto()
+    {
+    }
 
     public DeckDto(Deck deck, int occurrences)
     {
@@ -43,7 +45,7 @@ public class DeckDto
         UniqueWordUsedOnceCount = deck.UniqueWordUsedOnceCount;
         UniqueKanjiCount = deck.UniqueKanjiCount;
         UniqueKanjiUsedOnceCount = deck.UniqueKanjiUsedOnceCount;
-        Difficulty = deck.Difficulty;
+        Difficulty = (int)Math.Round(deck.Difficulty);
         SentenceCount = deck.SentenceCount;
         AverageSentenceLength = deck.AverageSentenceLength;
         ParentDeckId = deck.ParentDeckId;
@@ -68,7 +70,7 @@ public class DeckDto
         UniqueWordUsedOnceCount = deck.UniqueWordUsedOnceCount;
         UniqueKanjiCount = deck.UniqueKanjiCount;
         UniqueKanjiUsedOnceCount = deck.UniqueKanjiUsedOnceCount;
-        Difficulty = deck.Difficulty;
+        Difficulty = (int)Math.Round(deck.Difficulty);
         SentenceCount = deck.SentenceCount;
         AverageSentenceLength = deck.AverageSentenceLength;
         ParentDeckId = deck.ParentDeckId;

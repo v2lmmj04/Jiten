@@ -67,6 +67,19 @@ export const useJitenStore = defineStore('jiten', () => {
     readingSpeedCookie.value = newValue;
   });
 
+  const displayAllNsfwCookie = useCookie<boolean>('jiten-display-all-nsfw', {
+    default: () => false,
+    watch: true,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+    path: '/',
+  });
+
+  const displayAllNsfw = ref<boolean>(displayAllNsfwCookie.value);
+
+  watch(displayAllNsfw, (newValue) => {
+    displayAllNsfwCookie.value = newValue;
+  });
+
   const getKnownWordIds = (): number[] => {
     if (import.meta.client) {
       try {
@@ -144,5 +157,6 @@ export const useJitenStore = defineStore('jiten', () => {
     displayAdminFunctions,
     readingSpeed,
     knownWordIds,
+    displayAllNsfw,
   };
 });

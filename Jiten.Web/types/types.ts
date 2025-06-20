@@ -152,3 +152,11 @@ export interface DeckCoverage {
   knownWordPercentage: number;
   knownUniqueWordPercentage: number;
 }
+
+export interface ExampleSentence {
+  text: string;
+  wordPosition: number;
+  wordLength: number;
+  sourceDeck: Deck;
+  sourceDeckParent: Deck;
+}

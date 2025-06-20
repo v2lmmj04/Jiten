@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Jiten.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jiten.Core.Migrations
 {
     [DbContext(typeof(JitenDbContext))]
-    partial class JitenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250620210319_ExampleSentencesReadingIndex")]
+    partial class ExampleSentencesReadingIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -207,8 +210,8 @@ namespace Jiten.Core.Migrations
 
                     b.HasKey("ExampleSentenceId", "WordId", "Position");
 
-                    b.HasIndex("WordId", "ReadingIndex")
-                        .HasDatabaseName("IX_ExampleSentenceWord_WordIdReadingIndex");
+                    b.HasIndex("WordId")
+                        .HasDatabaseName("IX_ExampleSentenceWord_WordId");
 
                     b.ToTable("ExampleSentenceWords", "jiten");
                 });

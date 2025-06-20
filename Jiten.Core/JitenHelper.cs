@@ -21,6 +21,7 @@ public static class JitenHelper
                              .Include(d => d.DeckWords)
                              .Include(d => d.Children).ThenInclude(d => d.DeckWords).OrderBy(d => d.DeckOrder)
                              .Include(d => d.RawText)
+                             .Include(d => d.ExampleSentences)
                              .FirstOrDefaultAsync(d => d.OriginalTitle == deck.OriginalTitle && d.MediaType == deck.MediaType);
 
             if (existingDeck != null)
@@ -63,6 +64,11 @@ public static class JitenHelper
 
                 await BulkInsertDeckWords(context, deckWordsToInsert, deck.DeckId);
 
+                if (deck.ExampleSentences != null && deck.ExampleSentences.Any())
+                {
+                    await BulkInsertExampleSentences(context, deck.ExampleSentences, deck.DeckId);
+                }
+                
                 await InsertChildDecks(context, deck.Children, deck.DeckId);
                 
                 context.Entry(deck).State = EntityState.Modified;
@@ -104,6 +110,79 @@ public static class JitenHelper
             await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray());
         }
     }
+    
+    private static async Task BulkInsertExampleSentences(JitenDbContext context, ICollection<ExampleSentence> exampleSentences, int deckId)
+    {
+        if (!exampleSentences.Any()) return;
+    
+        const int batchSize = 1000;
+        var batches = exampleSentences.Chunk(batchSize);
+        var sentenceIdMapping = new Dictionary<ExampleSentence, int>();
+        
+        // First, insert all example sentences and keep track of their generated IDs
+        foreach (var batch in batches)
+        {
+            var sql = $@"
+                        INSERT INTO jiten.""ExampleSentences"" (""Text"", ""Position"", ""DeckId"") 
+                        VALUES {string.Join(", ", Enumerable.Range(0, batch.Length).Select(i => $"({{{i * 3}}}, {{{i * 3 + 1}}}, {{{i * 3 + 2}}})"))}
+                        RETURNING ""SentenceId""";
+                        
+            var parameters = new List<object>();
+            
+            foreach (var sentence in batch)
+            {
+                parameters.Add(sentence.Text);
+                parameters.Add(sentence.Position);
+                parameters.Add(deckId);
+            }
+            
+            var sentenceIds = await context.Database.SqlQueryRaw<int>(sql, parameters.ToArray()).ToListAsync();
+            
+            // Store the mapping between sentences and their IDs
+            for (int i = 0; i < batch.Length; i++)
+            {
+                sentenceIdMapping[batch[i]] = sentenceIds[i];
+                // Update the entity with the generated ID
+                batch[i].SentenceId = sentenceIds[i];
+                batch[i].DeckId = deckId;
+            }
+        }
+        
+        // Then, insert all example sentence words using the generated sentence IDs
+        var allWords = new List<ExampleSentenceWord>();
+        
+        foreach (var sentence in exampleSentences)
+        {
+            foreach (var word in sentence.Words)
+            {
+                word.ExampleSentenceId = sentence.SentenceId;
+                allWords.Add(word);
+            }
+        }
+        
+        if (!allWords.Any()) return;
+        
+        var wordBatches = allWords.Chunk(batchSize);
+        
+        foreach (var batch in wordBatches)
+        {
+            var sql = $@"
+                        INSERT INTO jiten.""ExampleSentenceWords"" (""ExampleSentenceId"", ""WordId"", ""ReadingIndex"", ""Position"", ""Length"") VALUES " +
+                      "";
+            var parameters = new List<object>();
+            var values = new List<string>();
+    
+            for (int i = 0; i < batch.Length; i++)
+            {
+                var word = batch[i];
+                values.Add($"({{{parameters.Count}}}, {{{parameters.Count + 1}}}, {{{parameters.Count + 2}}}, {{{parameters.Count + 3}}}, {{{parameters.Count + 4}}})");
+                parameters.AddRange([word.ExampleSentenceId, word.WordId, word.ReadingIndex, word.Position, word.Length]);
+            }
+    
+            sql += string.Join(", ", values);
+            await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray());
+        }
+    }
 
     private static async Task UpdateDeck(JitenDbContext context, Deck existingDeck, Deck deck)
     {
@@ -127,7 +206,16 @@ public static class JitenHelper
 
         await context.Database.ExecuteSqlRawAsync($@"DELETE FROM jiten.""DeckWords"" WHERE ""DeckId"" = {{0}}", deckId);
 
+        // Delete existing example sentences (cascade will delete their words too)
+        await context.Database.ExecuteSqlRawAsync($@"DELETE FROM jiten.""ExampleSentences"" WHERE ""DeckId"" = {{0}}", deckId);
+    
         await BulkInsertDeckWords(context, deck.DeckWords, deckId);
+        
+        if (deck.ExampleSentences != null && deck.ExampleSentences.Any())
+        {
+            await BulkInsertExampleSentences(context, deck.ExampleSentences, deckId);
+        }
+        
         await UpdateChildDecks(context, existingDeck, deck.Children);
     }
 

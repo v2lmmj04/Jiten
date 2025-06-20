@@ -74,7 +74,7 @@ public class Deck
     /// <summary>
     ///  Difficulty rating from 0 to 100
     /// </summary>
-    public int Difficulty { get; set; }
+    public float Difficulty { get; set; }
 
     /// <summary>
     /// Amount of sentences
@@ -135,6 +135,11 @@ public class Deck
     /// Raw text from which the deck was parsed with
     /// </summary>
     public DeckRawText? RawText { get; set; }
+    
+    /// <summary>
+    /// Example sentences in this deck
+    /// </summary>
+    public ICollection<ExampleSentence>? ExampleSentences { get; set; } = new List<ExampleSentence>();
 
     private float _dialoguePercentage;
 

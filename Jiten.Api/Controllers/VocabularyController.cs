@@ -76,7 +76,7 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
         if (text.Length > 200)
             return Results.BadRequest("Text is too long");
 
-        var parsedWords = await Parser.Program.ParseText(context, text);
+        var parsedWords = await Parser.Parser.ParseText(context, text);
 
         // We want both parsed words and unparsed ones
         var allWords = new List<DeckWordDto>();
@@ -163,9 +163,44 @@ public class VocabularyController(JitenDbContext context) : ControllerBase
         }
 
         var combinedText = string.Join(Environment.NewLine, validWords);
-        var parsedWords = await Parser.Program.ParseText(context, combinedText);
+        var parsedWords = await Parser.Parser.ParseText(context, combinedText);
         var wordIds = parsedWords.Select(w => w.WordId).ToList();
 
         return Results.Ok(wordIds);
+    }
+
+    [HttpPost("{wordId}/{readingIndex}/random-example-sentences")]
+    public async Task<List<ExampleSentenceDto>> GetRandomExampleSentences(int wordId, int readingIndex, [FromBody] List<int> alreadyLoaded)
+    {
+        return await context.ExampleSentenceWords
+                            .AsNoTracking()
+                            .Where(w => w.WordId == wordId && w.ReadingIndex == readingIndex)
+                            .OrderBy(_ => EF.Functions.Random())
+                            .Take(3)
+                            .Join(
+                                  context.ExampleSentences.AsNoTracking()
+                                         .Where(s => !alreadyLoaded.Contains(s.DeckId)),
+                                  w => w.ExampleSentenceId,
+                                  s => s.SentenceId,
+                                  (word, sentence) => new { Word = word, Sentence = sentence }
+                                 )
+                            .Join(
+                                  context.Decks.AsNoTracking(),
+                                  joined => joined.Sentence.DeckId,
+                                  d => d.DeckId,
+                                  (joined, deck) => new { joined, deck }
+                                 )
+                            .GroupJoin(
+                                       context.Decks.AsNoTracking(),
+                                       j => j.deck.ParentDeckId,
+                                       pd => pd.DeckId,
+                                       (j, parentDecks) => new ExampleSentenceDto
+                                                           {
+                                                               Text = j.joined.Sentence.Text, WordPosition = j.joined.Word.Position,
+                                                               WordLength = j.joined.Word.Length, SourceDeck = j.deck,
+                                                               SourceDeckParent = parentDecks.FirstOrDefault()
+                                                           }
+                                      )
+                            .ToListAsync();
     }
 }

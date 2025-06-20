@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Jiten.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jiten.Core.Migrations
 {
     [DbContext(typeof(JitenDbContext))]
-    partial class JitenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250617165820_ExampleSentences")]
+    partial class ExampleSentences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -173,6 +176,9 @@ namespace Jiten.Core.Migrations
                     b.Property<int>("DeckId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("DeckId1")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Position")
                         .HasColumnType("integer");
 
@@ -184,6 +190,8 @@ namespace Jiten.Core.Migrations
 
                     b.HasIndex("DeckId")
                         .HasDatabaseName("IX_ExampleSentence_DeckId");
+
+                    b.HasIndex("DeckId1");
 
                     b.ToTable("ExampleSentences", "jiten");
                 });
@@ -199,16 +207,23 @@ namespace Jiten.Core.Migrations
                     b.Property<byte>("Position")
                         .HasColumnType("smallint");
 
+                    b.Property<int>("ExampleSentenceSentenceId")
+                        .HasColumnType("integer");
+
                     b.Property<byte>("Length")
                         .HasColumnType("smallint");
 
-                    b.Property<byte>("ReadingIndex")
-                        .HasColumnType("smallint");
+                    b.Property<int>("WordId1")
+                        .HasColumnType("integer");
 
                     b.HasKey("ExampleSentenceId", "WordId", "Position");
 
-                    b.HasIndex("WordId", "ReadingIndex")
-                        .HasDatabaseName("IX_ExampleSentenceWord_WordIdReadingIndex");
+                    b.HasIndex("ExampleSentenceSentenceId");
+
+                    b.HasIndex("WordId")
+                        .HasDatabaseName("IX_ExampleSentenceWord_WordId");
+
+                    b.HasIndex("WordId1");
 
                     b.ToTable("ExampleSentenceWords", "jiten");
                 });
@@ -409,9 +424,15 @@ namespace Jiten.Core.Migrations
 
             modelBuilder.Entity("Jiten.Core.Data.ExampleSentence", b =>
                 {
+                    b.HasOne("Jiten.Core.Data.Deck", null)
+                        .WithMany()
+                        .HasForeignKey("DeckId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Jiten.Core.Data.Deck", "Deck")
                         .WithMany("ExampleSentences")
-                        .HasForeignKey("DeckId")
+                        .HasForeignKey("DeckId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -420,15 +441,27 @@ namespace Jiten.Core.Migrations
 
             modelBuilder.Entity("Jiten.Core.Data.ExampleSentenceWord", b =>
                 {
-                    b.HasOne("Jiten.Core.Data.ExampleSentence", "ExampleSentence")
+                    b.HasOne("Jiten.Core.Data.ExampleSentence", null)
                         .WithMany("Words")
                         .HasForeignKey("ExampleSentenceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Jiten.Core.Data.JMDict.JmDictWord", "Word")
+                    b.HasOne("Jiten.Core.Data.ExampleSentence", "ExampleSentence")
+                        .WithMany()
+                        .HasForeignKey("ExampleSentenceSentenceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jiten.Core.Data.JMDict.JmDictWord", null)
                         .WithMany()
                         .HasForeignKey("WordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jiten.Core.Data.JMDict.JmDictWord", "Word")
+                        .WithMany()
+                        .HasForeignKey("WordId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
