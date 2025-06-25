@@ -20,7 +20,7 @@
     const bold = text.substring(wordPosition, wordPosition + wordLength);
     const after = text.substring(wordPosition + wordLength).trim();
 
-    return before + '<span class="text-primary-500 font-bold">' + bold + '</span>' + after;
+    return before + '<span class="text-primary-500 dark:text-primary-500 font-bold">' + bold + '</span>' + after;
   });
 
   const handleReveal = () => {
@@ -32,7 +32,7 @@
 
 <template>
   <div class="flex flex-col">
-    <blockquote class="relative inline-block border-l-4 border-primary-500 pl-5 pr-3 py-3 bg-gray-50 rounded-r shadow-sm overflow-hidden">
+    <blockquote class="relative inline-block border-l-4 border-primary-500 pl-5 pr-3 py-3 bg-gray-50 dark:bg-gray-900 rounded-r shadow-sm overflow-hidden">
       <div v-html="formattedText" class="text-lg transition-filter duration-200" :class="{ 'blur-sm': isNsfw && !isRevealed }" @click="handleReveal"></div>
       <div v-if="isNsfw && !isRevealed" class="absolute top-0 left-0 w-full h-full flex items-center justify-center cursor-pointer z-10" @click="handleReveal">
         <div class="text-center px-3 py-2 bg-white/80 backdrop-blur-md border border-red-300 text-red-600 text-sm font-semibold rounded shadow">

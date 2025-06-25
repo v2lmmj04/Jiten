@@ -9,5 +9,6 @@ public class DeckDownloadRequest
     public int MaxFrequency { get; set; }
     public bool ExcludeKana { get; set; }
     public bool ExcludeKnownWords { get; set; }
+    public bool ExcludeExampleSentences { get; set; }
     public List<int>? KnownWordIds { get; set; }
 }

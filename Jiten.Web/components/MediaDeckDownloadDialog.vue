@@ -101,6 +101,7 @@
   const excludeFullWidthDigits = ref(true);
   const excludeKana = ref(false);
   const excludeKnownWords = ref(false);
+  const excludeExampleSentences = ref(false);
 
   const downloadFile = async () => {
     try {
@@ -118,6 +119,7 @@
           maxFrequency: frequencyRange.value![1],
           excludeKana: excludeKana.value,
           excludeKnownWords: excludeKnownWords.value,
+          excludeExampleSentences: excludeExampleSentences.value,
           knownWordIds: knownWordIds
         },
         headers: {
@@ -222,6 +224,10 @@
               <div class="flex items-center gap-2">
                 <Checkbox v-model="excludeKana" input-id="excludeKana" name="kanaOnly" :binary="true" />
                 <label for="excludeKana">Exclude kana-only vocabulary</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <Checkbox v-model="excludeExampleSentences" input-id="excludeExampleSentences" name="noExampleSentences" :binary="true" />
+                <label for="excludeKana">Don't include example sentences</label>
               </div>
               <div class="flex items-center gap-2">
                 <Checkbox v-model="excludeKnownWords" input-id="excludeKnownWords" name="excludeKnownWords" :binary="true" />

@@ -93,7 +93,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 ? query.OrderBy(d => d.CharacterCount / (d.SentenceCount + 1)).Where(d => d.SentenceCount != 0)
                 : query.OrderByDescending(d => d.CharacterCount / (d.SentenceCount + 1)).Where(d => d.SentenceCount != 0),
             "dialoguePercentage" => sortOrder == SortOrder.Ascending
-            ? query.OrderBy(d => d.DialoguePercentage).Where(d => d.DialoguePercentage != 0 && d.DialoguePercentage != 100)
+                ? query.OrderBy(d => d.DialoguePercentage).Where(d => d.DialoguePercentage != 0 && d.DialoguePercentage != 100)
                 : query.OrderByDescending(d => d.DialoguePercentage).Where(d => d.DialoguePercentage != 0 && d.DialoguePercentage != 100),
             "wordCount" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.WordCount)
@@ -165,8 +165,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         return new PaginatedResponse<List<DeckDto>>(dtos, totalCount, pageSize, offset ?? 0);
     }
 
-   
-    
+
     [HttpGet("{id}/vocabulary")]
     [ResponseCache(Duration = 600, VaryByQueryKeys = ["id", "sortBy", "sortOrder", "offset"])]
     public PaginatedResponse<DeckVocabularyListDto?> GetVocabulary(int id, string? sortBy = "", SortOrder sortOrder = SortOrder.Ascending,
@@ -320,7 +319,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         }
 
         IQueryable<DeckWord> deckWordsQuery = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
-        
+
         if (request.ExcludeKnownWords && request.KnownWordIds != null)
             deckWordsQuery = deckWordsQuery.Where(dw => !request.KnownWordIds.Contains(dw.WordId));
 
@@ -333,8 +332,10 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 // Get the words between frequency rank minFrequency and maxFrequency
                 deckWordsQuery = deckWordsQuery.Where(dw => context.JmDictWordFrequencies
                                                                    .Any(f => f.WordId == dw.WordId &&
-                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] >= request.MinFrequency &&
-                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] <= request.MaxFrequency));
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] >=
+                                                                             request.MinFrequency &&
+                                                                             f.ReadingsFrequencyRank[dw.ReadingIndex] <=
+                                                                             request.MaxFrequency));
                 break;
 
             case DeckDownloadType.TopDeckFrequency:
@@ -385,6 +386,26 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         var frequencies = context.JmDictWordFrequencies.Where(f => wordIds.Contains(f.WordId))
                                  .ToDictionary(f => f.WordId, f => f);
 
+        var exampleSentences = await context.ExampleSentences
+                                            .AsNoTracking()
+                                            .Where(es => es.DeckId == id)
+                                            .Include(es => es.Words.Where(w => wordIds.Contains(w.WordId)))
+                                            .ToListAsync();
+
+        var wordToSentencesMap = new Dictionary<(int WordId, byte ReadingIndex), List<(string Text, byte Position, byte Length)>>();
+
+        foreach (var sentence in exampleSentences)
+        {
+            foreach (var word in sentence.Words.Where(w => wordIds.Contains(w.WordId)))
+            {
+                var key = (word.WordId, word.ReadingIndex);
+                if (!wordToSentencesMap.ContainsKey(key))
+                    wordToSentencesMap[key] = new List<(string, byte, byte)>();
+
+                wordToSentencesMap[key].Add((sentence.Text, word.Position, word.Length));
+            }
+        }
+
         switch (request.Format)
         {
             case DeckFormat.Anki:
@@ -425,6 +446,24 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                                             "</ul>";
                     string definitionPicture = "";
                     string sentence = "";
+
+                    if (!request.ExcludeExampleSentences &&
+                        wordToSentencesMap.TryGetValue((word.WordId, word.ReadingIndex), out var sentences) && sentences.Count > 0)
+                    {
+                        var exampleSentence = sentences.First();
+                        int position = exampleSentence.Position;
+                        int length = exampleSentence.Length;
+
+                        string originalText = exampleSentence.Text;
+                        if (position >= 0 && position + length <= originalText.Length)
+                        {
+                            sentence = originalText.Substring(0, position) +
+                                       "<span style=\"font-weight: 700; color: rgb(168, 85, 247);\">" +
+                                       originalText.Substring(position, length) + "</span>" +
+                                       originalText.Substring(position + length);
+                        }
+                    }
+
                     string sentenceFurigana = "";
                     string sentenceAudio = "";
                     string picture = "";
@@ -529,7 +568,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
                 return Results.BadRequest();
         }
     }
-    
+
     [HttpPost("{id}/coverage")]
     public async Task<ActionResult<DeckCoverageResponse>> GetCoverage(int id, [FromBody] List<int>? wordIds)
     {
@@ -537,40 +576,36 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
         {
             return BadRequest("Please provide a valid list of words");
         }
-        
+
         var deck = await context.Decks.AsNoTracking()
                                 .FirstOrDefaultAsync(d => d.DeckId == id);
-            
+
         if (deck == null)
         {
             return NotFound($"Deck with ID {id} not found");
         }
-        
+
         var deckWords = await context.DeckWords.AsNoTracking()
                                      .Where(dw => dw.DeckId == id)
                                      .ToListAsync();
 
         var knownUniqueWords = deckWords
-            .Where(dw => wordIds.Contains(dw.WordId)).ToList();
-        
+                               .Where(dw => wordIds.Contains(dw.WordId)).ToList();
+
         int knownWordsOccurrences = knownUniqueWords
-                                    .Sum(dw => dw.Occurrences);
+            .Sum(dw => dw.Occurrences);
 
         double knownWordPercentage = Math.Round((double)knownWordsOccurrences / deck.WordCount * 100, 2);
-        
+
         double knownUniqueWordPercentage = Math.Round((double)knownUniqueWords.Count() / deck.UniqueWordCount * 100, 2);
-            
+
         var response = new DeckCoverageResponse
                        {
-                           DeckId = id,
-                           TotalWordCount = deck.WordCount,
-                           KnownUniqueWordCount = knownUniqueWords.Count(),
-                           UniqueWordCount = deck.UniqueWordCount,
-                           KnownWordsOccurrences = knownWordsOccurrences,
-                           KnownWordPercentage = knownWordPercentage,
-                           KnownUniqueWordPercentage = knownUniqueWordPercentage
+                           DeckId = id, TotalWordCount = deck.WordCount, KnownUniqueWordCount = knownUniqueWords.Count(),
+                           UniqueWordCount = deck.UniqueWordCount, KnownWordsOccurrences = knownWordsOccurrences,
+                           KnownWordPercentage = knownWordPercentage, KnownUniqueWordPercentage = knownUniqueWordPercentage
                        };
-        
+
         return Ok(response);
     }
 
