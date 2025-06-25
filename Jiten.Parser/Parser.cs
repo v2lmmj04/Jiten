@@ -224,9 +224,9 @@ namespace Jiten.Parser
                              .ToArray();
 
             List<ExampleSentence>? exampleSentences = null;
-            
+
             if (mediatype is MediaType.Novel or MediaType.NonFiction or MediaType.VideoGame or MediaType.VisualNovel or MediaType.WebNovel)
-                exampleSentences=ExampleSentenceExtractor.ExtractSentences(sentences, processedWords);
+                exampleSentences = ExampleSentenceExtractor.ExtractSentences(sentences, processedWords);
 
             // Split into sentences
             // string[] sentences = Regex.Split(text, @"(?<=[。！？」）])|(?<=[…])\r\n");
@@ -297,7 +297,7 @@ namespace Jiten.Parser
                 DifficultyPredictor difficultyPredictor =
                     new(_dbContext.DbOptions,
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources", "difficulty_prediction_model.onnx"));
-                deck.Difficulty = (int)Math.Round(await difficultyPredictor.PredictDifficulty(deck, mediatype));
+                deck.Difficulty = await difficultyPredictor.PredictDifficulty(deck, mediatype);
                 Console.WriteLine($"Predicted difficulty: {deck.Difficulty}");
             }
 
@@ -367,7 +367,7 @@ namespace Jiten.Parser
                            {
                                WordId = cachedWord.WordId, OriginalText = wordData.wordInfo.Text, ReadingIndex = cachedWord.ReadingIndex,
                                Occurrences = wordData.occurrences, Conjugations = cachedWord.Conjugations,
-                               PartsOfSpeech = cachedWord.PartsOfSpeech
+                               PartsOfSpeech = cachedWord.PartsOfSpeech, Origin = cachedWord.Origin
                            };
                 }
             }
@@ -435,7 +435,7 @@ namespace Jiten.Parser
                                                  {
                                                      WordId = processedWord.WordId, OriginalText = processedWord.OriginalText,
                                                      ReadingIndex = processedWord.ReadingIndex, Conjugations = processedWord.Conjugations,
-                                                     PartsOfSpeech = processedWord.PartsOfSpeech
+                                                     PartsOfSpeech = processedWord.PartsOfSpeech, Origin = processedWord.Origin
                                                  });
                 }
             }
@@ -527,7 +527,8 @@ namespace Jiten.Parser
                 DeckWord deckWord = new()
                                     {
                                         WordId = bestMatch.WordId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
-                                        Occurrences = wordData.occurrences, PartsOfSpeech = bestMatch.PartsOfSpeech.ToPartOfSpeech()
+                                        Occurrences = wordData.occurrences, PartsOfSpeech = bestMatch.PartsOfSpeech.ToPartOfSpeech(),
+                                        Origin = bestMatch.Origin
                                     };
                 return (true, deckWord);
             }
@@ -633,7 +634,7 @@ namespace Jiten.Parser
                                 {
                                     WordId = bestMatch.word.WordId, OriginalText = wordData.wordInfo.Text, ReadingIndex = readingIndex,
                                     Occurrences = wordData.occurrences, Conjugations = bestMatch.form.Process,
-                                    PartsOfSpeech = bestMatch.word.PartsOfSpeech.ToPartOfSpeech()
+                                    PartsOfSpeech = bestMatch.word.PartsOfSpeech.ToPartOfSpeech(), Origin = bestMatch.word.Origin
                                 };
             return (true, deckWord);
         }

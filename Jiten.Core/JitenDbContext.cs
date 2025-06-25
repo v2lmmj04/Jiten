@@ -140,6 +140,9 @@ public class JitenDbContext : DbContext
             entity.Property(e => e.PitchAccents)
                   .HasColumnType("int[]")
                   .IsRequired(false);
+            
+            entity.Property(e => e.Origin)
+                  .HasColumnType("int");
         });
 
         modelBuilder.Entity<JmDictDefinition>(entity =>

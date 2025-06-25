@@ -15,6 +15,7 @@ export interface Deck {
   uniqueKanjiCount: number;
   uniqueKanjiUsedOnceCount: number;
   difficulty: number;
+  difficultyRaw: number;
   averageSentenceLength: number;
   parentDeckId: number;
   deckWords: DeckWord[];

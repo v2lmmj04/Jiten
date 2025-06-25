@@ -176,7 +176,7 @@ public class Deck
         UniqueWordCount = DeckWords.Select(dw => dw.WordId).Distinct().Count();
         UniqueWordUsedOnceCount = DeckWords.Where(dw => dw.Occurrences == 1).Select(dw => dw.WordId).Distinct().Count();
         SentenceCount = Children.Sum(c => c.SentenceCount);
-        Difficulty = (int)Math.Round(Children.Average(c => c.Difficulty));
+        Difficulty = Children.Average(c => c.Difficulty);
         DialoguePercentage = Children.Sum(c => c.DialoguePercentage) / Children.Count;
 
         // Not the most efficient or elegant way to do it, rebuilding the text, but it works and I don't have a better idea for now

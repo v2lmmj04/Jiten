@@ -47,6 +47,9 @@ public class DeckWord
     
     [NotMapped]
     public List<PartOfSpeech> PartsOfSpeech { get; set; }
+    
+    [NotMapped]
+    public WordOrigin Origin { get; set; }
 
     [JsonIgnore]
     public Deck Deck { get; set; } = new();

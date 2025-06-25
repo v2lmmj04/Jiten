@@ -54,7 +54,7 @@ public class Program
 
         [Option("furi", Required = false, HelpText = "Path to the JMDict Furigana dictionary file.")]
         public string FuriganaPath { get; set; }
-
+        
         [Option('e', "extract", Required = false, HelpText = "Extract text from a file or a folder and all its subfolders.")]
         public string ExtractFilePath { get; set; }
 
@@ -111,6 +111,9 @@ public class Program
         [Option(longName: "import-pitch-accents", Required = false, HelpText = "Import pitch accents from a yomitan dictinoary directory.")]
         public string ImportPitchAccents { get; set; }
 
+        [Option("import-vocabulary-origin", Required = false, HelpText = "Path to the VocabularyOrigin CSV file.")]
+        public string ImportVocabularyOrigin { get; set; }
+        
         [Option(longName: "extract-features", Required = false, HelpText = "Extract features from directory for ML.")]
         public string ExtractFeatures { get; set; }
 
@@ -267,6 +270,13 @@ public class Program
                             Console.WriteLine("Importing pitch accents...");
                             await JmDictHelper.ImportPitchAccents(o.Verbose, _dbOptions, o.ImportPitchAccents);
                             Console.WriteLine("Pitch accents imported.");
+                        }
+
+                        if (!string.IsNullOrEmpty(o.ImportVocabularyOrigin))
+                        {
+                            Console.WriteLine("Importing vocabulary origin...");
+                            await JmDictHelper.ImportVocabularyOrigin(o.Verbose, _dbOptions, o.ImportVocabularyOrigin);
+                            Console.WriteLine("Vocabulary origin imported.");
                         }
 
                         if (!string.IsNullOrEmpty(o.ExtractFeatures))
