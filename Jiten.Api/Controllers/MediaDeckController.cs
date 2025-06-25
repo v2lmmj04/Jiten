@@ -667,4 +667,39 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
 
         return new PaginatedResponse<List<DeckDto>>(dtos, totalCount, decks.Count, offsetValue);
     }
+
+    [HttpGet("by-link-id/{linkType}/{id}")]
+    [ResponseCache(Duration = 600, VaryByQueryKeys = ["id"])]
+    public async Task<List<int>> GetMediaDeckIdsByLinkId(LinkType linkType, string id)
+    {
+        var links = await context.Decks
+                                 .Include(d => d.Links)
+                                 .Where(d => d.Links.Any(l => l.LinkType == linkType))
+                                 .SelectMany(d => d.Links.Where(l => l.LinkType == linkType)
+                                                   .Select(l => new { DeckId = d.DeckId, Url = l.Url }))
+                                 .ToListAsync();
+
+        var result = new List<int>();
+
+        foreach (var link in links)
+        {
+            // Remove trailing slash if present
+            var url = link.Url.TrimEnd('/');
+
+            // Get the last part of the URL (after the last slash)
+            var lastSlashIndex = url.LastIndexOf('/');
+            if (lastSlashIndex == -1)
+                continue;
+
+            var urlId = url.Substring(lastSlashIndex + 1);
+
+            // If the extracted ID matches the provided ID, add the deck ID to the result
+            if (urlId.Equals(id, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(link.DeckId);
+            }
+        }
+
+        return result;
+    }
 }

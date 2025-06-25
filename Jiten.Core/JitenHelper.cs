@@ -48,6 +48,11 @@ public static class JitenHelper
                 var deckWordsToInsert = deck.DeckWords.ToList();
                 deck.DeckWords = new List<DeckWord>();
                 
+                // Do the same for example sentences to prevent EF Core from inserting them prematurely
+                var exampleSentencesToInsert = deck.ExampleSentences?.ToList() ?? new List<ExampleSentence>();
+                if (deck.ExampleSentences != null)
+                    deck.ExampleSentences = new List<ExampleSentence>();
+                
                 context.Decks.Add(deck);
 
                 await context.SaveChangesAsync();
@@ -64,9 +69,9 @@ public static class JitenHelper
 
                 await BulkInsertDeckWords(context, deckWordsToInsert, deck.DeckId);
 
-                if (deck.ExampleSentences != null && deck.ExampleSentences.Any())
+                if (deck.ExampleSentences != null && exampleSentencesToInsert.Any())
                 {
-                    await BulkInsertExampleSentences(context, deck.ExampleSentences, deck.DeckId);
+                    await BulkInsertExampleSentences(context, exampleSentencesToInsert, deck.DeckId);
                 }
                 
                 await InsertChildDecks(context, deck.Children, deck.DeckId);
