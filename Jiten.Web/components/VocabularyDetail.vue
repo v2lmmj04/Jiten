@@ -186,6 +186,15 @@
                 <div class="cursor-pointer">Example sentences</div>
               </AccordionHeader>
               <AccordionContent>
+                <div class="text-xs pb-2">Quotations belong to their original creators and are presented here for educational purposes only, as per the
+                <NuxtLink
+                  :to="`/terms`"
+                  target="_blank"
+                  class="hover:underline text-primary-600"
+                >
+                terms of service.
+                </NuxtLink>
+                </div>
                 <ExampleSentenceEntry v-for="(exampleSentence, index) in exampleSentences" :key="index" :example-sentence="exampleSentence" />
                 <Button @click="getRandomExampleSentences()" :disabled="!canLoadExampleSentences">Load more</Button>
               </AccordionContent>
