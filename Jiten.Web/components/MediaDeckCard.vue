@@ -10,6 +10,7 @@
   const props = defineProps<{
     deck: Deck;
     isCompact?: boolean;
+    hideControl?: boolean;
   }>();
 
   const showDownloadDialog = ref(false);
@@ -170,7 +171,7 @@
               <div class="mt-4 flex flex-col md:flex-row gap-4">
                 <a v-for="link in sortedLinks" :key="link.url" :href="link.url" target="_blank">{{ getLinkTypeText(Number(link.linkType)) }}</a>
               </div>
-              <div class="mt-4">
+              <div v-if="!hideControl" class="mt-4">
                 <div class="flex flex-col md:flex-row gap-4">
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/detail`" label="View details" class="" />
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/vocabulary`" label="View vocabulary" class="" />
