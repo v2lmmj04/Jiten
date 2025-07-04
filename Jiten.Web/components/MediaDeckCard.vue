@@ -126,7 +126,7 @@
                   </div>
                 </div>
 
-                <div class="w-full md:w-50">
+                <div class="w-full md:w-64">
                   <div v-if="deck.dialoguePercentage != 0 && deck.dialoguePercentage != 100" class="flex justify-between mb-2">
                     <span class="text-gray-600 dark:text-gray-300">Dialogue</span>
                     <span class="ml-8 tabular-nums">{{ deck.dialoguePercentage.toFixed(1) }}%</span>
