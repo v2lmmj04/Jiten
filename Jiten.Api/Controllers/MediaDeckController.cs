@@ -637,7 +637,7 @@ public class MediaDeckController(JitenDbContext context) : ControllerBase
     }
 
     [HttpPost("{id}/coverage")]
-    public async Task<ActionResult<DeckCoverageResponse>> GetCoverage(int id, [FromBody] List<int>? wordIds)
+    public async Task<ActionResult<DeckCoverageResponse>> GetCoverage(int id, [FromBody] List<long>? wordIds)
     {
         if (wordIds == null || !wordIds.Any())
         {
