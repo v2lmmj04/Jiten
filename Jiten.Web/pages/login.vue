@@ -4,6 +4,7 @@
   import type { LoginRequest } from '~/types/types';
   import { type CredentialResponse } from 'vue3-google-signin';
 
+
   const authStore = useAuthStore();
   const router = useRouter();
   const route = useRoute();
@@ -34,8 +35,12 @@
     const { credential } = response;
 
     try {
-      const success = await authStore.loginWithGoogle(credential);
-      if (success) {
+      const result = await authStore.loginWithGoogle(credential);
+
+      if (result === 'requiresRegistration') {
+        await router.push({ path: '/google-registration' });
+      } else if (result === true) {
+        // Existing user login successful
         if (route.query.redirect) {
           await router.push(route.query.redirect);
         } else {

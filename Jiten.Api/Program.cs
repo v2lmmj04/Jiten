@@ -164,6 +164,7 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddResponseCaching();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddCors(options =>
 {

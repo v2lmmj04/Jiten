@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Jiten.Api.Controllers;
 
@@ -29,6 +30,7 @@ public class AuthController : ControllerBase
     private readonly UserDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly UrlEncoder _urlEncoder;
+    private readonly IMemoryCache _memoryCache;
 
     public AuthController(
         UserManager<User> userManager,
@@ -38,7 +40,8 @@ public class AuthController : ControllerBase
         IEmailSender emailSender,
         UserDbContext context,
         IConfiguration configuration,
-        UrlEncoder urlEncoder)
+        UrlEncoder urlEncoder,
+        IMemoryCache memoryCache)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -48,6 +51,7 @@ public class AuthController : ControllerBase
         _context = context;
         _configuration = configuration;
         _urlEncoder = urlEncoder;
+        _memoryCache = memoryCache;
     }
 
     [HttpPost("register")]
@@ -58,20 +62,27 @@ public class AuthController : ControllerBase
         if (!await ValidateRecaptcha(model.RecaptchaResponse))
             BadRequest(new { message = "Recaptcha verification failed." });
 
+        if (!model.TosAccepted)
+            return BadRequest(new { message = "You must accept the terms of service to register." });
+
         var userName = model.Username.Trim();
         var email = model.Email.Trim();
-        
+
         var userExists = await _userManager.FindByNameAsync(userName);
         if (userExists != null) return Conflict(new { message = "Username already exists." });
 
         var emailExists = await _userManager.FindByEmailAsync(email);
         if (emailExists != null) return Conflict(new { message = "Email already registered." });
 
-        
+
         if (userName.Length is < 2 or > 20)
             return BadRequest(new { message = "Username must be between 2 and 20 characters." });
-        
-        var user = new User { UserName = userName, Email = email, SecurityStamp = Guid.NewGuid().ToString() };
+
+        var user = new User
+                   {
+                       UserName = userName, Email = email, SecurityStamp = Guid.NewGuid().ToString(), TosAcceptedAt = DateTime.UtcNow,
+                       ReceivesNewsletter = model.ReceiveNewsletter
+                   };
 
         var result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
@@ -270,7 +281,7 @@ public class AuthController : ControllerBase
         return BadRequest(new { message = "Password reset failed.", errors = result.Errors.Select(e => e.Description) });
     }
 
-    [HttpPost("revoke-token")] // Revokes current user's refresh tokens
+    [HttpPost("revoke-token")]
     [Authorize]
     public async Task<IActionResult> RevokeToken()
     {
@@ -288,7 +299,7 @@ public class AuthController : ControllerBase
 
         foreach (var token in userRefreshTokens)
         {
-            token.IsRevoked = true; // Or token.IsUsed = true; if you prefer to mark them used
+            token.IsRevoked = true;
         }
 
         _context.RefreshTokens.UpdateRange(userRefreshTokens);
@@ -343,29 +354,94 @@ public class AuthController : ControllerBase
         var email = payload.Email;
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-        if (user == null)
+        if (user != null)
         {
-            user = new User { UserName = email, Email = email, EmailConfirmed = true };
+            // User already exists, proceed with normal login
+            var tokens = await _tokenService.GenerateTokens(user);
+            return Ok(tokens);
+        }
 
-            var createResult = await _userManager.CreateAsync(user);
-            await _userManager.AddToRoleAsync(user, nameof(UserRole.User));
-            if (!createResult.Succeeded)
-            {
-                return BadRequest(new
-                                  {
-                                      message = "Failed to create user", errors = createResult.Errors.Select(e => e.Description).ToArray()
-                                  });
-            }
-        }
-        else
+        // New user - generate temporary token for registration flow
+        var tempToken = Guid.NewGuid().ToString();
+        var registrationData = new GoogleRegistrationData
+                               {
+                                   Email = email, Name = payload.Name, Picture = payload.Picture, TempToken = tempToken
+                               };
+
+        // Store temp data in cache (you could also use a database table)
+        _memoryCache.Set($"google_registration_{tempToken}", registrationData, TimeSpan.FromMinutes(15));
+
+        return Ok(new
+                  {
+                      requiresRegistration = true, tempToken = tempToken, email = email, name = payload.Name, picture = payload.Picture
+                  });
+    }
+
+    [HttpPost("complete-google-registration")]
+    [AllowAnonymous]
+    public async Task<ActionResult<TokenResponse>> CompleteGoogleRegistration([FromBody] CompleteGoogleRegistrationRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.TempToken))
         {
-            // optionally update profile bits from Google
-            // user.PictureUrl = payload.Picture;
-            // await _userManager.UpdateAsync(user);
+            return BadRequest(new { message = "Missing temporary token" });
         }
+
+        if (!_memoryCache.TryGetValue($"google_registration_{request.TempToken}", out GoogleRegistrationData registrationData))
+        {
+            return BadRequest(new { message = "Invalid or expired registration token" });
+        }
+
+        if (!request.TosAccepted)
+        {
+            return BadRequest(new { message = "Terms of service must be accepted" });
+        }
+
+        var username = request.Username.Trim();
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest(new { message = "Username is required" });
+        }
+
+        if (username.Length < 3 || username.Length > 20)
+        {
+            return BadRequest(new { message = "Username must be between 3 and 20 characters" });
+        }
+
+        var userExists = await _userManager.FindByNameAsync(username);
+        if (userExists != null) return Conflict(new { message = "Username already exists." });
+
+        var usernameExists = await _userManager.Users.AnyAsync(u => u.UserName == request.Username);
+        if (usernameExists)
+        {
+            return BadRequest(new { message = "Username is already taken" });
+        }
+
+        var emailExists = await _userManager.Users.AnyAsync(u => u.Email == registrationData.Email);
+        if (emailExists)
+        {
+            return BadRequest(new { message = "Email is already registered" });
+        }
+
+        // Create the user
+        var user = new User
+                   {
+                       UserName = request.Username, Email = registrationData.Email, EmailConfirmed = true, TosAcceptedAt = DateTime.UtcNow,
+                       ReceivesNewsletter = request.ReceiveNewsletter
+                   };
+
+        var createResult = await _userManager.CreateAsync(user);
+        if (!createResult.Succeeded)
+        {
+            return BadRequest(new { message = "Failed to create user", errors = createResult.Errors.Select(e => e.Description).ToArray() });
+        }
+
+        await _userManager.AddToRoleAsync(user, nameof(UserRole.User));
+
+        // Clear the cache
+        _memoryCache.Remove($"google_registration_{request.TempToken}");
 
         var tokens = await _tokenService.GenerateTokens(user);
-
         return Ok(tokens);
     }
 

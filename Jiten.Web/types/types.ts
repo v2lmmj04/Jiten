@@ -158,3 +158,28 @@ export interface ExampleSentence {
   sourceDeck: Deck;
   sourceDeckParent: Deck;
 }
+
+export interface GoogleSignInResponse {
+  requiresRegistration?: boolean;
+  tempToken?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+export interface GoogleRegistrationData {
+  tempToken: string;
+  email: string;
+  name: string;
+  picture?: string;
+  username: string;
+}
+
+export interface CompleteGoogleRegistrationRequest {
+  tempToken: string;
+  username: string;
+  tosAccepted: boolean;
+  receiveNewsletter: boolean;
+}

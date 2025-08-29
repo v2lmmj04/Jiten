@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import type { LoginRequest, TokenResponse } from '~/types/types';
+import type { CompleteGoogleRegistrationRequest, GoogleSignInResponse, GoogleRegistrationData, LoginRequest, TokenResponse } from '~/types/types';
 
 export const useAuthStore = defineStore('auth', () => {
   const tokenCookie = useCookie('token', {
@@ -29,6 +29,9 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null);
   const isRefreshing = ref<boolean>(false);
 
+  // Temporary storage for Google registration flow
+  const googleRegistrationData = ref<GoogleRegistrationData | null>(null);
+
   const isAuthenticated = computed(() => !!accessToken.value);
   const isAdmin = computed(() => user.value?.roles?.includes('Administrator') || false);
 
@@ -47,6 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null;
     refreshToken.value = null;
     user.value = null;
+    googleRegistrationData.value = null;
 
     tokenCookie.value = null;
     refreshTokenCookie.value = null;
@@ -168,14 +172,50 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loginWithGoogle(idToken: string): Promise<boolean> {
+  async function loginWithGoogle(idToken: string): Promise<boolean | 'requiresRegistration'> {
     isLoading.value = true;
     error.value = null;
 
     try {
-      const data = await $api<TokenResponse>('/auth/signin-google', {
+      const data = await $api<GoogleSignInResponse>('/auth/signin-google', {
         method: 'POST',
         body: { idToken: idToken },
+      });
+
+      if (data.requiresRegistration) {
+        // Store temp data for the registration flow (only once, do not call API again elsewhere)
+        googleRegistrationData.value = {
+          tempToken: data.tempToken || '',
+          email: data.email || '',
+          name: data.name || '',
+          picture: data.picture,
+          username: '',
+        };
+        return 'requiresRegistration';
+      } else if (data.accessToken && data.refreshToken) {
+        // Existing user - complete login
+        setTokens(data.accessToken, data.refreshToken);
+        await fetchCurrentUser();
+        return true;
+      } else {
+        throw new Error('Google login failed: Invalid response.');
+      }
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'Google login failed.';
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function completeGoogleRegistration(registrationData: CompleteGoogleRegistrationRequest): Promise<boolean> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const data = await $api<TokenResponse>('/auth/complete-google-registration', {
+        method: 'POST',
+        body: registrationData,
       });
 
       if (data.accessToken && data.refreshToken) {
@@ -183,10 +223,10 @@ export const useAuthStore = defineStore('auth', () => {
         await fetchCurrentUser();
         return true;
       } else {
-        throw new Error('Google login failed: No tokens received.');
+        throw new Error('Registration failed: No tokens received.');
       }
     } catch (err: any) {
-      error.value = err.data?.message || err.message || 'Google login failed.';
+      error.value = err.data?.message || err.message || 'Registration failed.';
       return false;
     } finally {
       isLoading.value = false;
@@ -274,6 +314,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isLoading,
     error,
+    googleRegistrationData,
 
     // getters
     isAuthenticated,
@@ -285,6 +326,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuthData,
     login,
     loginWithGoogle,
+    completeGoogleRegistration,
     fetchCurrentUser,
     logout,
     initializeAuth,

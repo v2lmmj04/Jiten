@@ -5,6 +5,8 @@
     username: '',
     email: '',
     password: '',
+    tosAccepted: false,
+    receiveNewsletter: false,
   });
 
   const recaptchaResponse = ref();
@@ -23,7 +25,8 @@
         throw new Error('Please complete the reCAPTCHA.');
       }
       await $api('/auth/register', { method: 'POST', body: { ...form, recaptchaResponse: recaptchaResponse.value } });
-      message.value = 'Registration successful. Please check your email to confirm your account. If you don\'t receive the email within a few minutes, please contact us on Discord or send an email to contact@jiten.moe from the email address you used to register for a manual confirmation.';
+      message.value =
+        "Registration successful. Please check your email to confirm your account. If you don't receive the email within a few minutes, please contact us on Discord or send an email to contact@jiten.moe from the email address you used to register for a manual confirmation.";
     } catch (err: any) {
       if (err.response && err.response._data) {
         const apiMessage = err.response._data.message || 'Registration failed.';
@@ -49,7 +52,9 @@
         <div class="w-full">
           <FloatLabel for="email">Email</FloatLabel>
           <InputText id="email" v-model.trim="form.email" type="email" required />
-          <div class="text-sm text-gray-500 dark:text-gray-300">Please avoid hotmail/outlook email addresses or you might not receive confirmation emails.</div>
+          <div class="text-sm text-gray-500Can dark:text-gray-300">
+            Please avoid hotmail/outlook email addresses or you might not receive confirmation emails.
+          </div>
         </div>
         <div class="w-full">
           <FloatLabel for="password">Password</FloatLabel>
@@ -66,6 +71,18 @@
             required
           />
         </div>
+        <div>
+          <Checkbox id="terms" v-model="form.tosAccepted" name="terms" binary required />
+          <label for="terms">
+            I agree to the <NuxtLink to="/terms" target="_blank" class="text-blue-500 hover:underline">Terms of Service</NuxtLink> and
+            <NuxtLink to="/privacy" target="_blank" class="text-blue-500 hover:underline">Privacy Policy</NuxtLink>.</label
+          >
+        </div>
+        <div>
+          <Checkbox id="newsletter" v-model="form.receiveNewsletter" name="newsletter" binary />
+          <label for="newsletter">I would like to receive occasional updates and newsletters via email</label>
+        </div>
+
         <RecaptchaCheckbox v-model="recaptchaResponse" />
         <Button type="submit" :disabled="isLoading">{{ isLoading ? 'Registering...' : 'Register' }}</Button>
       </form>
