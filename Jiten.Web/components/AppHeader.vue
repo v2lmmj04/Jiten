@@ -7,7 +7,19 @@
   const store = useJitenStore();
   const auth = useAuthStore();
   const tokenCookie = useCookie('token');
-  const isLoggedIn = computed(() => auth.isAuthenticated);
+
+  // Mobile menu state
+  const mobileMenuOpen = ref(false);
+  const toggleMobileMenu = () => (mobileMenuOpen.value = !mobileMenuOpen.value);
+
+  // Close mobile menu on route change
+  const route = useRoute();
+  watch(
+    () => route.fullPath,
+    () => {
+      mobileMenuOpen.value = false;
+    }
+  );
 
   onMounted(() => {
     if (store.darkMode) {
@@ -94,7 +106,9 @@
         <NuxtLink to="/" class="!no-underline">
           <h1 class="text-2xl font-bold text-white">Jiten <span class="text-red-600 text-xs align-super">beta</span></h1>
         </NuxtLink>
-        <nav class="space-x-6">
+
+        <!-- Desktop nav -->
+        <nav class="hidden md:flex items-center space-x-4">
           <nuxt-link to="/" class="!text-white">Home</nuxt-link>
           <nuxt-link to="/decks/media" class="!text-white">Media</nuxt-link>
           <nuxt-link v-if="auth.isAuthenticated" to="/settings" class="!text-white">Settings</nuxt-link>
@@ -118,6 +132,58 @@
             <Icon name="line-md:light-dark" />
           </Button>
         </nav>
+
+        <!-- Mobile hamburger button -->
+        <button
+          class="md:hidden inline-flex items-center justify-center p-2 rounded text-white hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-white"
+          @click="toggleMobileMenu"
+          aria-label="Toggle navigation menu"
+          :aria-expanded="mobileMenuOpen.toString()"
+        >
+          <Icon :name="mobileMenuOpen ? 'material-symbols:close' : 'material-symbols:menu'" size="28" />
+        </button>
+      </div>
+
+      <!-- Mobile menu panel -->
+      <div v-if="mobileMenuOpen" class="md:hidden mx-auto max-w-6xl px-4 pb-4">
+        <div class="bg-indigo-800 rounded-lg shadow-lg divide-y divide-indigo-700">
+          <div class="flex flex-col py-2">
+            <nuxt-link to="/" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">Home</nuxt-link>
+            <nuxt-link to="/decks/media" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">Media</nuxt-link>
+            <nuxt-link v-if="auth.isAuthenticated" to="/settings" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">Settings</nuxt-link>
+            <nuxt-link to="/other" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">Other</nuxt-link>
+            <nuxt-link to="/faq" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">FAQ</nuxt-link>
+            <nuxt-link
+              v-if="auth.isAuthenticated && auth.isAdmin && store.displayAdminFunctions"
+              to="/Dashboard"
+              class="py-2 px-3 !text-white"
+              @click="mobileMenuOpen = false"
+              >Dashboard</nuxt-link
+            >
+            <nuxt-link
+              v-if="auth.isAuthenticated"
+              to="/"
+              class="py-2 px-3 !text-white"
+              @click="auth.logout(); mobileMenuOpen = false"
+              >Logout</nuxt-link
+            >
+            <nuxt-link v-else to="/login" class="py-2 px-3 !text-white" @click="mobileMenuOpen = false">Login</nuxt-link>
+          </div>
+          <div class="flex items-center gap-3 py-3 px-3">
+            <Button
+              type="button"
+              label="Share"
+              severity="secondary"
+              class="w-full justify-center"
+              @click="toggleSettings($event)"
+            >
+              <Icon name="material-symbols-light:settings" />
+            </Button>
+            <Button label="Dark Mode" severity="secondary" class="w-full justify-center" @click="toggleDarkMode()">
+              <Icon name="line-md:light-dark" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
