@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json;
+using Google.Apis.Auth;
 using Jiten.Api.Dtos;
 using Jiten.Api.Dtos.Requests;
 using Jiten.Api.Services;
@@ -23,7 +25,7 @@ public class AuthController : ControllerBase
     private readonly SignInManager<User> _signInManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly TokenService _tokenService;
-    // private readonly IEmailSender _emailSender;
+    private readonly IEmailSender _emailSender;
     private readonly UserDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly UrlEncoder _urlEncoder;
@@ -33,7 +35,7 @@ public class AuthController : ControllerBase
         SignInManager<User> signInManager,
         RoleManager<IdentityRole> roleManager,
         TokenService tokenService,
-        // IEmailSender emailSender,
+        IEmailSender emailSender,
         UserDbContext context,
         IConfiguration configuration,
         UrlEncoder urlEncoder)
@@ -42,105 +44,86 @@ public class AuthController : ControllerBase
         _signInManager = signInManager;
         _roleManager = roleManager;
         _tokenService = tokenService;
-        // _emailSender = emailSender;
+        _emailSender = emailSender;
         _context = context;
         _configuration = configuration;
         _urlEncoder = urlEncoder;
     }
 
-    // [HttpPost("register")]
-    // public async Task<IActionResult> Register([FromBody] RegisterRequest model)
-    // {
-    //     if (!ModelState.IsValid) return BadRequest(ModelState);
-    //
-    //     var userExists = await _userManager.FindByNameAsync(model.Username);
-    //     if (userExists != null) return Conflict(new { message = "Username already exists." });
-    //
-    //     var emailExists = await _userManager.FindByEmailAsync(model.Email);
-    //     if (emailExists != null) return Conflict(new { message = "Email already registered." });
-    //
-    //     var user = new User { UserName = model.Username, Email = model.Email, SecurityStamp = Guid.NewGuid().ToString() };
-    //
-    //     var result = await _userManager.CreateAsync(user, model.Password);
-    //     if (!result.Succeeded)
-    //     {
-    //         return BadRequest(new { message = "User creation failed.", errors = result.Errors.Select(e => e.Description) });
-    //     }
-    //
-    //     // Assign default role
-    //     await _userManager.AddToRoleAsync(user, UserRole.User.ToString());
-    //
-    //     // Send confirmation email
-    //     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-    //     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code)); // URL-safe token
-    //
-    //     var frontendBaseUrl = _configuration["FrontendBaseUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
-    //     var callbackUrl = $"{frontendBaseUrl}/confirm-email?userId={user.Id}&code={code}";
-    //
-    //     await _emailSender.SendEmailAsync(model.Email, "Confirm your email",
-    //                                       $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-    //
-    //     return Ok(new { message = "Registration successful. Please check your email to confirm your account." });
-    // }
-    //
-    // [HttpGet("confirm-email")]
-    // public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string code)
-    // {
-    //     if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
-    //         return BadRequest("User ID and code are required.");
-    //
-    //     var user = await _userManager.FindByIdAsync(userId);
-    //     if (user == null)
-    //         return NotFound("User not found.");
-    //
-    //     try
-    //     {
-    //         code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
-    //     }
-    //     catch (FormatException)
-    //     {
-    //         return BadRequest("Invalid token format.");
-    //     }
-    //
-    //     var result = await _userManager.ConfirmEmailAsync(user, code);
-    //     if (result.Succeeded)
-    //         return Ok(new { message = "Email confirmed successfully. You can now log in." });
-    //
-    //     return BadRequest(new { message = "Email confirmation failed.", errors = result.Errors.Select(e => e.Description) });
-    // }
-    //
-    // [HttpPost("resend-confirmation-email")]
-    // public async Task<IActionResult> ResendConfirmationEmail([FromBody] ForgotPasswordRequest model) // Reusing DTO for email
-    // {
-    //     if (!ModelState.IsValid) return BadRequest(ModelState);
-    //
-    //     var user = await _userManager.FindByEmailAsync(model.Email);
-    //     if (user == null)
-    //     {
-    //         // Don't reveal if the user exists or not for security reasons
-    //         return Ok(new
-    //                   {
-    //                       message = "If an account with this email exists and is not confirmed, a new confirmation email has been sent."
-    //                   });
-    //     }
-    //
-    //     if (await _userManager.IsEmailConfirmedAsync(user))
-    //     {
-    //         return BadRequest(new { message = "This email is already confirmed." });
-    //     }
-    //
-    //     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-    //     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-    //
-    //     var frontendBaseUrl = _configuration["FrontendBaseUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
-    //     var callbackUrl = $"{frontendBaseUrl}/confirm-email?userId={user.Id}&code={code}";
-    //
-    //     await _emailSender.SendEmailAsync(model.Email, "Confirm your email",
-    //                                       $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-    //
-    //     return Ok(new { message = "A new confirmation email has been sent. Please check your email." });
-    // }
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest model)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
+        if (!await ValidateRecaptcha(model.RecaptchaResponse))
+            BadRequest(new { message = "Recaptcha verification failed." });
+
+        var userName = model.Username.Trim();
+        var email = model.Email.Trim();
+        
+        var userExists = await _userManager.FindByNameAsync(userName);
+        if (userExists != null) return Conflict(new { message = "Username already exists." });
+
+        var emailExists = await _userManager.FindByEmailAsync(email);
+        if (emailExists != null) return Conflict(new { message = "Email already registered." });
+
+        
+        if (userName.Length is < 2 or > 20)
+            return BadRequest(new { message = "Username must be between 2 and 20 characters." });
+        
+        var user = new User { UserName = userName, Email = email, SecurityStamp = Guid.NewGuid().ToString() };
+
+        var result = await _userManager.CreateAsync(user, model.Password);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new
+                              {
+                                  message =
+                                      "User creation failed. Make sure your password is long enough and contains lower case, upper case and digits.",
+                                  errors = result.Errors.Select(e => e.Description)
+                              });
+        }
+
+        await _userManager.AddToRoleAsync(user, nameof(UserRole.User));
+
+        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+        var url = "https://jiten.moe";
+        var callbackUrl = $"{url}/confirm-email?userId={user.Id}&code={code}";
+
+        await _emailSender.SendEmailAsync(email, "Jiten - Confirm your email",
+                                          $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>." +
+                                          $"<br/>Do not share this link with anyone.<br/>If you did not request an account creation, please ignore this email.");
+
+        return Ok(new { message = "Registration successful. Please check your email to confirm your account." });
+    }
+
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string code)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
+            return BadRequest("User ID and code are required.");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return NotFound("User not found.");
+
+        try
+        {
+            code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return BadRequest("Invalid token format.");
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, code);
+        if (result.Succeeded)
+            return Ok(new { message = "Email confirmed successfully. You can now log in." });
+
+        return BadRequest(new { message = "Email confirmation failed.", errors = result.Errors.Select(e => e.Description) });
+    }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest model)
@@ -168,44 +151,10 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Login not allowed for an unknown reason." });
         }
 
-        if (result.RequiresTwoFactor)
-        {
-            return Ok(new { requiresTwoFactor = true, userId = user.Id });
-        }
-
         if (!result.Succeeded)
             return Unauthorized(new { message = "Invalid credentials." });
 
-        var tokens = await _tokenService.GenerateTokensAsync(user, isTwoFactorLogin: false); // isTwoFactorLogin is false here
-        await _context.SaveChangesAsync(); // Save refresh token
-        return Ok(tokens);
-    }
-
-    [HttpPost("login-2fa")]
-    public async Task<IActionResult> LoginWith2fa([FromBody] LoginWith2faRequest model)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        var user = await _userManager.FindByIdAsync(model.UserId);
-        if (user == null)
-        {
-            return Unauthorized(new { message = "Invalid request." });
-        }
-
-        var authenticatorCode = model.TwoFactorCode.Replace(" ", string.Empty).Replace("-", string.Empty);
-        var result = await _signInManager.TwoFactorAuthenticatorSignInAsync(authenticatorCode, model.RememberMachine,
-                                                                            rememberClient: false);
-
-        if (result.IsLockedOut)
-            return Unauthorized(new { message = "Account locked out." });
-
-        if (result.IsNotAllowed)
-            return Unauthorized(new { message = "Login not allowed." });
-
-        if (!result.Succeeded)
-            return Unauthorized(new { message = "Invalid 2FA code." });
-
-        var tokens = await _tokenService.GenerateTokensAsync(user, isTwoFactorLogin: true); // Mark as 2FA login
+        var tokens = await _tokenService.GenerateTokens(user);
         await _context.SaveChangesAsync(); // Save refresh token
         return Ok(tokens);
     }
@@ -239,9 +188,8 @@ public class AuthController : ControllerBase
 
         oldRefreshToken.IsUsed = true;
         _context.RefreshTokens.Update(oldRefreshToken);
-     
-        bool wasTwoFactorLogin = principal.Claims.Any(c => c.Type == "amr" && c.Value == "mfa");
-        var newTokens = await _tokenService.GenerateTokensAsync(user, wasTwoFactorLogin);
+
+        var newTokens = await _tokenService.GenerateTokens(user);
 
         await _context.SaveChangesAsync(); // Saves both the used old token and the new token
 
@@ -249,68 +197,78 @@ public class AuthController : ControllerBase
     }
 
 
-    // [HttpPost("forgot-password")]
-    // public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest model)
-    // {
-    //     if (!ModelState.IsValid) return BadRequest(ModelState);
-    //
-    //     var user = await _userManager.FindByEmailAsync(model.Email);
-    //     if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
-    //     {
-    //         // Don't reveal that the user does not exist or is not confirmed
-    //         return Ok(new { message = "If your email address is registered and confirmed, you will receive a password reset link." });
-    //     }
-    //
-    //     var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-    //     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-    //
-    //     var frontendBaseUrl = _configuration["FrontendBaseUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
-    //     var callbackUrl = $"{frontendBaseUrl}/reset-password?email={_urlEncoder.Encode(user.Email)}&code={code}";
-    //
-    //     await _emailSender.SendEmailAsync(model.Email, "Reset Your Password",
-    //                                       $"Please reset your password by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-    //
-    //     return Ok(new { message = "If your email address is registered and confirmed, you will receive a password reset link." });
-    // }
-    //
-    // [HttpPost("reset-password")]
-    // public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest model)
-    // {
-    //     if (!ModelState.IsValid) return BadRequest(ModelState);
-    //
-    //     var user = await _userManager.FindByEmailAsync(model.Email);
-    //     if (user == null)
-    //     {
-    //         // Don't reveal that the user does not exist
-    //         return BadRequest(new { message = "Password reset failed. Please try again or request a new link." });
-    //     }
-    //
-    //     string decodedToken;
-    //     try
-    //     {
-    //         decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(model.Token));
-    //     }
-    //     catch (FormatException)
-    //     {
-    //         return BadRequest(new { message = "Invalid token format. Password reset failed." });
-    //     }
-    //
-    //     var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
-    //     if (result.Succeeded)
-    //     {
-    //         // Optionally, revoke all refresh tokens for the user upon password reset for security
-    //         var userRefreshTokens = await _context.RefreshTokens
-    //                                               .Where(rt => rt.UserId == user.Id && !rt.IsRevoked && !rt.IsUsed)
-    //                                               .ToListAsync();
-    //         foreach (var rt in userRefreshTokens) rt.IsRevoked = true;
-    //         _context.RefreshTokens.UpdateRange(userRefreshTokens);
-    //         await _context.SaveChangesAsync();
-    //
-    //         return Ok(new { message = "Password has been reset successfully." });
-    //     }
-    //
-    //     return BadRequest(new { message = "Password reset failed.", errors = result.Errors.Select(e => e.Description) });
-    // }
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest model)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (!await ValidateRecaptcha(model.RecaptchaResponse))
+            BadRequest(new { message = "Recaptcha verification failed." });
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user == null || !await _userManager.IsEmailConfirmedAsync(user) || user.PasswordHash == null)
+        {
+            return Ok(new
+                      {
+                          message =
+                              "If your email address is registered and confirmed, you will receive a password reset link. If you created your account with google auth, you will need to connect through google."
+                      });
+        }
+
+        var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+        var url = "https://jiten.moe";
+        var callbackUrl = $"{url}/reset-password?email={_urlEncoder.Encode(user.Email)}&code={code}";
+
+        await _emailSender.SendEmailAsync(model.Email, "Jiten - Reset Your Password",
+                                          $"Please reset your password on Jiten.moe by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.<br/>Do not share this link with anyone.<br/>If you did not request a password reset, please ignore this email.");
+
+        return Ok(new
+                  {
+                      message =
+                          "If your email address is registered and confirmed, you will receive a password reset link. If you created your account with google auth, you will need to connect through google."
+                  });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest model)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user == null)
+        {
+            // Don't reveal that the user does not exist
+            return BadRequest(new { message = "Password reset failed. Please try again or request a new link." });
+        }
+
+        string decodedToken;
+        try
+        {
+            decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(model.Token));
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { message = "Invalid token format. Password reset failed." });
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
+        if (result.Succeeded)
+        {
+            // Optionally, revoke all refresh tokens for the user upon password reset for security
+            var userRefreshTokens = await _context.RefreshTokens
+                                                  .Where(rt => rt.UserId == user.Id && !rt.IsRevoked && !rt.IsUsed)
+                                                  .ToListAsync();
+            foreach (var rt in userRefreshTokens) rt.IsRevoked = true;
+            _context.RefreshTokens.UpdateRange(userRefreshTokens);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password has been reset successfully." });
+        }
+
+        return BadRequest(new { message = "Password reset failed.", errors = result.Errors.Select(e => e.Description) });
+    }
 
     [HttpPost("revoke-token")] // Revokes current user's refresh tokens
     [Authorize]
@@ -350,11 +308,109 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound("User not found.");
 
         var roles = await _userManager.GetRolesAsync(user);
-        var is2faEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
 
-        return Ok(new
-                  {
-                      user.Id, user.UserName, user.Email, user.EmailConfirmed, Roles = roles, TwoFactorEnabled = is2faEnabled
-                  });
+        return Ok(new { user.Id, user.UserName, user.Email, user.EmailConfirmed, Roles = roles });
+    }
+
+    [HttpPost("signin-google")]
+    [AllowAnonymous]
+    public async Task<ActionResult<TokenResponse>> GoogleSignIn([FromBody] GoogleLoginRequest loginRequest)
+    {
+        if (string.IsNullOrWhiteSpace(loginRequest.IdToken))
+        {
+            return BadRequest(new { message = "Missing idToken" });
+        }
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(loginRequest.IdToken,
+                                                                 new GoogleJsonWebSignature.ValidationSettings
+                                                                 {
+                                                                     Audience = [_configuration["Google:ClientId"]]
+                                                                 });
+        }
+        catch (InvalidJwtException ex)
+        {
+            return Unauthorized(new { message = "Invalid Google ID token", detail = ex.Message });
+        }
+
+        if (!payload.EmailVerified)
+        {
+            return Unauthorized(new { message = "Google email not verified" });
+        }
+
+        var email = payload.Email;
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null)
+        {
+            user = new User { UserName = email, Email = email, EmailConfirmed = true };
+
+            var createResult = await _userManager.CreateAsync(user);
+            await _userManager.AddToRoleAsync(user, nameof(UserRole.User));
+            if (!createResult.Succeeded)
+            {
+                return BadRequest(new
+                                  {
+                                      message = "Failed to create user", errors = createResult.Errors.Select(e => e.Description).ToArray()
+                                  });
+            }
+        }
+        else
+        {
+            // optionally update profile bits from Google
+            // user.PictureUrl = payload.Picture;
+            // await _userManager.UpdateAsync(user);
+        }
+
+        var tokens = await _tokenService.GenerateTokens(user);
+
+        return Ok(tokens);
+    }
+
+    private async Task<bool> ValidateRecaptcha(string recaptchaToken)
+    {
+        var recaptchaSecret = _configuration["Google:RecapatchaSecret"];
+        if (string.IsNullOrWhiteSpace(recaptchaToken))
+        {
+            return false;
+        }
+
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        using (var http = new HttpClient())
+        {
+            var form = new FormUrlEncodedContent([
+                new KeyValuePair<string, string>("secret", recaptchaSecret),
+                new KeyValuePair<string, string>("response", recaptchaToken),
+                new KeyValuePair<string, string>("remoteip", remoteIp ?? string.Empty)
+            ]);
+
+            var verifyResponse = await http.PostAsync("https://www.google.com/recaptcha/api/siteverify", form);
+            if (!verifyResponse.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var verifyJson = await verifyResponse.Content.ReadAsStringAsync();
+            try
+            {
+                using var doc = JsonDocument.Parse(verifyJson);
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("success", out var successProperty) || !successProperty.GetBoolean() ||
+                    root.TryGetProperty("score", out var scoreProperty) &&
+                    scoreProperty.ValueKind == JsonValueKind.Number &&
+                    scoreProperty.GetDouble() < 0.5)
+                {
+                    return false;
+                }
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

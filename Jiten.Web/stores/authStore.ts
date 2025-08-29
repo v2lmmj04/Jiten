@@ -6,14 +6,20 @@ import type { LoginRequest, TokenResponse } from '~/types/types';
 export const useAuthStore = defineStore('auth', () => {
   const tokenCookie = useCookie('token', {
     watch: true,
-    maxAge: 60 * 30,
+    maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.jiten.moe' : undefined,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   });
 
   const refreshTokenCookie = useCookie('refreshToken', {
     watch: true,
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 30, // 30 days
     path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.jiten.moe' : undefined,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   });
 
   const accessToken = ref<string | null>(tokenCookie.value || null);
@@ -21,8 +27,6 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<any | null>(null);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
-  const requiresTwoFactor = ref<boolean>(false);
-  const userIdFor2fa = ref<string | null>(null);
   const isRefreshing = ref<boolean>(false);
 
   const isAuthenticated = computed(() => !!accessToken.value);
@@ -43,8 +47,6 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null;
     refreshToken.value = null;
     user.value = null;
-    requiresTwoFactor.value = false;
-    userIdFor2fa.value = null;
 
     tokenCookie.value = null;
     refreshTokenCookie.value = null;
@@ -67,9 +69,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (isRefreshing.value) {
       // Wait for ongoing refresh to complete
       while (isRefreshing.value) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      return !!accessToken.value;
+      return !!accessToken.value && !isTokenExpired(accessToken.value);
     }
 
     if (!refreshToken.value) {
@@ -81,6 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing.value = true;
 
     try {
+      console.log('Attempting to refresh token...');
       const data = await $api<TokenResponse>('/auth/refresh', {
         method: 'POST',
         body: {
@@ -96,13 +99,14 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         throw new Error('Invalid refresh response');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Token refresh failed:', err);
       clearAuthData();
 
-      // Navigate to login page
       const router = useRouter();
-      router.push('/login');
+      if (router.currentRoute.value.path !== '/login') {
+        router.push('/login');
+      }
 
       return false;
     } finally {
@@ -112,41 +116,47 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Ensure we have a valid token before making API calls
   async function ensureValidToken(): Promise<boolean> {
+    // Check if we have cookies but not in-memory tokens (page refresh scenario)
+    if (!accessToken.value && tokenCookie.value) {
+      accessToken.value = tokenCookie.value;
+    }
+    if (!refreshToken.value && refreshTokenCookie.value) {
+      refreshToken.value = refreshTokenCookie.value;
+    }
+
+    // If no access token at all
     if (!accessToken.value) {
+      console.log('No access token available');
       return false;
     }
 
+    // If access token is expired or about to expire
     if (isTokenExpired(accessToken.value)) {
-      console.log('Token expired, attempting to refresh...');
+      console.log('Access token expired, attempting to refresh...');
       return await refreshAccessToken();
     }
 
+    console.log('Access token is valid');
     return true;
   }
 
   async function login(credentials: LoginRequest) {
     isLoading.value = true;
     error.value = null;
-    requiresTwoFactor.value = false;
-    userIdFor2fa.value = null;
 
     try {
-      const data = await $api<TokenResponse | { requiresTwoFactor: boolean; userId: string }>('/auth/login', {
+      const data = await $api<TokenResponse | { userId: string }>('/auth/login', {
         method: 'POST',
         body: credentials,
       });
 
-      // if (data.value.requiresTwoFactor) {
-      //   requiresTwoFactor.value = true;
-      //   userIdFor2fa.value = data.value.userId;
-      // } else
       if ('accessToken' in data && 'refreshToken' in data) {
         setTokens(data.accessToken, data.refreshToken);
         //wait 500ms for timing
         await new Promise((resolve) => setTimeout(resolve, 500));
         await fetchCurrentUser();
       } else {
-        throw new Error('Login failed: No token or 2FA requirement received.');
+        throw new Error('Login failed: No token received.');
       }
       return true;
     } catch (err) {
@@ -158,37 +168,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loginWith2fa(twoFactorCode: string) {
-    if (!userIdFor2fa.value) {
-      error.value = 'User ID for 2FA is missing.';
-      return false;
-    }
-
+  async function loginWithGoogle(idToken: string): Promise<boolean> {
     isLoading.value = true;
     error.value = null;
 
     try {
-      const data = await $api<TokenResponse>('/auth/login-2fa', {
+      const data = await $api<TokenResponse>('/auth/signin-google', {
         method: 'POST',
-        body: {
-          userId: userIdFor2fa.value,
-          twoFactorCode: twoFactorCode,
-          // rememberMachine: false // Or true, depending on your preference
-        },
+        body: { idToken: idToken },
       });
 
-      if (data.value?.accessToken) {
-        setTokens(data.value.accessToken, data.value.refreshToken);
-        requiresTwoFactor.value = false; // 2FA completed
-        userIdFor2fa.value = null;
+      if (data.accessToken && data.refreshToken) {
+        setTokens(data.accessToken, data.refreshToken);
         await fetchCurrentUser();
         return true;
       } else {
-        throw new Error('2FA Login failed: No token received.');
+        throw new Error('Google login failed: No tokens received.');
       }
-    } catch (err) {
-      error.value = err.data?.message || err.message || '2FA login failed.';
-      // Don't clear tokens here as they weren't set yet from this flow
+    } catch (err: any) {
+      error.value = err.data?.message || err.message || 'Google login failed.';
       return false;
     } finally {
       isLoading.value = false;
@@ -243,19 +241,29 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function initializeAuth() {
-    if (tokenCookie.value && refreshTokenCookie.value) {
-      accessToken.value = tokenCookie.value;
-      refreshToken.value = refreshTokenCookie.value;
+    console.log('Initializing auth...');
 
+    if (tokenCookie.value) {
+      accessToken.value = tokenCookie.value;
+    }
+    if (refreshTokenCookie.value) {
+      refreshToken.value = refreshTokenCookie.value;
+    }
+
+    if (accessToken.value) {
       if (isTokenExpired(accessToken.value)) {
+        console.log('Token expired on init, refreshing...');
         refreshAccessToken().then((success) => {
           if (success) {
             fetchCurrentUser();
           }
         });
       } else {
+        console.log('Token valid on init, fetching user...');
         fetchCurrentUser();
       }
+    } else {
+      console.log('No token on init');
     }
   }
 
@@ -266,8 +274,6 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isLoading,
     error,
-    requiresTwoFactor,
-    userIdFor2fa,
 
     // getters
     isAuthenticated,
@@ -278,7 +284,7 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens,
     clearAuthData,
     login,
-    loginWith2fa,
+    loginWithGoogle,
     fetchCurrentUser,
     logout,
     initializeAuth,

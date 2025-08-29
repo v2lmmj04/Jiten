@@ -4,8 +4,8 @@
   import { getChildrenCountText, getMediaTypeText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
   import { useJitenStore } from '~/stores/jitenStore';
-  import CoverageDialog from '~/components/CoverageDialog.vue';
   import { formatDateAsYyyyMmDd } from '~/utils/formatDateAsYyyyMmDd';
+  import { useAuthStore } from '~/stores/authStore';
 
   const props = defineProps<{
     deck: Deck;
@@ -20,6 +20,7 @@
   const isDescriptionExpanded = ref(false);
 
   const store = useJitenStore();
+  const authStore = useAuthStore();
   const { $api } = useNuxtApp();
 
   const displayAdminFunctions = computed(() => store.displayAdminFunctions);
@@ -60,10 +61,23 @@
   const toggleDescription = () => {
     isDescriptionExpanded.value = !isDescriptionExpanded.value;
   };
+
+  const borderColor = computed(() => {
+    // red
+    if (props.deck.coverage < 50) return '2px solid red';
+    // orange
+    if (props.deck.coverage < 70) return '2px solid #FFA500';
+    // yellow
+    if (props.deck.coverage < 80) return '2px solid #FEDE00';
+    // greenish yellow
+    if (props.deck.coverage < 90) return '2px solid #D4E157';
+    // green
+    return '2px solid #4CAF50';
+  });
 </script>
 
 <template>
-  <Card class="p-2">
+  <Card class="p-2" :style="{ outline: borderColor }">
     <template #title>{{ localiseTitle(deck) }}</template>
     <template v-if="!isCompact" #subtitle>{{ getMediaTypeText(deck.mediaType) }}</template>
     <template #content>
@@ -72,7 +86,29 @@
           <div class="flex flex-col md:flex-row gap-x-4 gap-y-2 w-full">
             <div v-if="!isCompact" class="text-left text-sm md:text-center">
               <img :src="deck.coverName == 'nocover.jpg' ? '/img/nocover.jpg' : deck.coverName" :alt="deck.originalTitle" class="h-48 w-34 min-w-34" />
-              {{ formatDateAsYyyyMmDd(new Date(deck.releaseDate)).replace(/-/g, '/') }}
+              <div>{{ formatDateAsYyyyMmDd(new Date(deck.releaseDate)).replace(/-/g, '/') }}</div>
+              <div v-if="authStore.isAuthenticated">
+                <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Coverage</div>
+                <div
+                  v-tooltip="`${((deck.wordCount * deck.coverage) / 100).toFixed(0)} / ${deck.wordCount}`"
+                  class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
+                >
+                  <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.coverage.toFixed(1) + '%' }"></div>
+                  <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white"> {{ deck.coverage.toFixed(1) }}% </span>
+                </div>
+              </div>
+              <div v-if="authStore.isAuthenticated">
+                <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Unique coverage</div>
+                <div
+                  v-tooltip="`${((deck.uniqueWordCount * deck.uniqueCoverage) / 100).toFixed(0)} / ${deck.uniqueWordCount}`"
+                  class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
+                >
+                  <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.uniqueCoverage.toFixed(1) + '%' }"></div>
+                  <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white">
+                    {{ deck.uniqueCoverage.toFixed(1) }}%
+                  </span>
+                </div>
+              </div>
             </div>
             <div>
               <div class="flex flex-col gap-x-6 gap-y-2" :class="isCompact ? '' : 'md:flex-row md:flex-wrap'">
@@ -184,9 +220,10 @@
                     v-tooltip="'Based on your reading speed in the settings:\n ' + readingSpeed + ' characters per hour.'"
                     class="flex justify-between flex-wrap stat-row"
                   >
-                    <span class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium"
-                      >Duration <i class="pi pi-info-circle cursor-pointer text-primary-500"
-                    /></span>
+                    <span class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">
+                      Duration
+                      <i class="pi pi-info-circle cursor-pointer text-primary-500" />
+                    </span>
                     <span class="tabular-nums font-semibold">{{ readingDuration > 0 ? readingDuration : '<1' }} h</span>
                   </div>
 
@@ -214,7 +251,6 @@
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/detail`" label="View details" class="" />
                   <Button as="router-link" :to="`/decks/media/${deck.deckId}/vocabulary`" label="View vocabulary" class="" />
                   <Button label="Download deck" class="" @click="showDownloadDialog = true" />
-                  <Button v-if="!isCompact" label="Coverage" class="" @click="fetchCoverage" />
                   <Button v-if="!isCompact && displayAdminFunctions" as="router-link" :to="`/dashboard/media/${deck.deckId}`" label="Edit" class="" />
                 </div>
               </div>
@@ -226,15 +262,6 @@
   </Card>
 
   <MediaDeckDownloadDialog :deck="deck" :visible="showDownloadDialog" @update:visible="showDownloadDialog = $event" />
-  <CoverageDialog :visible="showCoverageDialog" :coverage="coverageData" :deck="deck" @update:visible="showCoverageDialog = $event" />
-
-  <!-- Loading overlay -->
-  <div v-if="isLoadingCoverage" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div class="text-center">
-      <i class="pi pi-spin pi-spinner text-white text-5xl" />
-      <div class="text-white mt-4 text-xl">Getting your coverage, this could take a few seconds...</div>
-    </div>
-  </div>
 </template>
 
 <style scoped>

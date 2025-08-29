@@ -2,9 +2,12 @@
   import Button from 'primevue/button';
 
   import { useJitenStore } from '~/stores/jitenStore';
+  import { useAuthStore } from '~/stores/authStore';
 
   const store = useJitenStore();
+  const auth = useAuthStore();
   const tokenCookie = useCookie('token');
+  const isLoggedIn = computed(() => auth.isAuthenticated);
 
   onMounted(() => {
     if (store.darkMode) {
@@ -43,7 +46,7 @@
   const hideVocabularyDefinitions = computed({
     get: () => store.hideVocabularyDefinitions,
     set: (value) => (store.hideVocabularyDefinitions = value),
-  })
+  });
 
   const isAdmin = computed(() => {
     return tokenCookie.value !== null && tokenCookie.value !== undefined && tokenCookie.value !== '';
@@ -94,9 +97,12 @@
         <nav class="space-x-6">
           <nuxt-link to="/" class="!text-white">Home</nuxt-link>
           <nuxt-link to="/decks/media" class="!text-white">Media</nuxt-link>
+          <nuxt-link v-if="auth.isAuthenticated" to="/settings" class="!text-white">Settings</nuxt-link>
           <nuxt-link to="/other" class="!text-white">Other</nuxt-link>
           <nuxt-link to="/faq" class="!text-white">FAQ</nuxt-link>
-          <nuxt-link v-if="store.displayAdminFunctions" to="/Dashboard" class="!text-white">Dashboard</nuxt-link>
+          <nuxt-link v-if="auth.isAuthenticated && auth.isAdmin && store.displayAdminFunctions" to="/Dashboard" class="!text-white">Dashboard</nuxt-link>
+          <nuxt-link v-if="auth.isAuthenticated" to="/" class="!text-white" @click="auth.logout()"> Logout </nuxt-link>
+          <nuxt-link v-else to="/login" class="!text-white">Login</nuxt-link>
           <Button
             type="button"
             label="Share"
@@ -161,7 +167,7 @@
         <label for="displayAllNsfw">Unblur all NSFW sentences</label>
       </div>
 
-      <div v-if="isAdmin" class="flex items-center gap-2">
+      <div v-if="auth.isAuthenticated && auth.isAdmin" class="flex items-center gap-2">
         <Checkbox v-model="displayAdminFunctions" input-id="displayAdminFunctions" name="adminFunctions" :binary="true" />
         <label for="displayAdminFunctions">Display admin functions</label>
       </div>

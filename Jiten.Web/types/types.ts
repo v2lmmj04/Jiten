@@ -25,6 +25,8 @@ export interface Deck {
   childrenDeckCount: number;
   selectedWordOccurrences: number;
   dialoguePercentage: number;
+  coverage: number;
+  uniqueCoverage: number;
 }
 
 export interface DeckDetail {
@@ -147,16 +149,6 @@ export interface TokenResponse {
   accessToken: string;
   accessTokenExpiration: Date;
   refreshToken: string;
-}
-
-export interface DeckCoverage {
-  deckId: number;
-  totalWordCount: number;
-  knownWordsOccurrences: number;
-  knownUniqueWordCount: number;
-  uniqueWordCount: number;
-  knownWordPercentage: number;
-  knownUniqueWordPercentage: number;
 }
 
 export interface ExampleSentence {
