@@ -704,7 +704,8 @@ namespace Jiten.Parser
 
             if (matches.Count > 1)
             {
-                bestMatch = matches.OrderByDescending(m => m.Item1.GetPriorityScore(WanaKana.IsKana(wordData.wordInfo.Text))).First();
+                matches = matches.OrderByDescending(m => m.Item1.GetPriorityScore(WanaKana.IsKana(wordData.wordInfo.Text))).ToList();
+                bestMatch = matches.First();
 
                 if (!WanaKana.IsKana(wordData.wordInfo.NormalizedForm))
                 {
