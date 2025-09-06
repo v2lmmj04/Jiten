@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading;
 using ImageMagick;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
@@ -9,6 +10,8 @@ namespace Jiten.Core;
 
 public static class JitenHelper
 {
+    // Cap concurrent PostgreSQL COPY operations to reduce server pressure/timeouts
+    private static readonly SemaphoreSlim CopySemaphore = new SemaphoreSlim(6);
     public static async Task InsertDeck(DbContextOptions<JitenDbContext> options, Deck deck, byte[] cover, bool update = false)
     {
         var totalTimer = Stopwatch.StartNew();
@@ -137,7 +140,28 @@ public static class JitenHelper
                 await using var updateCtx = new JitenDbContext(options);
                 updateCtx.Attach(deck);
                 updateCtx.Entry(deck).State = EntityState.Modified;
-                await updateCtx.SaveChangesAsync();
+
+                // Small retry to survive transient socket drops during final update
+                var attempts = 0;
+                Exception lastEx = null;
+                while (attempts < 3)
+                {
+                    try
+                    {
+                        attempts++;
+                        await updateCtx.SaveChangesAsync();
+                        lastEx = null;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        var delayMs = (int)Math.Pow(2, attempts) * 200;
+                        Console.WriteLine($"[{DateTime.UtcNow:O}] Warning: final SaveChanges failed (attempt {attempts}): {ex.Message}. Retrying in {delayMs} ms...");
+                        await Task.Delay(delayMs);
+                    }
+                }
+                if (lastEx != null) throw lastEx;
 
                 Console.WriteLine($"[{DateTime.UtcNow:O}] Bulk inserts for deck and children completed.");
                 Console.WriteLine($"Insert took {totalTimer.ElapsedMilliseconds} ms.");
@@ -170,25 +194,41 @@ public static class JitenHelper
         Console.WriteLine($"[{DateTime.UtcNow:O}] Bulk inserting {deckWords.Count} deck words for DeckId {deckId}...");
         if (!deckWords.Any()) return;
 
-        await using (var ctx = new JitenDbContext(context.DbOptions))
+        await CopySemaphore.WaitAsync();
+        try
         {
-            var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
-            conn.Open();
-            // Use binary COPY
-            await using (var writer = await conn.BeginBinaryImportAsync(
-                                                                        @"COPY jiten.""DeckWords"" (""WordId"", ""ReadingIndex"", ""Occurrences"", ""DeckId"") FROM STDIN (FORMAT BINARY)"))
+            await using (var ctx = new JitenDbContext(context.DbOptions))
             {
-                foreach (var dw in deckWords)
+                var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
+                await conn.OpenAsync();
+
+                // Disable statement timeout for this COPY scope
+                await using (var timeoutCmd = new NpgsqlCommand(@"SET LOCAL statement_timeout = 0", conn))
                 {
-                    await writer.StartRowAsync();
-                    await writer.WriteAsync(dw.WordId);
-                    await writer.WriteAsync(dw.ReadingIndex);
-                    await writer.WriteAsync(dw.Occurrences);
-                    await writer.WriteAsync(deckId);
+                    timeoutCmd.CommandTimeout = 0;
+                    await timeoutCmd.ExecuteNonQueryAsync();
                 }
 
-                await writer.CompleteAsync();
+                // Use binary COPY
+                await using (var writer = await conn.BeginBinaryImportAsync(
+                    @"COPY jiten.""DeckWords"" (""WordId"", ""ReadingIndex"", ""Occurrences"", ""DeckId"") FROM STDIN (FORMAT BINARY)"))
+                {
+                    foreach (var dw in deckWords)
+                    {
+                        await writer.StartRowAsync();
+                        await writer.WriteAsync(dw.WordId);
+                        await writer.WriteAsync(dw.ReadingIndex);
+                        await writer.WriteAsync(dw.Occurrences);
+                        await writer.WriteAsync(deckId);
+                    }
+
+                    await writer.CompleteAsync();
+                }
             }
+        }
+        finally
+        {
+            CopySemaphore.Release();
         }
 
         Console.WriteLine($"[{DateTime.UtcNow:O}] Bulk insert (deck words) took {timer.ElapsedMilliseconds} ms for DeckId {deckId}.");
@@ -200,81 +240,97 @@ public static class JitenHelper
         Console.WriteLine($"[{DateTime.UtcNow:O}] Bulk inserting {exampleSentences.Count} example sentences for DeckId {deckId}...");
         if (!exampleSentences.Any()) return;
 
-        await using (var ctx = new JitenDbContext(context.DbOptions))
+        await CopySemaphore.WaitAsync();
+        try
         {
-            var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
-            conn.Open();
+            await using (var ctx = new JitenDbContext(context.DbOptions))
+            {
+                var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
+                await conn.OpenAsync();
 
-            // Step 1: preallocate unique IDs from the backing sequence (safe under concurrency)
-            var ids = new List<int>(exampleSentences.Count);
-            await using (var idCmd = new NpgsqlCommand(
-                                                       @"SELECT nextval(pg_get_serial_sequence('jiten.""ExampleSentences""', 'SentenceId')::regclass)
+                // Disable statement timeout for this session scope
+                await using (var timeoutCmd = new NpgsqlCommand(@"SET LOCAL statement_timeout = 0", conn))
+                {
+                    timeoutCmd.CommandTimeout = 0;
+                    await timeoutCmd.ExecuteNonQueryAsync();
+                }
+
+                // Step 1: preallocate unique IDs from the backing sequence (safe under concurrency)
+                var ids = new List<int>(exampleSentences.Count);
+                await using (var idCmd = new NpgsqlCommand(
+                    @"SELECT nextval(pg_get_serial_sequence('jiten.""ExampleSentences""', 'SentenceId')::regclass)
                          FROM generate_series(1, @cnt)", conn))
-            {
-                idCmd.Parameters.AddWithValue("cnt", exampleSentences.Count);
-                await using var reader = await idCmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
                 {
-                    // nextval returns bigint
-                    var id64 = reader.GetInt64(0);
-                    ids.Add(Convert.ToInt32(id64));
-                }
-            }
-
-            if (ids.Count != exampleSentences.Count)
-                throw new InvalidOperationException("Failed to allocate IDs for example sentences.");
-
-            // Step 2: COPY sentences
-            await using (var writer = await conn.BeginBinaryImportAsync(
-                                                                        @"COPY jiten.""ExampleSentences"" (""SentenceId"", ""Text"", ""Position"", ""DeckId"") FROM STDIN (FORMAT BINARY)"))
-            {
-                var idx = 0;
-                foreach (var sentence in exampleSentences)
-                {
-                    var id = ids[idx++];
-                    await writer.StartRowAsync();
-                    await writer.WriteAsync(id);
-                    await writer.WriteAsync(sentence.Text);
-                    await writer.WriteAsync(sentence.Position);
-                    await writer.WriteAsync(deckId);
-
-                    sentence.SentenceId = id;
-                    sentence.DeckId = deckId;
-                }
-
-                await writer.CompleteAsync();
-            }
-
-            // Collect example sentence words and assign ExampleSentenceId
-            var allWords = new List<ExampleSentenceWord>();
-            foreach (var sentence in exampleSentences)
-            {
-                foreach (var word in sentence.Words)
-                {
-                    word.ExampleSentenceId = sentence.SentenceId;
-                    allWords.Add(word);
-                }
-            }
-
-            // Step 3: COPY words if any
-            if (allWords.Any())
-            {
-                await using (var wordWriter = await conn.BeginBinaryImportAsync(
-                                                                                @"COPY jiten.""ExampleSentenceWords"" (""ExampleSentenceId"", ""WordId"", ""ReadingIndex"", ""Position"", ""Length"") FROM STDIN (FORMAT BINARY)"))
-                {
-                    foreach (var w in allWords)
+                    idCmd.CommandTimeout = 0;
+                    idCmd.Parameters.AddWithValue("cnt", exampleSentences.Count);
+                    await using var reader = await idCmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
                     {
-                        await wordWriter.StartRowAsync();
-                        await wordWriter.WriteAsync(w.ExampleSentenceId);
-                        await wordWriter.WriteAsync(w.WordId);
-                        await wordWriter.WriteAsync(w.ReadingIndex);
-                        await wordWriter.WriteAsync(w.Position);
-                        await wordWriter.WriteAsync(w.Length);
+                        // nextval returns bigint
+                        var id64 = reader.GetInt64(0);
+                        ids.Add(Convert.ToInt32(id64));
+                    }
+                }
+
+                if (ids.Count != exampleSentences.Count)
+                    throw new InvalidOperationException("Failed to allocate IDs for example sentences.");
+
+                // Step 2: COPY sentences
+                await using (var writer = await conn.BeginBinaryImportAsync(
+                    @"COPY jiten.""ExampleSentences"" (""SentenceId"", ""Text"", ""Position"", ""DeckId"") FROM STDIN (FORMAT BINARY)"))
+                {
+                    var idx = 0;
+                    foreach (var sentence in exampleSentences)
+                    {
+                        var id = ids[idx++];
+                        await writer.StartRowAsync();
+                        await writer.WriteAsync(id);
+                        await writer.WriteAsync(sentence.Text);
+                        await writer.WriteAsync(sentence.Position);
+                        await writer.WriteAsync(deckId);
+
+                        sentence.SentenceId = id;
+                        sentence.DeckId = deckId;
                     }
 
-                    await wordWriter.CompleteAsync();
+                    await writer.CompleteAsync();
+                }
+
+                // Collect example sentence words and assign ExampleSentenceId
+                var allWords = new List<ExampleSentenceWord>();
+                foreach (var sentence in exampleSentences)
+                {
+                    foreach (var word in sentence.Words)
+                    {
+                        word.ExampleSentenceId = sentence.SentenceId;
+                        allWords.Add(word);
+                    }
+                }
+
+                // Step 3: COPY words if any
+                if (allWords.Any())
+                {
+                    await using (var wordWriter = await conn.BeginBinaryImportAsync(
+                        @"COPY jiten.""ExampleSentenceWords"" (""ExampleSentenceId"", ""WordId"", ""ReadingIndex"", ""Position"", ""Length"") FROM STDIN (FORMAT BINARY)"))
+                    {
+                        foreach (var w in allWords)
+                        {
+                            await wordWriter.StartRowAsync();
+                            await wordWriter.WriteAsync(w.ExampleSentenceId);
+                            await wordWriter.WriteAsync(w.WordId);
+                            await wordWriter.WriteAsync(w.ReadingIndex);
+                            await wordWriter.WriteAsync(w.Position);
+                            await wordWriter.WriteAsync(w.Length);
+                        }
+
+                        await wordWriter.CompleteAsync();
+                    }
                 }
             }
+        }
+        finally
+        {
+            CopySemaphore.Release();
         }
 
         Console.WriteLine($"[{DateTime.UtcNow:O}] Bulk insert (example sentences+words) took {timer.ElapsedMilliseconds} ms for DeckId {deckId}.");

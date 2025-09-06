@@ -9,6 +9,7 @@ using Jiten.Api.Services;
 using Jiten.Core;
 using Jiten.Core.Data.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -227,6 +228,8 @@ builder.Services.AddHangfireServer((options) =>
     options.Queues = ["default"];
     options.WorkerCount = Environment.ProcessorCount / 4;
 });
+
+builder.Services.Configure<FormOptions>(options => { options.ValueCountLimit = 8192; });
 
 var app = builder.Build();
 

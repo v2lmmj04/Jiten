@@ -638,7 +638,8 @@ namespace Jiten.Parser
             }
 
             // if there's a candidate that's the same as the base word, put it first in the list
-            var baseDictionaryWord = WanaKana.ToHiragana(wordData.wordInfo.DictionaryForm);
+            var baseDictionaryWord = WanaKana.ToHiragana(wordData.wordInfo.DictionaryForm.Replace("ゎ", "わ").Replace("ヮ", "わ"),
+                                                         new DefaultOptions() { ConvertLongVowelMark = false });
             var baseDictionaryWordIndex = candidates.FindIndex(c => c.form.Text == baseDictionaryWord);
             if (baseDictionaryWordIndex != -1)
             {
