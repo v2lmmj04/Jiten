@@ -1,4 +1,4 @@
-import type { MediaType, ReadingType } from '~/types';
+import { type KnownState, type MediaType, type ReadingType } from '~/types';
 
 export interface Deck {
   deckId: number;
@@ -65,6 +65,7 @@ export interface Word {
   definitions: Definition[];
   occurrences: number;
   pitchAccents: number[];
+  knownState: KnownState;
 }
 
 export interface Reading {

@@ -43,7 +43,8 @@
     "vue": "latest",
     "vue-chartjs": "^5.3.2",
     "vue-recaptcha": "3.0.0-alpha.6",
-    "vue-router": "latest"
+    "vue-router": "latest",
+    "yanki-connect": "^3.0.4"
   },
   "devDependencies": {
     "@css-inline/css-inline-wasm": "^0.14.3",

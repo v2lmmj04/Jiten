@@ -26,14 +26,12 @@
     <section class="terms-section">
       <h2 class="section-title">2. What Data We Collect</h2>
       <p>When you use Jiten.moe, we may collect:</p>
-      <p>
         <ul class="responsibilities-list">
           <li><b>Account Information:</b> Username (chosen by you) and email address.</li>
           <li><b>Newsletter Preferences:</b> Whether you have opted in to receive our newsletter.</li>
           <li><b>Technical Data:</b> IP address, browser type, operating system (collected automatically for security and site functionality).</li>
           <li><b>Cookies:</b> Essential cookies for site functionality; any non-essential cookies (e.g., analytics) will only be used with your consent.</li>
         </ul>
-      </p>
     </section>
 
     <section class="terms-section">

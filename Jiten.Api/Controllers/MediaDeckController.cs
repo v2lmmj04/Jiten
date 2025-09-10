@@ -9,6 +9,7 @@ using Jiten.Api.Services;
 using Jiten.Core;
 using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
+using Jiten.Core.Data.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -333,9 +334,10 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
     }
 
     [HttpGet("{id}/vocabulary")]
-    [ResponseCache(Duration = 600, VaryByQueryKeys = ["id", "sortBy", "sortOrder", "offset"])]
-    public PaginatedResponse<DeckVocabularyListDto?> GetVocabulary(int id, string? sortBy = "", SortOrder sortOrder = SortOrder.Ascending,
-                                                                   int? offset = 0)
+    // [ResponseCache(Duration = 600, VaryByQueryKeys = ["id", "sortBy", "sortOrder", "offset"])]
+    public async Task<PaginatedResponse<DeckVocabularyListDto?>> GetVocabulary(int id, string? sortBy = "",
+                                                                               SortOrder sortOrder = SortOrder.Ascending,
+                                                                               int? offset = 0)
     {
         int pageSize = 100;
 
@@ -389,6 +391,8 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
 
         DeckVocabularyListDto dto = new() { ParentDeck = parentDeckDto, Deck = deck, Words = new() };
 
+        var knownWords = await currentUserService.GetKnownWordsState(words.Select(dw => (dw.dw.WordId, dw.dw.ReadingIndex)).ToList());
+
         foreach (var word in words)
         {
             if (word.jmDictWord == null)
@@ -401,7 +405,7 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
             List<ReadingDto> alternativeReadings = word.jmDictWord.ReadingsFurigana
                                                        .Select((r, i) => new ReadingDto
                                                                          {
-                                                                             Text = r, ReadingIndex = i,
+                                                                             Text = r, ReadingIndex = (byte)i,
                                                                              ReadingType = word.jmDictWord.ReadingTypes[i], FrequencyRank =
                                                                                  frequencies.First(f => f.WordId == word.dw.WordId)
                                                                                             .ReadingsFrequencyRank[i],
@@ -434,6 +438,9 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
 
             dto.Words.Add(wordDto);
         }
+
+        dto.Words.ApplyKnownWordsState(knownWords);
+
 
         return new PaginatedResponse<DeckVocabularyListDto?>(dto, totalCount, pageSize, offset ?? 0);
     }

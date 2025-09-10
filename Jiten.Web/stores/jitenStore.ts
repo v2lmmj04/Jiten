@@ -106,15 +106,15 @@ export const useJitenStore = defineStore('jiten', () => {
     return [];
   };
 
-  const setKnownWordIds = (wordIds: number[]) => {
-    if (import.meta.client) {
-      try {
-        localStorage.setItem('jiten-known-word-ids', JSON.stringify(wordIds));
-      } catch (error) {
-        console.error('Error saving known word IDs to localStorage:', error);
-      }
-    }
-  };
+  // const setKnownWordIds = (wordIds: number[]) => {
+  //   if (import.meta.client) {
+  //     try {
+  //       localStorage.setItem('jiten-known-word-ids', JSON.stringify(wordIds));
+  //     } catch (error) {
+  //       console.error('Error saving known word IDs to localStorage:', error);
+  //     }
+  //   }
+  // };
 
   const knownWordIds = ref<number[]>([]);
   let isInitialized = false;
@@ -130,38 +130,38 @@ export const useJitenStore = defineStore('jiten', () => {
     ensureInitialized();
   });
 
-  watch(
-    knownWordIds,
-    (newValue) => {
-      if (isInitialized) {
-        setKnownWordIds(newValue);
-      }
-    },
-    { deep: true }
-  );
+  // watch(
+  //   knownWordIds,
+  //   (newValue) => {
+  //     if (isInitialized) {
+  //       setKnownWordIds(newValue);
+  //     }
+  //   },
+  //   { deep: true }
+  // );
 
-  function addKnownWordIds(wordIds: number[]) {
-    const uniqueWordIds = [...new Set([...knownWordIds.value, ...wordIds])];
-    knownWordIds.value = uniqueWordIds;
-    console.log(`Added ${wordIds.length} word IDs. Total: ${uniqueWordIds.length}`);
-  }
-  
-  function removeKnownWordId(wordId: number) {
-    knownWordIds.value = knownWordIds.value.filter((id) => id !== wordId);
-  }
-
-  function isWordKnown(wordId: number): boolean {
-    ensureInitialized();
-    return knownWordIds.value.includes(wordId);
-  }
+  // function addKnownWordIds(wordIds: number[]) {
+  //   const uniqueWordIds = [...new Set([...knownWordIds.value, ...wordIds])];
+  //   knownWordIds.value = uniqueWordIds;
+  //   console.log(`Added ${wordIds.length} word IDs. Total: ${uniqueWordIds.length}`);
+  // }
+  //
+  // function removeKnownWordId(wordId: number) {
+  //   knownWordIds.value = knownWordIds.value.filter((id) => id !== wordId);
+  // }
+  //
+  // function isWordKnown(wordId: number): boolean {
+  //   ensureInitialized();
+  //   return knownWordIds.value.includes(wordId);
+  // }
 
   return {
     // actions
     getKnownWordIds,
-    addKnownWordIds,
-    removeKnownWordId,
-    setKnownWordIds,
-    isWordKnown,
+    // addKnownWordIds,
+    // removeKnownWordId,
+    // setKnownWordIds,
+    // isWordKnown,
 
     // state
     titleLanguage,

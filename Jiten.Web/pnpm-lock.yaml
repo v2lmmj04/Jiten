@@ -98,6 +98,9 @@ importers:
       vue-router:
         specifier: latest
         version: 4.5.1(vue@3.5.20(typescript@5.9.2))
+      yanki-connect:
+        specifier: ^3.0.4
+        version: 3.0.4
     devDependencies:
       '@css-inline/css-inline-wasm':
         specifier: ^0.14.3
@@ -1730,6 +1733,9 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/node@18.19.124':
+    resolution: {integrity: sha512-hY4YWZFLs3ku6D2Gqo3RchTd9VRCcrjqp/I0mmohYeUVA5Y8eCXKJEasHxLAJVZRJuQogfd1GiJ9lgogBgKeuQ==}
 
   '@types/node@24.3.0':
     resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
@@ -4950,6 +4956,9 @@ packages:
   unctx@2.4.1:
     resolution: {integrity: sha512-AbaYw0Nm4mK4qjhns67C+kgxR2YWiwlDBPzxrN8h8C6VtAdCgditAY5Dezu3IJy4XVqAnbrXt9oQJvsn3fyozg==}
 
+  undici-types@5.26.5:
+    resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+
   undici-types@7.10.0:
     resolution: {integrity: sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==}
 
@@ -5384,6 +5393,10 @@ packages:
     resolution: {integrity: sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==}
     engines: {node: '>= 14.6'}
     hasBin: true
+
+  yanki-connect@3.0.4:
+    resolution: {integrity: sha512-NK2rpdImUcqS1r3e/j19DTJ1X0PLi4LbUQw/mlIUkc0M2+Ly4WceAYC6vM4Q+esdaaHGbCsr8YpQrkaK/MGjTw==}
+    engines: {node: ^18.15.0 || >=20.11.0}
 
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
@@ -7174,6 +7187,10 @@ snapshots:
   '@types/estree@1.0.8': {}
 
   '@types/json-schema@7.0.15': {}
+
+  '@types/node@18.19.124':
+    dependencies:
+      undici-types: 5.26.5
 
   '@types/node@24.3.0':
     dependencies:
@@ -10839,6 +10856,8 @@ snapshots:
       magic-string: 0.30.18
       unplugin: 2.3.9
 
+  undici-types@5.26.5: {}
+
   undici-types@7.10.0: {}
 
   unenv@2.0.0-rc.19:
@@ -11292,6 +11311,11 @@ snapshots:
   yallist@5.0.0: {}
 
   yaml@2.8.1: {}
+
+  yanki-connect@3.0.4:
+    dependencies:
+      '@types/node': 18.19.124
+      open: 10.2.0
 
   yargs-parser@21.1.1: {}
 

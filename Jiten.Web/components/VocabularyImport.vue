@@ -9,6 +9,7 @@
 
   import { useJitenStore } from '~/stores/jitenStore';
   import { useToast } from 'primevue/usetoast';
+  import AnkiConnectImport from '~/components/AnkiConnectImport.vue';
 
   const toast = useToast();
 
@@ -20,32 +21,57 @@
   const confirm = useConfirm();
   const { JpdbApiClient } = useJpdbApi();
 
-  const knownWordIdsAmount = ref(0);
-  knownWordIdsAmount.value = store.getKnownWordIds().length;
+  const knownWordsAmount = ref(0);
+  const knownFormsAmount = ref(0);
+  onMounted(async () => {
+    await fetchKnownWordsAmount();
+  });
 
-  function clearKnownWords() {
+  async function fetchKnownWordsAmount() {
+    try {
+      const result = await $api<{ words: number; forms: number }>('user/vocabulary/known-ids/amount');
+      knownWordsAmount.value = result.words;
+      knownFormsAmount.value = result.forms;
+    } catch {}
+  }
+
+  async function clearKnownWords() {
     confirm.require({
       message: 'Are you sure you want to clear all known words? This action cannot be undone.',
       header: 'Clear Known Words',
       icon: 'pi pi-exclamation-triangle',
       acceptClass: 'p-button-danger',
       rejectClass: 'p-button-secondary',
-      accept: () => {
-        store.setKnownWordIds([]);
-        knownWordIdsAmount.value = 0;
-        toast.add({ severity: 'success', summary: 'Known words cleared', detail: 'All known words have been cleared.', life: 5000 });
+      accept: async () => {
+        try {
+          const result = await $api<{ removed: number }>('user/vocabulary/known-ids/clear', { method: 'DELETE' });
+          toast.add({
+            severity: 'success',
+            summary: 'Known words cleared',
+            detail: `Removed ${result?.removed ?? 0} known words from your account.`,
+            life: 5000,
+          });
+          knownWordsAmount.value = 0;
+          knownFormsAmount.value = 0;
+        } catch (e) {
+          console.error(e);
+          toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to clear known words on server.', life: 5000 });
+        }
       },
       reject: () => {},
     });
   }
 
-  const vidRegex = /"vid"\s*:\s*(\d+)/g;
   const isLoading = ref(false);
   const jpdbApiKey = ref('');
   const blacklistedAsKnown = ref(true);
   const dueAsKnown = ref(true);
-  const suspendedAsKnown = ref(true);
+  const suspendedAsKnown = ref(false);
   const jpdbProgress = ref('');
+
+  const uploadedCount = ref<number | null>(null);
+  const addedCount = ref<number | null>(null);
+  const skippedCount = ref<number | null>(null);
 
   async function importFromJpdbApi() {
     if (!jpdbApiKey.value) {
@@ -66,16 +92,25 @@
       const response = await client.getFilteredVocabularyIds(blacklistedAsKnown.value, dueAsKnown.value, suspendedAsKnown.value);
 
       if (response && response.length > 0) {
-        jpdbProgress.value = 'Adding vocabulary to store...';
+        jpdbProgress.value = 'Sending vocabulary to your account...';
         await new Promise((resolve) => setTimeout(resolve, 100)); // Allow UI to update
 
-        store.addKnownWordIds(response);
-        toast.add({ severity: 'success', summary: 'Success', detail: `Imported ${response.length} word IDs from JPDB.`, life: 5000 });
-        await nextTick();
-        knownWordIdsAmount.value = store.getKnownWordIds().length;
-        console.log(`Imported word IDs from JPDB: ${response.length}`, response);
+        // Send IDs to server to save into the user's account
+        const result = await $api<{ added: number; skipped: number }>('user/vocabulary/import-from-ids', {
+          method: 'POST',
+          body: JSON.stringify(response),
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (result) {
+          await fetchKnownWordsAmount();
+          toast.add({ severity: 'success', summary: 'Synced with account', detail: `Added ${result.added}, skipped ${result.skipped}.`, life: 6000 });
+        } else {
+          toast.add({ severity: 'info', summary: 'No changes', detail: 'No words were added to your account.', life: 5000 });
+        }
+        console.log(`JPDB IDs sent to server: ${response.length}`, response);
       } else {
-        toast.add({ severity: 'info', summary: 'No words added', detail: 'No words were found or imported from JPDB.', life: 5000 });
+        toast.add({ severity: 'info', summary: 'No words found', detail: 'No words were found from JPDB.', life: 5000 });
       }
     } catch (error) {
       console.error('Error importing from JPDB API:', error);
@@ -87,49 +122,6 @@
       // Clear the API key for security
       jpdbApiKey.value = '';
     }
-  }
-
-  async function handleJpdbFileSelect(event) {
-    const file = event.files?.[0];
-    if (!file) {
-      toast.add({ severity: 'error', summary: 'Error', detail: 'No file selected.', life: 5000 });
-      return;
-    }
-
-    // Ensure it's a JSON file
-    if (file.type !== 'application/json') {
-      toast.add({ severity: 'error', summary: 'Error', detail: 'Please upload a JSON file.', life: 5000 });
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = async (e) => {
-      try {
-        const text = e.target?.result as string;
-        const vids = Array.from(text.matchAll(vidRegex), (m) => Number(m[1]));
-        const validVids = vids.filter((vid) => vid > 0 && vid <= 2147483647);
-
-        if (validVids.length > 0) {
-          store.addKnownWordIds(validVids);
-          toast.add({ severity: 'success', summary: 'Added words', detail: `Found ${validVids.length} word IDs.`, life: 5000 });
-          await nextTick();
-          knownWordIdsAmount.value = store.getKnownWordIds().length;
-          console.log(`Extracted VIDs: ${validVids.length}`, validVids);
-        } else {
-          toast.add({ severity: 'info', summary: 'No words added', detail: 'No "vid" entries found in the file.', life: 5000 });
-        }
-      } catch (error) {
-        console.error('Error processing file:', error);
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to process file. Invalid JSON or data format.', life: 5000 });
-      }
-    };
-
-    reader.onerror = () => {
-      toast.add({ severity: 'error', summary: 'Error', detail: 'Error reading file.', life: 5000 });
-    };
-
-    reader.readAsText(file);
   }
 
   async function handleAnkiFileSelect(event) {
@@ -154,21 +146,22 @@
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send the file to the API
-      const wordIds = await $api<number[]>('vocabulary/vocabulary-from-anki-txt', {
+      // Send the file to the API (server parses and saves to user account)
+      const result = await $api<{ parsed: number; added: number }>('user/vocabulary/import-from-anki-txt', {
         method: 'POST',
         body: formData,
       });
 
-      // Add the word IDs to the store
-      if (wordIds && wordIds.length > 0) {
-        store.addKnownWordIds(wordIds);
-        toast.add({ severity: 'success', detail: `Found ${wordIds.length} word IDs from Anki file.`, life: 5000 });
-        await nextTick();
-        knownWordIdsAmount.value = store.getKnownWordIds().length;
-        console.log(`Extracted word IDs from Anki: ${wordIds.length}`, wordIds);
-      } else {
-        toast.add({ severity: 'info', detail: 'No word IDs found in the Anki file.', life: 5000 });
+      if (result) {
+        uploadedCount.value = result.parsed;
+        addedCount.value = result.added;
+        await fetchKnownWordsAmount();
+        toast.add({
+          severity: 'success',
+          summary: 'Known words updated',
+          detail: `Parsed ${result.parsed} words, added ${result.added} forms.`,
+          life: 6000,
+        });
       }
     } catch (error) {
       console.error('Error processing Anki file:', error);
@@ -191,40 +184,63 @@
   };
 
   async function getVocabularyByFrequency() {
-    const data = await $api<number[]>(`vocabulary/vocabulary-list-frequency/${frequencyRange.value[0]}/${frequencyRange.value[1]}`);
-    toast.add({ severity: 'success', detail: `Added ${data.length} words by frequency range.`, life: 5000 });
-    store.addKnownWordIds(data);
+    const data = await $api<{words:number,forms:number,skipped:number}>(`user/vocabulary/import-from-frequency/${frequencyRange.value[0]}/${frequencyRange.value[1]}`, {
+      method: 'POST',
+    });
+    toast.add({ severity: 'success', detail: `Added ${data.words} words, ${data.forms} forms by frequency range.`, life: 5000 });
     await nextTick();
-    knownWordIdsAmount.value = store.getKnownWordIds().length;
+    await fetchKnownWordsAmount();
   }
 
-  function downloadKnownWordIds() {
-    // Get the current list of known word IDs
-    const wordIds = store.getKnownWordIds();
+  async function downloadKnownWordIds() {
+    try {
+      const wordIds = await $api<number[]>('user/vocabulary/known-ids');
+      const content = wordIds.join('\n');
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'jiten-known-word-ids.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.add({ severity: 'success', detail: `Exported ${wordIds.length} word IDs to text file.`, life: 5000 });
+    } catch (e) {
+      console.error(e);
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to export from server.', life: 5000 });
+    }
+  }
 
-    // Create a text content with one ID per line
-    const content = wordIds.join('\n');
+  async function sendLocalKnownIds() {
+    try {
+      const ids = store.getKnownWordIds();
+      if (!ids || ids.length === 0) {
+        toast.add({ severity: 'info', summary: 'No data', detail: 'No known word IDs found in local storage.', life: 4000 });
+        return;
+      }
+      isLoading.value = true;
 
-    // Create a Blob with the content
-    const blob = new Blob([content], { type: 'text/plain' });
+      const bodyPayload = ids || [];
 
-    // Create a URL for the Blob
-    const url = URL.createObjectURL(blob);
-
-    // Create a temporary anchor element to trigger the download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'jiten-known-word-ids.txt';
-
-    // Append the anchor to the document, click it, and remove it
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    // Release the URL object
-    URL.revokeObjectURL(url);
-
-    toast.add({ severity: 'success', detail: `Exported ${wordIds.length} word IDs to text file.`, life: 5000 });
+      const result = await $api<{ added: number; skipped: number }>('user/vocabulary/import-from-ids', {
+        method: 'POST',
+        body: JSON.stringify(bodyPayload),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (result) {
+        addedCount.value = result.added;
+        await fetchKnownWordsAmount();
+        toast.add({ severity: 'success', summary: 'Known words saved', detail: `Added ${result.added} forms.`, life: 6000 });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to send known word IDs.', life: 5000 });
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   function handleWordIdsFileSelect(event) {
@@ -255,11 +271,22 @@
           .filter((id) => !isNaN(id));
 
         if (wordIds.length > 0) {
-          store.addKnownWordIds(wordIds);
-          toast.add({ severity: 'success', detail: `Imported ${wordIds.length} word IDs.`, life: 5000 });
-          await nextTick();
-          knownWordIdsAmount.value = store.getKnownWordIds().length;
-          console.log(`Imported word IDs: ${wordIds.length}`, wordIds);
+          const bodyPayload = wordIds || [];
+
+          try {
+            const result = await $api<{ added: number; skipped: number }>('user/vocabulary/import-from-ids', {
+              method: 'POST',
+              body: JSON.stringify(bodyPayload),
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+            toast.add({ severity: 'success', detail: `Imported ${wordIds.length} word IDs.`, life: 5000 });
+          } catch {
+          } finally {
+            await nextTick();
+            await fetchKnownWordsAmount();
+          }
         } else {
           toast.add({ severity: 'info', detail: 'No valid word IDs found in the file.', life: 5000 });
         }
@@ -290,21 +317,12 @@
       </template>
       <template #subtitle>
         <p class="text-gray-600 dark:text-gray-300">
-          You currently have <span class="font-extrabold text-primary-500">{{ knownWordIdsAmount }}</span> known words saved in your browser's local storage.
+          You currently have <span class="font-extrabold text-primary-500">{{ knownWordsAmount }}</span> known words and
+          <span class="font-extrabold text-primary-500">{{ knownFormsAmount }}</span> known forms.
         </p>
       </template>
       <template #content>
-        <p class="mb-3">
-          You can upload a list of known words to calculate coverage and exclude them from downloads. Your data is processed client-side and remains stored only
-          in your local storage.
-        </p>
-        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          Note: If you change browser or delete its data, your known words might be lost. You can export them to keep them safe.
-        </p>
-
-        <div class="flex">
-          <Button severity="danger" icon="pi pi-trash" label="Clear All Known Words" @click="clearKnownWords" />
-        </div>
+        <p class="mb-3">You can upload a list of known words to calculate coverage and exclude them from downloads using one of the options below.</p>
       </template>
     </Card>
 
@@ -314,7 +332,8 @@
       </template>
       <template #content>
         <p class="mb-3">
-          You can export your known word IDs to a text file and import them later. This is useful for backing up your data or transferring it to another device.
+          You can export your known word IDs to a text file and import them later. This is useful for backing up your data or transferring it to another
+          account.
         </p>
 
         <div class="flex flex-col md:flex-row gap-3 mb-3">
@@ -330,9 +349,18 @@
             class="w-full md:w-auto"
             @select="handleWordIdsFileSelect"
           />
+
+          <div class="flex items-center gap-2">
+            <Button icon="pi pi-upload" label="Send Local Known IDs" class="w-full md:w-auto" :loading="isLoading" @click="sendLocalKnownIds" />
+            <span class="text-sm text-gray-600"
+              >Local IDs: <strong>{{ store.getKnownWordIds().length }}</strong></span
+            >
+          </div>
         </div>
       </template>
     </Card>
+
+    <AnkiConnectImport class="mb-4" />
 
     <Card class="mb-4">
       <template #title>
@@ -343,12 +371,13 @@
           You can find your API key on the bottom of the settings page (<a
             href="https://jpdb.io/settings"
             target="_blank"
+            rel="nofollow"
             class="text-primary-500 hover:underline"
             >https://jpdb.io/settings</a
           >)
         </p>
         <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-          Your API key will only be used for the import and won't be saved anywhere. All processing happens in your browser locally.
+          Your API key will only be used for the import and won't be saved anywhere. Only the word list is sent to the server.
         </p>
 
         <div class="mb-3">
@@ -379,30 +408,6 @@
 
     <Card class="mb-4">
       <template #title>
-        <h3 class="text-lg font-semibold">(Obsolete) Upload JPDB Word List (JSON)</h3>
-      </template>
-      <template #content>
-        <p class="mb-2">Obsolete, please use the API method instead for better results.</p>
-        <p class="mb-2">You can find the file in the settings > Data Export > button Export reviews (.json)</p>
-        <p class="mb-3 text-sm text-amber-600 dark:text-amber-400">
-          Warning: This will not add blacklisted words. If you blacklisted common words, please use the "Add words between global frequency" option below.
-        </p>
-
-        <FileUpload
-          mode="basic"
-          name="jpdbFile"
-          accept=".json"
-          :custom-upload="true"
-          :auto="true"
-          :choose-label="'Select reviews.json File'"
-          class="mb-3"
-          @select="handleJpdbFileSelect"
-        />
-      </template>
-    </Card>
-
-    <Card class="mb-4">
-      <template #title>
         <h3 class="text-lg font-semibold">Import from Anki Deck</h3>
       </template>
       <template #content>
@@ -422,6 +427,16 @@
           class="mb-3"
           @select="handleAnkiFileSelect"
         />
+
+        <div v-if="addedCount !== null || skippedCount !== null || uploadedCount !== null" class="text-sm text-gray-700 dark:text-gray-300">
+          <div v-if="uploadedCount !== null">
+            Parsed from file: <strong>{{ uploadedCount }}</strong>
+          </div>
+          <div v-if="addedCount !== null">
+            Added: <strong class="text-green-600">{{ addedCount }}</strong>
+          </div>
+          <!--          <div v-if="skippedCount !== null">Already present: <strong class="text-amber-600">{{ skippedCount }}</strong></div>-->
+        </div>
       </template>
     </Card>
 
@@ -451,6 +466,25 @@
             />
           </div>
           <Button icon="pi pi-plus" label="Add Words by Frequency" class="w-full md:w-auto" @click="getVocabularyByFrequency" />
+        </div>
+      </template>
+    </Card>
+
+    <Card class="mb-4">
+      <template #title>
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-bold">Danger Zone</h2>
+        </div>
+      </template>
+      <template #subtitle> </template>
+      <template #content>
+        <p class="mb-3">
+          Clicking this button will <b>delete ALL your known words</b>. This action cannot be undone. Please make a backup before using it, and use it at your
+          own risk.
+        </p>
+
+        <div class="flex">
+          <Button severity="danger" icon="pi pi-trash" label="Clear All Known Words" @click="clearKnownWords" />
         </div>
       </template>
     </Card>
