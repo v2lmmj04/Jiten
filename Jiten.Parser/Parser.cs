@@ -214,19 +214,15 @@ namespace Jiten.Parser
                              .Select(result => result)
                              .ToArray();
 
-            // Assign the occurences for each word
-            foreach (var deckWord in processedWords)
-            {
-                // Remove one since we already counted it at the start
-                deckWord.Occurrences--;
-                deckWord.Occurrences +=
-                    processedWords.Count(x => x.WordId == deckWord.WordId && x.ReadingIndex == deckWord.ReadingIndex);
-            }
-
-            // deduplicate deconjugated words
+            // Sum occurrences while deduplicating by WordId and ReadingIndex for deconjugated words
             processedWords = processedWords
                              .GroupBy(x => new { x.WordId, x.ReadingIndex })
-                             .Select(x => x.First())
+                             .Select(g =>
+                             {
+                                 var first = g.First();
+                                 first.Occurrences = g.Sum(w => w.Occurrences);
+                                 return first;
+                             })
                              .ToArray();
 
             List<ExampleSentence>? exampleSentences = null;
