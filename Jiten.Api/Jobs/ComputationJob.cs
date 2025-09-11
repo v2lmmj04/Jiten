@@ -5,14 +5,58 @@ using Jiten.Core.Data;
 using Jiten.Core.Data.JMDict;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Hangfire;
+using Jiten.Core.Data.User;
 
 namespace Jiten.Api.Jobs;
 
-public class ComputationJob(JitenDbContext context, UserDbContext userContext, IConfiguration configuration)
+public class ComputationJob(JitenDbContext context, UserDbContext userContext, IConfiguration configuration, IBackgroundJobClient backgroundJobs)
 {
+    private static readonly object CoverageComputeLock = new();
+    private static readonly HashSet<string> CoverageComputingUserIds = new();
+
+    [Queue("coverage")]
+    public async Task DailyUserCoverage()
+    {
+        var userIds = await userContext.Users
+                                        .AsNoTracking()
+                                        .Select(u => u.Id)
+                                        .ToListAsync();
+
+        foreach (var userId in userIds)
+        {
+            backgroundJobs.Enqueue<ComputationJob>(job => job.ComputeUserCoverage(userId));
+        }
+    }
+    
+    [Queue("coverage")]
     public async Task ComputeUserCoverage(string userId)
     {
-        var sql = @"
+        // Prevent duplicate concurrent computations for the same user
+        lock (CoverageComputeLock)
+        {
+            if (CoverageComputingUserIds.Contains(userId))
+            {
+                return;
+            }
+
+            CoverageComputingUserIds.Add(userId);
+        }
+
+        try
+        {
+            // Only compute coverage for users with at least 10 known words
+            if (await userContext.UserKnownWords.CountAsync(ukw => ukw.UserId == userId) < 10)
+            {
+                // Remove existing coverages if they exist, if the user cleared his words for example
+                await userContext.UserCoverages.Where(uc => uc.UserId == userId).ExecuteDeleteAsync();
+
+                await userContext.SaveChangesAsync();
+
+                return;
+            }
+
+            var sql = @"
         WITH KnownWords AS (
             SELECT ""WordId"", ""ReadingIndex""
             FROM ""user"".""UserKnownWords"" 
@@ -43,45 +87,69 @@ public class ComputationJob(JitenDbContext context, UserDbContext userContext, I
             END as ""UniqueCoverage""
         FROM DeckCoverage";
 
-        var coverageResults = await context.Database
-                                           .SqlQueryRaw<DeckCoverageResult>(sql, userId)
-                                           .ToListAsync();
+            var coverageResults = await context.Database
+                                               .SqlQueryRaw<DeckCoverageResult>(sql, userId)
+                                               .ToListAsync();
 
-        // Load existing coverages
-        var deckIds = coverageResults.Select(r => r.DeckId).ToList();
-        var existingCoverages = await userContext.UserCoverages
-                                                 .Where(uc => uc.UserId == userId && deckIds.Contains(uc.DeckId))
-                                                 .ToListAsync();
-        var existingDict = existingCoverages.ToDictionary(uc => uc.DeckId);
+            // Load existing coverages
+            var deckIds = coverageResults.Select(r => r.DeckId).ToList();
+            var existingCoverages = await userContext.UserCoverages
+                                                     .Where(uc => uc.UserId == userId && deckIds.Contains(uc.DeckId))
+                                                     .ToListAsync();
+            var existingDict = existingCoverages.ToDictionary(uc => uc.DeckId);
 
-        var newCoverages = new List<Core.Data.User.UserCoverage>();
+            var newCoverages = new List<Core.Data.User.UserCoverage>();
 
-        foreach (var result in coverageResults)
-        {
-            if (existingDict.TryGetValue(result.DeckId, out var existing))
+            foreach (var result in coverageResults)
             {
-                existing.Coverage = result.Coverage;
-                existing.UniqueCoverage = result.UniqueCoverage;
+                if (existingDict.TryGetValue(result.DeckId, out var existing))
+                {
+                    existing.Coverage = result.Coverage;
+                    existing.UniqueCoverage = result.UniqueCoverage;
+                }
+                else
+                {
+                    newCoverages.Add(new Core.Data.User.UserCoverage
+                                     {
+                                         UserId = userId, DeckId = result.DeckId, Coverage = result.Coverage,
+                                         UniqueCoverage = result.UniqueCoverage
+                                     });
+                }
+            }
+
+            if (newCoverages.Any())
+            {
+                userContext.UserCoverages.AddRange(newCoverages);
+            }
+
+            await userContext.SaveChangesAsync();
+        }
+        finally
+        {
+            // Ensure removal even if an exception occurs
+            lock (CoverageComputeLock)
+            {
+                CoverageComputingUserIds.Remove(userId);
+            }
+
+            var metadata = await userContext.UserMetadatas
+                                            .SingleOrDefaultAsync(um => um.UserId == userId);
+
+            if (metadata is null)
+            {
+                metadata = new UserMetadata { UserId = userId, CoverageRefreshedAt = DateTime.UtcNow };
+                await userContext.UserMetadatas.AddAsync(metadata);
             }
             else
             {
-                newCoverages.Add(new Core.Data.User.UserCoverage
-                                 {
-                                     UserId = userId, DeckId = result.DeckId, Coverage = result.Coverage,
-                                     UniqueCoverage = result.UniqueCoverage
-                                 });
+                metadata.CoverageRefreshedAt = DateTime.UtcNow;
             }
+            
+            await userContext.SaveChangesAsync();
         }
-
-        if (newCoverages.Any())
-        {
-            userContext.UserCoverages.AddRange(newCoverages);
-        }
-
-        await userContext.SaveChangesAsync();
     }
-    
-    public class DeckCoverageResult
+
+    private class DeckCoverageResult
     {
         public int DeckId { get; set; }
         public double Coverage { get; set; }

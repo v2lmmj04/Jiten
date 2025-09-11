@@ -378,9 +378,7 @@ public class AdminController(
         var userIds = await userContext.Users.AsNoTracking().Select(u => u.Id).ToListAsync();
 
         foreach (var userId in userIds)
-        {
             backgroundJobs.Enqueue<ComputationJob>(job => job.ComputeUserCoverage(userId));
-        }
 
         return Ok(new { Message = "Recomputing user coverages for all users has been queued" });
     }

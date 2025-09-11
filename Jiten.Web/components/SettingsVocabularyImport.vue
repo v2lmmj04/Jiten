@@ -1,8 +1,6 @@
 <script setup lang="ts">
-  import type { DeckCoverage } from '~/types';
   import { useConfirm } from 'primevue/useconfirm';
   import ConfirmDialog from 'primevue/confirmdialog';
-  import Badge from 'primevue/badge';
   import Card from 'primevue/card';
   import InputText from 'primevue/inputtext';
   import Checkbox from 'primevue/checkbox';
@@ -455,7 +453,7 @@
               class="max-w-20 flex-shrink-0"
               @update:model-value="updateMinFrequency"
             />
-            <Slider v-model="frequencyRange" range :min="0" :max="50000" class="flex-grow mx-2 flex-basis-auto" />
+            <Slider v-model="frequencyRange" range :min="0" :max="10000" class="flex-grow mx-2 flex-basis-auto" />
             <InputNumber
               :model-value="frequencyRange?.[1] ?? 0"
               show-buttons

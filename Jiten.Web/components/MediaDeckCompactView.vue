@@ -4,6 +4,9 @@
   import { localiseTitle } from '~/utils/localiseTitle';
   import MediaDeckDownloadDialog from '~/components/MediaDeckDownloadDialog.vue';
   import Card from 'primevue/card';
+  import { useAuthStore } from '~/stores/authStore';
+
+  const authStore = useAuthStore();
 
   const props = defineProps<{
     deck: Deck;
@@ -12,6 +15,9 @@
   const showDownloadDialog = ref(false);
 
   const borderColor = computed(() => {
+    if (!authStore.isAuthenticated || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
+      return 'none';
+
     // red
     if (props.deck.coverage < 50) return "4px solid red";
     // orange

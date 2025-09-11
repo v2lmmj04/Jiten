@@ -224,10 +224,18 @@ builder.Services.AddHangfireServer((options) =>
 
 builder.Services.AddHangfireServer((options) =>
 {
+    options.ServerName = "CoverageServer";
+    options.Queues = ["coverage"];
+    options.WorkerCount = 4;
+});
+
+builder.Services.AddHangfireServer((options) =>
+{
     options.ServerName = "DefaultServer";
     options.Queues = ["default"];
     options.WorkerCount = Environment.ProcessorCount / 4;
 });
+
 
 builder.Services.Configure<FormOptions>(options => { options.ValueCountLimit = 8192; });
 
@@ -243,6 +251,12 @@ using (var scope = app.Services.CreateScope())
             await roleManager.CreateAsync(new IdentityRole(roleName));
         }
     }
+
+    var recurringJobs = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobs.AddOrUpdate<ComputationJob>(
+                                              "updateCoverage",
+                                              job => job.DailyUserCoverage(),
+                                              Cron.Daily());
 }
 
 

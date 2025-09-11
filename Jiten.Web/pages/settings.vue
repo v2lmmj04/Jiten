@@ -1,6 +1,7 @@
 <script setup lang="ts">
-  import VocabularyImport from '~/components/VocabularyImport.vue';
-  import AnkiConnectImport from '~/components/AnkiConnectImport.vue';
+  import SettingsVocabularyImport from '~/components/SettingsVocabularyImport.vue';
+  import SettingsCoverage from '~/components/SettingsCoverage.vue';
+
   definePageMeta({
     middleware: ['auth'],
   });
@@ -8,7 +9,8 @@
 
 <template>
   <div class="container mx-auto p-2 md:p-4">
-    <VocabularyImport />
+    <SettingsCoverage class="mb-4" />
+    <SettingsVocabularyImport />
   </div>
 </template>
 

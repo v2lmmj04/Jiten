@@ -184,3 +184,7 @@ export interface CompleteGoogleRegistrationRequest {
   tosAccepted: boolean;
   receiveNewsletter: boolean;
 }
+
+export interface UserMetadata {
+  coverageRefreshedAt?: Date;
+}

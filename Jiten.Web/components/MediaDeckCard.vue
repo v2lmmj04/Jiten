@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { type Deck, MediaType, type DeckCoverage } from '~/types';
+  import { type Deck, MediaType } from '~/types';
   import Card from 'primevue/card';
   import { getChildrenCountText, getMediaTypeText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
@@ -14,14 +14,10 @@
   }>();
 
   const showDownloadDialog = ref(false);
-  const showCoverageDialog = ref(false);
-  const isLoadingCoverage = ref(false);
-  const coverageData = ref<DeckCoverage | null>(null);
   const isDescriptionExpanded = ref(false);
 
   const store = useJitenStore();
   const authStore = useAuthStore();
-  const { $api } = useNuxtApp();
 
   const displayAdminFunctions = computed(() => store.displayAdminFunctions);
   const readingSpeed = computed(() => store.readingSpeed);
@@ -35,34 +31,14 @@
     });
   });
 
-  const fetchCoverage = async () => {
-    isLoadingCoverage.value = true;
-    try {
-      const wordIds = store.getKnownWordIds();
-
-      const bodyPayload = wordIds || [];
-
-      const data = await $api<DeckCoverage>(`media-deck/${props.deck.deckId}/coverage`, {
-        method: 'POST',
-        body: JSON.stringify(bodyPayload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      coverageData.value = data;
-      showCoverageDialog.value = true;
-    } catch (error) {
-      console.error('Error fetching coverage data:', error);
-    } finally {
-      isLoadingCoverage.value = false;
-    }
-  };
-
   const toggleDescription = () => {
     isDescriptionExpanded.value = !isDescriptionExpanded.value;
   };
 
   const borderColor = computed(() => {
+    if (!authStore.isAuthenticated || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
+      return 'none';
+
     // red
     if (props.deck.coverage < 50) return '2px solid red';
     // orange
@@ -87,28 +63,30 @@
             <div v-if="!isCompact" class="text-left text-sm md:text-center">
               <img :src="deck.coverName == 'nocover.jpg' ? '/img/nocover.jpg' : deck.coverName" :alt="deck.originalTitle" class="h-48 w-34 min-w-34" />
               <div>{{ formatDateAsYyyyMmDd(new Date(deck.releaseDate)).replace(/-/g, '/') }}</div>
-              <div v-if="authStore.isAuthenticated">
-                <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Coverage</div>
-                <div
-                  v-tooltip="`${((deck.wordCount * deck.coverage) / 100).toFixed(0)} / ${deck.wordCount}`"
-                  class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
-                >
-                  <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.coverage.toFixed(1) + '%' }"></div>
-                  <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white"> {{ deck.coverage.toFixed(1) }}% </span>
+              <template v-if="authStore.isAuthenticated && (deck.coverage != 0 || deck.uniqueCoverage != 0)">
+                <div>
+                  <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Coverage</div>
+                  <div
+                    v-tooltip="`${((deck.wordCount * deck.coverage) / 100).toFixed(0)} / ${deck.wordCount}`"
+                    class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
+                  >
+                    <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.coverage.toFixed(1) + '%' }"></div>
+                    <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white"> {{ deck.coverage.toFixed(1) }}% </span>
+                  </div>
                 </div>
-              </div>
-              <div v-if="authStore.isAuthenticated">
-                <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Unique coverage</div>
-                <div
-                  v-tooltip="`${((deck.uniqueWordCount * deck.uniqueCoverage) / 100).toFixed(0)} / ${deck.uniqueWordCount}`"
-                  class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
-                >
-                  <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.uniqueCoverage.toFixed(1) + '%' }"></div>
-                  <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white">
-                    {{ deck.uniqueCoverage.toFixed(1) }}%
-                  </span>
+                <div>
+                  <div class="text-gray-600 dark:text-gray-300 truncate pr-2 font-medium">Unique coverage</div>
+                  <div
+                    v-tooltip="`${((deck.uniqueWordCount * deck.uniqueCoverage) / 100).toFixed(0)} / ${deck.uniqueWordCount}`"
+                    class="relative w-full bg-gray-400 dark:bg-gray-700 rounded-lg h-6"
+                  >
+                    <div class="bg-purple-500 h-6 rounded-lg transition-all duration-700" :style="{ width: deck.uniqueCoverage.toFixed(1) + '%' }"></div>
+                    <span class="absolute inset-0 flex items-center pl-2 text-xs font-bold text-white dark:text-white">
+                      {{ deck.uniqueCoverage.toFixed(1) }}%
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </template>
             </div>
             <div>
               <div class="flex flex-col gap-x-6 gap-y-2" :class="isCompact ? '' : 'md:flex-row md:flex-wrap'">

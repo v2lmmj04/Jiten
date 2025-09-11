@@ -20,6 +20,7 @@ public class UserDbContext : IdentityDbContext<User>
     public DbSet<UserCoverage> UserCoverages { get; set; }
     public DbSet<UserKnownWord> UserKnownWords { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<UserMetadata> UserMetadatas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +56,16 @@ public class UserDbContext : IdentityDbContext<User>
             entity.Property(uk => uk.KnownState).IsRequired();
 
             entity.HasIndex(uk => uk.UserId).HasDatabaseName("IX_UserKnownWord_UserId");
+        });
+
+        modelBuilder.Entity<UserMetadata>(entity =>
+        {
+            entity.HasKey(um => um.UserId);
+            entity.Property(um => um.CoverageRefreshedAt).IsRequired(false);
+
+            entity.HasOne<User>()
+                  .WithOne()
+                  .HasForeignKey<UserMetadata>(um => um.UserId);
         });
 
         base.OnModelCreating(modelBuilder);
