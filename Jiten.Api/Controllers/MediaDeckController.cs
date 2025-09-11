@@ -336,7 +336,7 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
     // [ResponseCache(Duration = 600, VaryByQueryKeys = ["id", "sortBy", "sortOrder", "offset"])]
     public async Task<PaginatedResponse<DeckVocabularyListDto?>> GetVocabulary(int id, string? sortBy = "",
                                                                                SortOrder sortOrder = SortOrder.Ascending,
-                                                                               int? offset = 0)
+                                                                               int? offset = 0, string displayFilter = "all")
     {
         int pageSize = 100;
 
@@ -349,6 +349,27 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
         var parentDeckDto = parentDeck != null ? new DeckDto(parentDeck) : null;
 
         var query = context.DeckWords.AsNoTracking().Where(dw => dw.DeckId == id);
+
+        if (currentUserService.IsAuthenticated && !string.IsNullOrEmpty(displayFilter) && displayFilter != "all")
+        {
+            var userId = currentUserService.UserId!;
+
+            // Materialize known keys in memory
+            var knownKeys = await userContext.UserKnownWords
+                                             .AsNoTracking()
+                                             .Where(uk => uk.UserId == userId)
+                                             .Select(uk => ((long)uk.WordId << 8) | uk.ReadingIndex)
+                                             .ToListAsync();
+
+            // Switch to in-memory filtering
+            query = query.AsEnumerable().Where(dw =>
+            {
+                var key = ((long)dw.WordId << 8) | dw.ReadingIndex;
+                return displayFilter == "known"
+                    ? knownKeys.Contains(key)
+                    : !knownKeys.Contains(key);
+            }).AsQueryable();
+        }
 
         query = sortBy switch
         {
@@ -519,9 +540,6 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
             return Results.File(yomitanBytes, "application/zip", $"freq_{deck.OriginalTitle}.zip");
         }
 
-        if (request is { ExcludeKnownWords: true, KnownWordIds: not null })
-            deckWordsQuery = deckWordsQuery.Where(dw => !request.KnownWordIds.Contains(dw.WordId));
-
         switch (request.DownloadType)
         {
             case DeckDownloadType.Full:
@@ -575,11 +593,34 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
                 return Results.BadRequest();
         }
 
+        var deckWordsRaw = await deckWordsQuery.ToListAsync();
+
+        if (request.ExcludeKnownWords && currentUserService.IsAuthenticated)
+        {
+            var knownWordIds = await userContext.UserKnownWords
+                                                .Where(kw => kw.UserId == currentUserService.UserId!)
+                                                .Select(kw => new { kw.WordId, kw.ReadingIndex })
+                                                .ToListAsync();
+
+            var knownKeys = knownWordIds
+                            .Select(kw => ((long)kw.WordId << 32) | (uint)kw.ReadingIndex)
+                            .ToHashSet();
+
+            deckWordsRaw = deckWordsRaw
+                           .Where(dw =>
+                           {
+                               var key = ((long)dw.WordId << 32) | (uint)dw.ReadingIndex;
+                               return !knownKeys.Contains(key);
+                           })
+                           .ToList();
+        }
+
         var wordIds = await deckWordsQuery.Select(dw => (long)dw.WordId).ToListAsync();
-        List<(int WordId, byte ReadingIndex, int Occurrences)> deckWords = await deckWordsQuery
-                                                                                 .Select(dw => new ValueTuple<int, byte, int>(dw.WordId,
-                                                                                             dw.ReadingIndex, dw.Occurrences))
-                                                                                 .ToListAsync();
+
+        List<(int WordId, byte ReadingIndex, int Occurrences)> deckWords = deckWordsRaw
+                                                                           .Select(dw => new ValueTuple<int, byte, int>(dw.WordId,
+                                                                                       dw.ReadingIndex, dw.Occurrences))
+                                                                           .ToList();
 
         var bytes = await GenerateDeckDownload(id, request, wordIds, deck, deckWords);
 
