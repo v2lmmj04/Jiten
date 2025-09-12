@@ -60,8 +60,9 @@
     set: (value) => (store.hideVocabularyDefinitions = value),
   });
 
-  const isAdmin = computed(() => {
-    return tokenCookie.value !== null && tokenCookie.value !== undefined && tokenCookie.value !== '';
+  const hideCoverageBorders = computed({
+    get: () => store.hideCoverageBorders,
+    set: (value) => (store.hideCoverageBorders = value),
   });
 
   const displayAdminFunctions = computed({
@@ -231,6 +232,11 @@
       <div class="flex items-center gap-2">
         <Checkbox v-model="displayAllNsfw" input-id="displayAllNsfw" name="nsfw" :binary="true" />
         <label for="displayAllNsfw">Unblur all NSFW sentences</label>
+      </div>
+
+      <div v-if="auth.isAuthenticated" class="flex items-center gap-2">
+        <Checkbox v-model="hideCoverageBorders" input-id="hideCoverageBorders" name="hideCoverageBorders" :binary="true" />
+        <label for="hideCoverageBorders">Hide coverage borders</label>
       </div>
 
       <div v-if="auth.isAuthenticated && auth.isAdmin" class="flex items-center gap-2">

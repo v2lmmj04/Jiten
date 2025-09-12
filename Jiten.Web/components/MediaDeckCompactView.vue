@@ -5,8 +5,10 @@
   import MediaDeckDownloadDialog from '~/components/MediaDeckDownloadDialog.vue';
   import Card from 'primevue/card';
   import { useAuthStore } from '~/stores/authStore';
+  import { useJitenStore } from '~/stores/jitenStore';
 
   const authStore = useAuthStore();
+  const store = useJitenStore();
 
   const props = defineProps<{
     deck: Deck;
@@ -15,7 +17,7 @@
   const showDownloadDialog = ref(false);
 
   const borderColor = computed(() => {
-    if (!authStore.isAuthenticated || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
+    if (!authStore.isAuthenticated|| store.hideCoverageBorders || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
       return 'none';
 
     // red

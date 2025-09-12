@@ -36,7 +36,7 @@
   };
 
   const borderColor = computed(() => {
-    if (!authStore.isAuthenticated || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
+    if (!authStore.isAuthenticated || store.hideCoverageBorders || (props.deck.coverage == 0 && props.deck.uniqueCoverage == 0))
       return 'none';
 
     // red
