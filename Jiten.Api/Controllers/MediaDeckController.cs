@@ -740,11 +740,65 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
                                                                                        .Select(c => c.ToString()));
                     string expressionAudio = "";
                     string selectionText = "";
-                    string mainDefinition = "<ul>" +
-                                            string.Join("", jmdictWords[word.WordId].Definitions
-                                                                                    .SelectMany(d => d.EnglishMeanings)
-                                                                                    .Select(meaning => $"<li>{meaning}</li>")) +
-                                            "</ul>";
+
+
+                    var definitions = jmdictWords[word.WordId].Definitions;
+                    var definitionBuilder = new StringBuilder();
+                    List<string>? previousPos = null;
+
+                    for (var i = 0; i < definitions.Count; i++)
+                    {
+                        JmDictDefinition? definition = definitions[i];
+                        bool isDifferentPartOfSpeech = previousPos == null || !previousPos.SequenceEqual(definition.PartsOfSpeech);
+                        if (isDifferentPartOfSpeech)
+                        {
+                            if (i != 0)
+                                definitionBuilder.Append("</ul>");
+                            definitionBuilder.Append("<ul>");
+
+                            previousPos = definition.PartsOfSpeech?.ToList() ?? [];
+
+                            if (previousPos.Count > 0)
+                            {
+                                definitionBuilder.Append("<div class=\"definition-pos\">");
+                                definitionBuilder.Append(string.Join(" ",
+                                                                     previousPos.Select(p =>
+                                                                                            $"<span class=\"pos\" title=\"{JmDictHelper.ToHumanReadablePartsOfSpeech([p])[0]}\">{System.Net.WebUtility.HtmlEncode(p)}</span>")));
+                                definitionBuilder.Append("</div>");
+                            }
+                        }
+
+                        // Meanings for this definition
+                        for (var j = 0; j < definition.EnglishMeanings.Count; j++)
+                        {
+                            string? meaning = definition.EnglishMeanings[j];
+                            if (j == 0)
+                                definitionBuilder.Append("<li>");
+                            if (j != 0)
+                                definitionBuilder.Append(" ; ");
+                            definitionBuilder.Append(System.Net.WebUtility.HtmlEncode(meaning));
+                            if (j == definitions.Count - 1)
+                                definitionBuilder.Append("</li>");
+                        }
+                    }
+
+                    definitionBuilder.Append("</ul>");
+
+                    string css = """
+                                 <style>
+                                    .pos {
+                                         background-color: rgb(168, 85, 247);
+                                         border-radius: 0.35em;
+                                         padding: 0.2em 0.4em;
+                                         color: white;
+                                         word-break: keep-all;
+                                    }
+                                 </style>
+                                 """;
+                    definitionBuilder.Append(css);
+                    string mainDefinition = definitionBuilder.ToString();
+
+
                     string definitionPicture = "";
                     string sentence = "";
 
