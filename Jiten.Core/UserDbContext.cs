@@ -1,4 +1,3 @@
-using Jiten.Core.Data;
 using Jiten.Core.Data.Authentication;
 using Jiten.Core.Data.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -21,6 +20,7 @@ public class UserDbContext : IdentityDbContext<User>
     public DbSet<UserKnownWord> UserKnownWords { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserMetadata> UserMetadatas { get; set; }
+    public DbSet<ApiKey> ApiKeys { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +66,30 @@ public class UserDbContext : IdentityDbContext<User>
             entity.HasOne<User>()
                   .WithOne()
                   .HasForeignKey<UserMetadata>(um => um.UserId);
+        });
+
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.HasKey(k => k.Id);
+            entity.Property(k => k.UserId).IsRequired();
+            entity.Property(k => k.Hash).IsRequired().HasMaxLength(88);
+            entity.Property(k => k.CreatedAt).IsRequired();
+            entity.Property(k => k.IsRevoked).HasDefaultValue(false);
+
+            entity.HasOne(k => k.User)
+                  .WithOne()
+                  .HasForeignKey<ApiKey>(k => k.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(k => k.Hash)
+                  .IsUnique()
+                  .HasDatabaseName("IX_ApiKey_Hash");
+
+            entity.HasIndex(k => k.UserId)
+                  .HasDatabaseName("IX_ApiKey_UserId");
+
+            entity.HasIndex(k => new { k.UserId, k.IsRevoked })
+                  .HasDatabaseName("IX_ApiKey_UserId_IsRevoked");
         });
 
         base.OnModelCreating(modelBuilder);
