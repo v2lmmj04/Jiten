@@ -49,8 +49,8 @@ public class ReaderController(JitenDbContext context, ICurrentUserService curren
         }
 
         var wordIds = parsedParagraphs.SelectMany(p => p).Select(w => w.WordId).ToList();
-
-        var jmdictWords = await context.JMDictWords.Where(w => wordIds.Contains(w.WordId)).ToListAsync();
+        var jmdictWords = await context.JMDictWords.Where(w => wordIds.Contains(w.WordId)).Include(w => w.Definitions).ToListAsync();
+        
 
         for (var i = 0; i < parsedParagraphs.Count; i++)
         {
@@ -58,6 +58,8 @@ public class ReaderController(JitenDbContext context, ICurrentUserService curren
             List<ReaderToken> tokens = new();
             int currentPosition = 0;
 
+            var knownStates = await currentUserService.GetKnownWordsState(parsedWords.Select(dw => (dw.WordId, dw.ReadingIndex)).ToList());
+            
             foreach (var word in parsedWords)
             {
                 int position = request.Text[i].IndexOf(word.OriginalText, currentPosition, StringComparison.Ordinal);
@@ -69,11 +71,15 @@ public class ReaderController(JitenDbContext context, ICurrentUserService curren
                                    End = position + word.OriginalText.Length, Length = word.OriginalText.Length
                                });
                     var jmdictWord = jmdictWords.First(jw => jw.WordId == word.WordId);
+                    knownStates.TryGetValue((word.WordId,word.ReadingIndex), out var knownState);
                     var readerWord = new ReaderWord()
                                      {
                                          WordId = word.WordId, ReadingIndex = word.ReadingIndex, Spelling = word.OriginalText, Reading =
                                              jmdictWord.ReadingsFurigana[word.ReadingIndex],
-                                         FrequencyRank = 0, KnownState = KnownState.Known,
+                                         PartsOfSpeech = jmdictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
+                                         MeaningsChunks = jmdictWord.Definitions.Select(d => d.EnglishMeanings).ToList(),
+                                         MeaningsPartOfSpeech = jmdictWord.Definitions.SelectMany(d => d.PartsOfSpeech).ToList() ?? [""],
+                                         FrequencyRank = 0, KnownState = knownState,
                                      };
                     allWords.Add(readerWord);
 
