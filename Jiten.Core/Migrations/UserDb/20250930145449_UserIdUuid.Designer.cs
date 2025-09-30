@@ -3,6 +3,7 @@ using System;
 using Jiten.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jiten.Core.Migrations.UserDb
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250930145449_UserIdUuid")]
+    partial class UserIdUuid
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -221,7 +224,7 @@ namespace Jiten.Core.Migrations.UserDb
                     b.HasIndex("UserId", "WordId", "ReadingIndex")
                         .IsUnique();
 
-                    b.ToTable("FsrsCards", "user");
+                    b.ToTable("FsrsCard", "user");
                 });
 
             modelBuilder.Entity("Jiten.Core.Data.FSRS.FsrsReviewLog", b =>
@@ -243,7 +246,7 @@ namespace Jiten.Core.Migrations.UserDb
                     b.HasIndex("CardId", "ReviewDateTime")
                         .IsUnique();
 
-                    b.ToTable("FsrsReviewLogs", "user");
+                    b.ToTable("FsrsReviewLog", "user");
                 });
 
             modelBuilder.Entity("Jiten.Core.Data.User.UserCoverage", b =>

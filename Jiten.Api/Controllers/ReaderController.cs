@@ -77,7 +77,7 @@ public class ReaderController(JitenDbContext context, ICurrentUserService curren
                                          WordId = word.WordId, ReadingIndex = word.ReadingIndex, Spelling = word.OriginalText, Reading =
                                              jmdictWord.ReadingsFurigana[word.ReadingIndex],
                                          PartsOfSpeech = jmdictWord.PartsOfSpeech.ToHumanReadablePartsOfSpeech(),
-                                         MeaningsChunks = jmdictWord.Definitions.Select(d => d.EnglishMeanings).ToList(),
+                                         MeaningsChunks = jmdictWord.Definitions.Where(d => d.EnglishMeanings.Count > 0).Select(d => d.EnglishMeanings).ToList(),
                                          MeaningsPartOfSpeech = jmdictWord.Definitions.SelectMany(d => d.PartsOfSpeech).ToList() ?? [""],
                                          FrequencyRank = 0, KnownState = knownState,
                                      };

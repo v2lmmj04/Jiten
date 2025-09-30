@@ -1,6 +1,7 @@
 using FluentAssertions;
+using Jiten.Parser;
 
-namespace Jiten.Parser.Tests;
+namespace Jiten.Tests;
 
 /// <summary>
 /// These tests are not functional for now

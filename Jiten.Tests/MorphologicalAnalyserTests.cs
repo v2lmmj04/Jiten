@@ -1,6 +1,8 @@
 ﻿/// Tests taken from https://github.com/tshatrov/ichiran/blob/master/tests.lisp
 
-namespace Jiten.Parser.Tests;
+using Jiten.Parser;
+
+namespace Jiten.Tests;
 
 using Xunit;
 using FluentAssertions;

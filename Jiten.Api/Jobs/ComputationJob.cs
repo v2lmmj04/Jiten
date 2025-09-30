@@ -60,7 +60,7 @@ public class ComputationJob(JitenDbContext context, UserDbContext userContext, I
         WITH KnownWords AS (
             SELECT ""WordId"", ""ReadingIndex""
             FROM ""user"".""UserKnownWords"" 
-            WHERE ""UserId"" = {0}
+            WHERE ""UserId"" = {0}::uuid
         ),
         DeckCoverage AS (
             SELECT 

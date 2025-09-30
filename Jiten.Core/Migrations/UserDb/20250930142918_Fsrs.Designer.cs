@@ -3,6 +3,7 @@ using System;
 using Jiten.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jiten.Core.Migrations.UserDb
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250930142918_Fsrs")]
+    partial class Fsrs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,8 +56,9 @@ namespace Jiten.Core.Migrations.UserDb
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -93,8 +97,9 @@ namespace Jiten.Core.Migrations.UserDb
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Token");
 
@@ -105,8 +110,8 @@ namespace Jiten.Core.Migrations.UserDb
 
             modelBuilder.Entity("Jiten.Core.Data.Authentication.User", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
@@ -208,8 +213,9 @@ namespace Jiten.Core.Migrations.UserDb
                     b.Property<int?>("Step")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("WordId")
                         .HasColumnType("integer");
@@ -221,7 +227,7 @@ namespace Jiten.Core.Migrations.UserDb
                     b.HasIndex("UserId", "WordId", "ReadingIndex")
                         .IsUnique();
 
-                    b.ToTable("FsrsCards", "user");
+                    b.ToTable("FsrsCard", "user");
                 });
 
             modelBuilder.Entity("Jiten.Core.Data.FSRS.FsrsReviewLog", b =>
@@ -243,13 +249,13 @@ namespace Jiten.Core.Migrations.UserDb
                     b.HasIndex("CardId", "ReviewDateTime")
                         .IsUnique();
 
-                    b.ToTable("FsrsReviewLogs", "user");
+                    b.ToTable("FsrsReviewLog", "user");
                 });
 
             modelBuilder.Entity("Jiten.Core.Data.User.UserCoverage", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
 
                     b.Property<int>("DeckId")
                         .HasColumnType("integer");
@@ -270,8 +276,8 @@ namespace Jiten.Core.Migrations.UserDb
 
             modelBuilder.Entity("Jiten.Core.Data.User.UserKnownWord", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
 
                     b.Property<int>("WordId")
                         .HasColumnType("integer");
@@ -295,8 +301,8 @@ namespace Jiten.Core.Migrations.UserDb
 
             modelBuilder.Entity("Jiten.Core.Data.User.UserMetadata", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("CoverageRefreshedAt")
                         .HasColumnType("timestamp with time zone");
@@ -371,8 +377,9 @@ namespace Jiten.Core.Migrations.UserDb
                     b.Property<string>("ClaimValue")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -392,8 +399,9 @@ namespace Jiten.Core.Migrations.UserDb
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -404,8 +412,8 @@ namespace Jiten.Core.Migrations.UserDb
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
 
                     b.Property<string>("RoleId")
                         .HasColumnType("text");
@@ -419,8 +427,8 @@ namespace Jiten.Core.Migrations.UserDb
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
 
                     b.Property<string>("LoginProvider")
                         .HasColumnType("text");
