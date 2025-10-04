@@ -10,7 +10,7 @@ public class FsrsReviewLog
     /// <summary>
     /// ID of the card that was reviewed
     /// </summary>
-    public long CardId { get; }
+    public long CardId { get; set; }
 
     /// <summary>
     /// Rating given during the review

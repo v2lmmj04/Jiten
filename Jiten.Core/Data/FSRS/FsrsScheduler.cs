@@ -116,7 +116,7 @@ public class FsrsScheduler
 
     private void UpdateCardParameters(FsrsCard card, FsrsRating rating, DateTime reviewDateTime, int? daysSinceLastReview)
     {
-        if (card.State == FsrsState.Learning && card.Stability == null && card.Difficulty == null)
+        if (card is { State: FsrsState.Learning, Stability: null, Difficulty: null })
         {
             card.Stability = FsrsHelper.CalculateInitialStability(rating, Parameters);
             card.Difficulty = FsrsHelper.CalculateInitialDifficulty(rating, Parameters);

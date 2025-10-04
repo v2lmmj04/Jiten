@@ -393,7 +393,7 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
             var userId = currentUserService.UserId!;
 
             // Materialize known keys in memory
-            var knownKeys = await userContext.UserKnownWords
+            var knownKeys = await userContext.FsrsCards
                                              .AsNoTracking()
                                              .Where(uk => uk.UserId == userId)
                                              .Select(uk => ((long)uk.WordId << 8) | uk.ReadingIndex)
@@ -655,7 +655,7 @@ public class MediaDeckController(JitenDbContext context, UserDbContext userConte
 
         if (request.ExcludeKnownWords && currentUserService.IsAuthenticated)
         {
-            var knownWordIds = await userContext.UserKnownWords
+            var knownWordIds = await userContext.FsrsCards
                                                 .Where(kw => kw.UserId == currentUserService.UserId!)
                                                 .Select(kw => new { kw.WordId, kw.ReadingIndex })
                                                 .ToListAsync();

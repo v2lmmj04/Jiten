@@ -9,7 +9,7 @@ public class FsrsCard
     /// Unique identifier for the card
     /// </summary>
     public long CardId { get; set; }
-    
+
     public string UserId { get; set; }
     public int WordId { get; set; }
     public byte ReadingIndex { get; set; }
@@ -52,6 +52,9 @@ public class FsrsCard
     /// Creates a new card with default or specified values
     /// </summary>
     public FsrsCard(
+        string userId,
+        int wordId,
+        byte readingIndex,
         long? cardId = null,
         FsrsState state = FsrsState.Learning,
         int? step = null,
@@ -61,6 +64,9 @@ public class FsrsCard
         DateTime? lastReview = null)
     {
         CardId = cardId ?? 0;
+        UserId = userId;
+        WordId = wordId;
+        ReadingIndex = readingIndex;
         State = state;
         Step = state == FsrsState.Learning && step == null ? 0 : step;
         Stability = stability;
@@ -74,6 +80,6 @@ public class FsrsCard
     /// </summary>
     public FsrsCard Clone()
     {
-        return new FsrsCard(CardId, State, Step, Stability, Difficulty, Due, LastReview);
+        return new FsrsCard(UserId, WordId, ReadingIndex, CardId, State, Step, Stability, Difficulty, Due, LastReview);
     }
 }
