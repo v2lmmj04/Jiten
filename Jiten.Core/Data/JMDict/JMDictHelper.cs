@@ -448,6 +448,17 @@ public static class JmDictHelper
         wordInfos.First(w => w.WordId == 2059630).Priorities?.Add("jiten");
         wordInfos.First(w => w.WordId == 1495580).Priorities?.Add("jiten");
         wordInfos.First(w => w.WordId == 1288850).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1511350).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1648450).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1534790).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 2105530).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1223615).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1421850).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1020650).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1310640).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1495770).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1375610).Priorities?.Add("jiten");
+        wordInfos.First(w => w.WordId == 1605840).Priorities?.Add("jiten");
         wordInfos.First(w => w.WordId == 2029110).Definitions.Add(new JmDictDefinition()
                                                                   {
                                                                       PartsOfSpeech = ["prt"], EnglishMeanings = ["indicates na-adjective"]

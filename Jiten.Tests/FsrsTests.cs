@@ -32,6 +32,9 @@ public class FsrsTests
     public void Card_Clone_ShouldCreateIdenticalCopy()
     {
         var original = new FsrsCard(
+                                    userId: "",
+                                    wordId: 0,
+                                    readingIndex: 0,
                                     cardId: Random.Next(),
                                     state: FsrsState.Review,
                                     step: null,
