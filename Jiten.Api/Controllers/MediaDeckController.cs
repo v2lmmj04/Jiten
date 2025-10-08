@@ -1194,7 +1194,28 @@ public class MediaDeckController(
                        }}
                        """;
 
-        var embed = String.Format(rawEmbed, currentUserService.UserId, deck.OriginalTitle, deck.DeckId, request.Comment, request.IssueType);
+        string SafeMarkdown(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
+            // Escape common Discord markup characters: *, _, ~, `, >, |, [, ], (, ), @, #, :, \, etc.
+            var sb = new StringBuilder(input.Length);
+            foreach (var c in input)
+            {
+                if (c == '*' || c == '_' || c == '~' || c == '`' ||
+                    c == '>' || c == '|' || c == '[' || c == ']' ||
+                    c == '(' || c == ')' || c == '@' || c == '#' ||
+                    c == ':' || c == '\\')
+                {
+                    sb.Append('\\'); // prepend backslash to escape
+                }
+                sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        var safeComment = SafeMarkdown(request.Comment);
+        var safeIssueType = SafeMarkdown(request.IssueType);
+        var embed = String.Format(rawEmbed, currentUserService.UserId, deck.OriginalTitle, deck.DeckId, safeComment, safeIssueType);
         var webhook = configuration["DiscordWebhook"];
         using var httpClient = new HttpClient();
         var content = new StringContent(embed, Encoding.UTF8, "application/json");
