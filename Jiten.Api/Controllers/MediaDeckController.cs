@@ -701,7 +701,7 @@ public class MediaDeckController(
                            .ToList();
         }
 
-        var wordIds = await deckWordsQuery.Select(dw => (long)dw.WordId).ToListAsync();
+        var wordIds = deckWordsRaw.Select(dw => (long)dw.WordId).ToList();
 
         List<(int WordId, byte ReadingIndex, int Occurrences)> deckWords = deckWordsRaw
                                                                            .Select(dw => new ValueTuple<int, byte, int>(dw.WordId,
@@ -955,7 +955,7 @@ public class MediaDeckController(
             case DeckFormat.Csv:
                 StringBuilder sb = new StringBuilder();
 
-                sb.AppendLine($"\"Reading\",\"ReadingFurigana\",\"ReadingKana\",\"Occurences\",\"ReadingFrequency\",\"PitchPositions\",\"Definitions\"");
+                sb.AppendLine($"\"Reading\",\"ReadingFurigana\",\"ReadingKana\",\"Occurences\",\"ReadingFrequency\",\"PitchPositions\",\"Definitions\",\"ExampleSentence\"");
 
                 foreach (var word in deckWords)
                 {
@@ -963,7 +963,6 @@ public class MediaDeckController(
 
                     if (request.ExcludeKana && WanaKana.IsKana(reading))
                         continue;
-
 
                     string readingFurigana = jmdictWords[word.WordId].ReadingsFurigana[word.ReadingIndex];
                     string pitchPositions = "";
@@ -981,7 +980,25 @@ public class MediaDeckController(
                     var occurrences = word.Occurrences;
                     var readingFrequency = frequencies[word.WordId].ReadingsFrequencyRank[word.ReadingIndex];
 
-                    sb.AppendLine($"\"{reading}\",\"{readingFurigana}\",\"{readingKana}\",\"{occurrences}\",\"{readingFrequency}\",\"{pitchPositions}\",\"{definitions}\"");
+                    string exampleSentence = "";
+                    if (!request.ExcludeExampleSentences &&
+                        wordToSentencesMap.TryGetValue((word.WordId, word.ReadingIndex), out var sentences) && sentences.Count > 0)
+                    {
+                        var sentence = sentences.First();
+                        int position = sentence.Position;
+                        int length = sentence.Length;
+
+                        string originalText = sentence.Text;
+                        if (position >= 0 && position + length <= originalText.Length)
+                        {
+                            exampleSentence = originalText.Substring(0, position) +
+                                              "**" +
+                                              originalText.Substring(position, length) + "**" +
+                                              originalText.Substring(position + length);
+                        }
+                    }
+
+                    sb.AppendLine($"\"{reading}\",\"{readingFurigana}\",\"{readingKana}\",\"{occurrences}\",\"{readingFrequency}\",\"{pitchPositions}\",\"{definitions}\",\"{exampleSentence}\"");
                 }
 
                 return Encoding.UTF8.GetBytes(sb.ToString());
