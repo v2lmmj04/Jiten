@@ -653,24 +653,4 @@ public class AdminController(
                               new { Message = "An unexpected error occurred while processing your request.", Details = ex.ToString() });
         }
     }
-
-    [HttpPost("migrate-known-words-to-fsrs")]
-    public async Task<IActionResult> MigrateKnownWordsToFsrs()
-    {
-        var users = await userContext.Users.ToListAsync();
-        foreach (var user in users)
-        {
-            var knownWords = await userContext.UserKnownWords.Where(uk => uk.UserId == user.Id).ToListAsync();
-            foreach (var knownWord in knownWords)
-            {
-                var fsrsCard = new FsrsCard(user.Id, knownWord.WordId, knownWord.ReadingIndex, due: knownWord.LearnedDate.AddYears(100),
-                                            lastReview: knownWord.LearnedDate, state: FsrsState.Review);
-                userContext.FsrsCards.Add(fsrsCard);
-            }
-        }
-
-        await userContext.SaveChangesAsync();
-
-        return Ok();
-    }
 }
