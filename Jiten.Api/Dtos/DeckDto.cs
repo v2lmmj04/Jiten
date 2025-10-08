@@ -29,6 +29,7 @@ public class DeckDto
     public int ChildrenDeckCount { get; set; }
     public int SelectedWordOccurrences { get; set; }
     public float DialoguePercentage { get; set; }
+    public bool HideDialoguePercentage { get; set; }
     public float Coverage { get; set; }
     public float UniqueCoverage { get; set; }
 
@@ -63,6 +64,7 @@ public class DeckDto
         ChildrenDeckCount = deck.Children.Count;
         SelectedWordOccurrences = occurrences;
         DialoguePercentage = deck.DialoguePercentage;
+        HideDialoguePercentage = deck.HideDialoguePercentage;
     }
 
     public DeckDto(Deck deck)
@@ -91,6 +93,7 @@ public class DeckDto
         Links = deck.Links;
         ChildrenDeckCount = deck.Children.Count;
         DialoguePercentage = deck.DialoguePercentage;
+        HideDialoguePercentage = deck.HideDialoguePercentage;
     }
 
     /// <summary>

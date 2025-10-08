@@ -28,6 +28,7 @@ export interface Deck {
   dialoguePercentage: number;
   coverage: number;
   uniqueCoverage: number;
+  hideDialoguePercentage: boolean;
 }
 
 export interface DeckDetail {

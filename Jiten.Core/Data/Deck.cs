@@ -114,6 +114,11 @@ public class Deck
         }
         set => _dialoguePercentage = value;
     }
+    
+    /// <summary>
+    /// Whether to hide the dialogue percentage on the deck card
+    /// </summary>
+    public bool HideDialoguePercentage { get; set; } = false;
 
     /// <summary>
     /// Parent deck, null if no parent

@@ -224,6 +224,7 @@ public class AdminController(
         deck.ReleaseDate = model.ReleaseDate;
         deck.Description = model.Description?.Trim();
         deck.DifficultyOverride = model.DifficultyOverride;
+        deck.HideDialoguePercentage = model.HideDialoguePercentage;
 
         // Update cover image if provided
         if (model.CoverImage is { Length: > 0 })

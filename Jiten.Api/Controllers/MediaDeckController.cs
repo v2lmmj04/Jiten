@@ -282,8 +282,8 @@ public class MediaDeckController(
                 ? query.OrderBy(d => d.CharacterCount / (d.SentenceCount + 1)).Where(d => d.SentenceCount != 0)
                 : query.OrderByDescending(d => d.CharacterCount / (d.SentenceCount + 1)).Where(d => d.SentenceCount != 0),
             "dialoguePercentage" => sortOrder == SortOrder.Ascending
-                ? query.OrderBy(d => d.DialoguePercentage).Where(d => d.DialoguePercentage != 0 && d.DialoguePercentage != 100)
-                : query.OrderByDescending(d => d.DialoguePercentage).Where(d => d.DialoguePercentage != 0 && d.DialoguePercentage != 100),
+                ? query.OrderBy(d => d.DialoguePercentage).Where(d => !d.HideDialoguePercentage && d.DialoguePercentage != 0 && d.DialoguePercentage != 100)
+                : query.OrderByDescending(d => d.DialoguePercentage).Where(d => !d.HideDialoguePercentage && d.DialoguePercentage != 0 && d.DialoguePercentage != 100),
             "wordCount" => sortOrder == SortOrder.Ascending
                 ? query.OrderBy(d => d.WordCount)
                 : query.OrderByDescending(d => d.WordCount),

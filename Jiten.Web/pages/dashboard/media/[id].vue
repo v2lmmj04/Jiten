@@ -13,6 +13,7 @@
   import type { DeckDetail, Link, MediaType } from '~/types';
   import { getMediaTypeText, getChildrenCountText } from '~/utils/mediaTypeMapper';
   import { getLinkTypeText } from '~/utils/linkTypeMapper';
+  import Checkbox from 'primevue/checkbox';
 
   const route = useRoute();
   const mediaId = route.params.id;
@@ -40,6 +41,7 @@
   const releaseDate = ref<Date>();
   const description = ref('');
   const difficultyOverride = ref(0);
+  const hideDialoguePercentage = ref(false);
 
   const coverImage = ref<File | null>(null);
   const coverImageUrl = ref<string | null>(null);
@@ -118,6 +120,7 @@
       description.value = mainDeck.description || '';
       releaseDate.value = new Date(mainDeck.releaseDate) || new Date();
       difficultyOverride.value = mainDeck.difficultyOverride || 0;
+      hideDialoguePercentage.value = mainDeck.hideDialoguePercentage || false;
 
       if (mainDeck.coverName) {
         coverImageUrl.value = `${mainDeck.coverName}`;
@@ -301,6 +304,7 @@
       formData.append('releaseDate', formatDateAsYyyyMmDd(releaseDate.value));
       formData.append('description', description.value);
       formData.append('difficultyOverride', difficultyOverride.value);
+      formData.append('hideDialoguePercentage', hideDialoguePercentage.value);
 
       if (coverImage.value) {
         formData.append('coverImage', coverImage.value);
@@ -411,6 +415,11 @@
                 <div class="mb-4">
                   <label class="block text-sm font-medium mb-1">Difficulty Override</label>
                   <InputNumber v-model="difficultyOverride" class="w-full" :min-fraction-digits="1" />
+                </div>
+
+                <div class="flex items-center">
+                  <Checkbox id="hideDialoguePercentage" v-model="hideDialoguePercentage" :binary="true" />
+                  <label for="hideDialoguePercentage" class="ml-2">Hide Dialogue Percentage</label>
                 </div>
               </div>
               <div>
