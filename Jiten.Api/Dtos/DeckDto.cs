@@ -25,7 +25,8 @@ public class DeckDto
     public int SentenceCount { get; set; }
     public float AverageSentenceLength { get; set; }
     public int? ParentDeckId { get; set; }
-    public List<Link> Links { get; set; } = new List<Link>();
+    public List<Link> Links { get; set; } = new();
+    public List<string> Aliases { get; set; } = new();
     public int ChildrenDeckCount { get; set; }
     public int SelectedWordOccurrences { get; set; }
     public float DialoguePercentage { get; set; }
@@ -65,6 +66,7 @@ public class DeckDto
         SelectedWordOccurrences = occurrences;
         DialoguePercentage = deck.DialoguePercentage;
         HideDialoguePercentage = deck.HideDialoguePercentage;
+        Aliases = deck.Titles.Where(t => t.TitleType == DeckTitleType.Alias).Select(t => t.Title).ToList();
     }
 
     public DeckDto(Deck deck)
@@ -94,6 +96,7 @@ public class DeckDto
         ChildrenDeckCount = deck.Children.Count;
         DialoguePercentage = deck.DialoguePercentage;
         HideDialoguePercentage = deck.HideDialoguePercentage;
+        Aliases = deck.Titles.Where(t => t.TitleType == DeckTitleType.Alias).Select(t => t.Title).ToList();
     }
 
     /// <summary>

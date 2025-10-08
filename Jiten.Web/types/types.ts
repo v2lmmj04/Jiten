@@ -23,6 +23,7 @@ export interface Deck {
   parentDeckId: number;
   deckWords: DeckWord[];
   links: Link[];
+  aliases: string[];
   childrenDeckCount: number;
   selectedWordOccurrences: number;
   dialoguePercentage: number;
@@ -133,6 +134,7 @@ export interface Metadata {
   releaseDate: string;
   description: string;
   links: Link[];
+  aliases: string[];
 }
 
 export interface Issues {

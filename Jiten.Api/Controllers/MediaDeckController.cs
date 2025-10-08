@@ -99,15 +99,25 @@ public class MediaDeckController(
         // Apply title filter
         if (!string.IsNullOrEmpty(titleFilter))
         {
-            FormattableString sql = $"""
-                                     SELECT *
-                                     FROM jiten."Decks"
-                                     WHERE "ParentDeckId" IS NULL AND
-                                     ("OriginalTitle" &@~ {titleFilter} OR 
-                                      "RomajiTitle" &@~ {titleFilter} OR REPLACE("RomajiTitle", ' ', '') &@~ {titleFilter} OR 
-                                      "EnglishTitle" &@~ {titleFilter})
-                                     ORDER BY pgroonga_score(tableoid, ctid) DESC
-                                     """;
+            FormattableString sql = $$"""
+                                      SELECT d.*
+                                      FROM jiten."Decks" d
+                                      JOIN (
+                                        SELECT dt."DeckId",
+                                               MIN(CASE dt."TitleType"
+                                                 WHEN 0 THEN 1
+                                                 WHEN 1   THEN 2
+                                                 WHEN 2  THEN 3
+                                                 ELSE 4 END) AS best_type_rank,
+                                               MAX(pgroonga_score(dt.tableoid, dt.ctid)) AS best_score
+                                        FROM jiten."DeckTitles" dt
+                                        WHERE dt."Title" &@~ {{titleFilter}}
+                                        OR ((dt."TitleType" = 1 OR dt."TitleType" = 3) AND REPLACE(dt."Title", ' ', '') &@~ {{titleFilter}})
+                                        GROUP BY dt."DeckId"
+                                      ) s ON s."DeckId" = d."DeckId"
+                                      WHERE d."ParentDeckId" IS NULL
+                                      ORDER BY s.best_type_rank ASC, s.best_score DESC
+                                      """;
 
             query = context.Set<Deck>().FromSqlInterpolated(sql);
         }
@@ -131,7 +141,8 @@ public class MediaDeckController(
         }
 
         query = query.Include(d => d.Children)
-                     .Include(d => d.Links);
+                     .Include(d => d.Links)
+                     .Include(d => d.Titles);
 
         // Create projected query for word-based searches
         IQueryable<DeckWithOccurrences>? projectedQuery = null;
@@ -1201,10 +1212,7 @@ public class MediaDeckController(
             var sb = new StringBuilder(input.Length);
             foreach (var c in input)
             {
-                if (c == '*' || c == '_' || c == '~' || c == '`' ||
-                    c == '>' || c == '|' || c == '[' || c == ']' ||
-                    c == '(' || c == ')' || c == '@' || c == '#' ||
-                    c == ':' || c == '\\')
+                if (c is '*' or '_' or '~' or '`' or '>' or '|' or '[' or ']' or '(' or ')' or '@' or '#' or ':' or '\\')
                 {
                     sb.Append('\\'); // prepend backslash to escape
                 }
